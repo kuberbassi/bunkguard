@@ -266,50 +266,49 @@ form button[type="submit"]:hover {
 
 
 /* ======================================================= */
-/* == RESPONSIVE DESIGN FOR TABLETS AND MOBILES (NEW) == */
+/* == RESPONSIVE DESIGN FOR TABLETS AND MOBILES (IMPROVED) == */
 /* ======================================================= */
 @media (max-width: 768px) {
 
-    /* Reduce padding on the body and container for more space */
+    /* Reduce padding for more space on small screens */
     body {
         padding: 15px;
     }
 
     .container {
-        padding: 15px;
+        padding: 20px 15px; /* More vertical padding */
     }
 
-    /* Make h1 and h2 slightly smaller */
+    /* Adjust typography for mobile */
     h1 {
-        font-size: 28px;
+        font-size: 26px;
     }
 
     h2 {
-        font-size: 22px;
+        font-size: 20px;
     }
 
-    /* Make the header actions stack if needed */
     .header-with-action {
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 15px;
     }
 
-    /* Change summary box to a 2x2 grid for better alignment */
+    /* Make summary box a 2x2 grid for better use of space */
     .summary-box {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        gap: 15px 10px; /* row-gap column-gap */
         padding: 15px;
     }
 
     .summary-item span {
-        font-size: 20px;
+        font-size: 22px;
     }
 
     /* --- Table to Card Transformation --- */
 
-    /* 1. Hide the table header, as we will add labels to each cell */
+    /* 1. Hide the original table header */
     table thead {
         display: none;
     }
@@ -325,63 +324,79 @@ form button[type="submit"]:hover {
 
     /* 3. Style each table row (tr) as a card */
     table tr {
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         border: 1px solid var(--border-color);
         border-radius: var(--border-radius);
-        background-color: #fff;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        overflow: hidden; /* Crucial for clipping child elements to the rounded corners */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
     tbody tr:hover {
-        background-color: #fff;
-        /* Disable row hover color in card view */
-        transform: translateY(-2px);
-        /* Use transform for hover instead */
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #fff; /* Disable default hover */
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     }
 
     /* 4. Style each cell (td) and add the label */
     table td {
         display: flex;
         justify-content: space-between;
-        /* Pushes label and value to opposite ends */
         align-items: center;
-        padding: 12px 15px;
+        padding: 14px 15px;
         text-align: right;
-        /* Align cell content to the right */
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid #f0f0f0; /* Use a lighter border inside cards */
     }
 
-    table td:last-child {
-        border-bottom: none;
-        /* Remove border from the last cell in a card */
+    table tr td:last-child {
+        border-bottom: none; /* Remove border from the last cell in a card */
     }
 
-    /* 5. Use the ::before pseudo-element and the data-label attribute to create the labels */
+    /* 5. Use ::before to create the labels from data-label attributes */
     table td::before {
         content: attr(data-label);
-        /* Pulls text from the data-label attribute */
-        font-weight: 600;
-        color: var(--primary-text);
+        font-weight: 500;
+        color: var(--secondary-text); /* Make label less prominent than the value */
         text-align: left;
-        margin-right: 10px;
+        margin-right: 15px;
     }
 
-    /* Make the first "Subject" cell look like a card header */
+    /* 6. Style the first cell as a distinct card header */
     table td:first-child {
-        background-color: var(--bg-color);
+        background-color: var(--accent-color);
+        color: white;
         font-weight: 700;
         font-size: 1.1em;
-        border-top-left-radius: var(--border-radius);
-        border-top-right-radius: var(--border-radius);
+        /* Center the subject name and remove the pseudo-label */
+        justify-content: center;
+    }
+    table td:first-child::before {
+        display: none;
     }
 
-    /* Special styling for the actions cell */
+    /* 7. Special styling for the actions cell for better touch targets */
     td[data-label="Actions"] {
+        background-color: #f8f9fa; /* Slightly off-white background */
+        padding: 10px;
+        /* Use grid for a clean 2x2 layout of buttons */
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    /* Hide the "Actions" label as it's obvious */
+    td[data-label="Actions"]::before {
+        display: none;
+    }
+
+    /* Make buttons in the action card fill the space */
+    .btn, .btn-undo-subject {
+        width: 100%;
+        padding: 10px 5px; /* Taller buttons for easy tapping */
+        margin: 0;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
         justify-content: center;
-        /* Center the buttons */
-        flex-wrap: wrap;
-        /* Allow buttons to wrap if screen is very narrow */
         gap: 5px;
     }
 
@@ -392,6 +407,5 @@ form button[type="submit"]:hover {
 
     form button[type="submit"] {
         padding: 14px;
-        /* Make button taller */
     }
 }
