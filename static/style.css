@@ -36,18 +36,12 @@ body {
 h1 {
     text-align: center;
     font-weight: 700;
-    color: #fff; /* Fallback color for older browsers */
+    color: #fff;
+    /* Fallback color for older browsers */
     background: linear-gradient(90deg, var(--accent-color), #9a67ea);
-    
-    /* For older browser compatibility */
     -webkit-background-clip: text;
-    
-    /* The modern, standard property */
     background-clip: text;
-
-    /* Makes the text color transparent to show the background */
     -webkit-text-fill-color: transparent;
-    
     margin-bottom: 20px;
 }
 
@@ -86,10 +80,21 @@ h2 {
     color: white;
 }
 
-.tabcontent { display: none; animation: fadeIn 0.5s ease-in-out; }
+.tabcontent {
+    display: none;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .header-with-action {
@@ -101,7 +106,10 @@ h2 {
     padding-bottom: 10px;
 }
 
-.action-buttons { display: flex; gap: 10px; }
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
 
 .btn-redo {
     padding: 8px 15px;
@@ -114,7 +122,10 @@ h2 {
     font-size: 14px;
     transition: background-color 0.2s ease;
 }
-.btn-redo:hover { background-color: var(--accent-color); }
+
+.btn-redo:hover {
+    background-color: var(--accent-color);
+}
 
 .summary-box {
     display: flex;
@@ -126,6 +137,10 @@ h2 {
     border-radius: var(--border-radius);
     border-left: 5px solid var(--accent-color);
     text-align: center;
+    flex-wrap: wrap;
+    /* Allow items to wrap */
+    gap: 15px;
+    /* Add gap for wrapped items */
 }
 
 .summary-item b {
@@ -134,17 +149,53 @@ h2 {
     font-size: 14px;
     color: var(--secondary-text);
 }
-.summary-item span { font-size: 24px; font-weight: 700; color: var(--primary-text); }
 
-table { width: 100%; border-collapse: collapse; margin-top: 25px; }
-th, td { padding: 15px; border-bottom: 1px solid var(--border-color); text-align: center; vertical-align: middle; }
-thead { background: var(--bg-color); color: var(--primary-text); font-weight: 600; }
-tbody tr:hover { background-color: #74e2bd; }
+.summary-item span {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-text);
+}
 
-.percent.low-attendance span { color: #ff6b6b; font-weight: 700; }
-.recovery-note { font-size: 12px; color: var(--secondary-text); opacity: 0.9; margin-top: 4px; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 25px;
+}
 
-.btn, .btn-undo-subject {
+th,
+td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    vertical-align: middle;
+}
+
+thead {
+    background: var(--bg-color);
+    color: var(--primary-text);
+    font-weight: 600;
+}
+
+tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+/* Subtle hover color */
+
+.percent.low-attendance span {
+    color: #ff6b6b;
+    font-weight: 700;
+}
+
+.recovery-note {
+    font-size: 12px;
+    color: var(--secondary-text);
+    opacity: 0.9;
+    margin-top: 4px;
+}
+
+.btn,
+.btn-undo-subject {
     padding: 8px 12px;
     margin: 0 3px;
     cursor: pointer;
@@ -155,51 +206,192 @@ tbody tr:hover { background-color: #74e2bd; }
     transition: all 0.2s ease;
 }
 
-.btn:hover, .btn-undo-subject:hover { opacity: 0.85; }
-
-.btn-present { background-color: var(--success-color); }
-.btn-absent { background-color: var(--danger-color); }
-.btn-delete { background-color: #6c757d; }
-.btn-undo-subject { background-color: #ff9f43; }
-.btn-undo-subject:hover { background-color: #e67e22; opacity: 1; }
-
-
-form { margin-top: 30px; display: flex; gap: 10px; }
-form input[type="text"] {
-    flex-grow: 1; padding: 12px; font-size: 16px;
-    border: 1px solid var(--border-color); background-color: var(--bg-color);
-    color: var(--primary-text); border-radius: 8px;
+.btn:hover,
+.btn-undo-subject:hover {
+    opacity: 0.85;
 }
+
+.btn-present {
+    background-color: var(--success-color);
+}
+
+.btn-absent {
+    background-color: var(--danger-color);
+}
+
+.btn-delete {
+    background-color: #6c757d;
+}
+
+.btn-undo-subject {
+    background-color: #ff9f43;
+}
+
+.btn-undo-subject:hover {
+    background-color: #e67e22;
+    opacity: 1;
+}
+
+form {
+    margin-top: 30px;
+    display: flex;
+    gap: 10px;
+}
+
+form input[type="text"] {
+    flex-grow: 1;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    color: var(--primary-text);
+    border-radius: 8px;
+}
+
 form button[type="submit"] {
-    padding: 12px 20px; font-size: 16px; font-weight: 600;
-    border: none; background-color: var(--secondary-text);
-    color: white; border-radius: 8px; cursor: pointer;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    background-color: var(--secondary-text);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
     transition: background-color 0.2s ease;
 }
-form button[type="submit"]:hover { background-color: var(--accent-color); }
 
-/* =============================================== */
-/* == Global Button Hover Transition (NEW CODE) == */
-/* =============================================== */
-
-/* 1. Define the transition properties on the base state of all buttons */
-.btn, 
-.btn-undo-subject,
-.tab-btn,
-.btn-redo,
-form button[type="submit"] {
-  /* This tells the browser to animate changes to transform and box-shadow */
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+form button[type="submit"]:hover {
+    background-color: var(--accent-color);
 }
 
-/* 2. Define the style for the :hover state (what happens on mouse-over) */
-.btn:hover, 
-.btn-undo-subject:hover,
-.tab-btn:hover,
-.btn-redo:hover,
-form button[type="submit"]:hover {
-  /* Lifts the button up by 2 pixels */
-  transform: translateY(-2px);
-  /* Adds a subtle shadow to enhance the "lifted" effect */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+
+/* ======================================================= */
+/* == RESPONSIVE DESIGN FOR TABLETS AND MOBILES (NEW) == */
+/* ======================================================= */
+@media (max-width: 768px) {
+
+    /* Reduce padding on the body and container for more space */
+    body {
+        padding: 15px;
+    }
+
+    .container {
+        padding: 15px;
+    }
+
+    /* Make h1 and h2 slightly smaller */
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    /* Make the header actions stack if needed */
+    .header-with-action {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    /* Change summary box to a 2x2 grid for better alignment */
+    .summary-box {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 15px;
+    }
+
+    .summary-item span {
+        font-size: 20px;
+    }
+
+    /* --- Table to Card Transformation --- */
+
+    /* 1. Hide the table header, as we will add labels to each cell */
+    table thead {
+        display: none;
+    }
+
+    /* 2. Make table elements behave like blocks */
+    table,
+    tbody,
+    tr,
+    td {
+        display: block;
+        width: 100%;
+    }
+
+    /* 3. Style each table row (tr) as a card */
+    table tr {
+        margin-bottom: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    tbody tr:hover {
+        background-color: #fff;
+        /* Disable row hover color in card view */
+        transform: translateY(-2px);
+        /* Use transform for hover instead */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 4. Style each cell (td) and add the label */
+    table td {
+        display: flex;
+        justify-content: space-between;
+        /* Pushes label and value to opposite ends */
+        align-items: center;
+        padding: 12px 15px;
+        text-align: right;
+        /* Align cell content to the right */
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    table td:last-child {
+        border-bottom: none;
+        /* Remove border from the last cell in a card */
+    }
+
+    /* 5. Use the ::before pseudo-element and the data-label attribute to create the labels */
+    table td::before {
+        content: attr(data-label);
+        /* Pulls text from the data-label attribute */
+        font-weight: 600;
+        color: var(--primary-text);
+        text-align: left;
+        margin-right: 10px;
+    }
+
+    /* Make the first "Subject" cell look like a card header */
+    table td:first-child {
+        background-color: var(--bg-color);
+        font-weight: 700;
+        font-size: 1.1em;
+        border-top-left-radius: var(--border-radius);
+        border-top-right-radius: var(--border-radius);
+    }
+
+    /* Special styling for the actions cell */
+    td[data-label="Actions"] {
+        justify-content: center;
+        /* Center the buttons */
+        flex-wrap: wrap;
+        /* Allow buttons to wrap if screen is very narrow */
+        gap: 5px;
+    }
+
+    /* Make the form stack vertically for easier use */
+    form {
+        flex-direction: column;
+    }
+
+    form button[type="submit"] {
+        padding: 14px;
+        /* Make button taller */
+    }
 }

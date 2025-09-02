@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance Tracker</title>
-    <!-- ========== Favicon ========== -->
     <link rel="icon" type="image/png" href="/static/images/favicon.png" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -50,17 +50,17 @@
                 <tbody id="tbody-{{ sem }}">
                     {% for subject, info in subjects.items() %}
                     <tr id="row-{{ sem }}-{{ subject }}">
-                        <td>{{ subject }}</td>
-                        <td class="attended">{{ info["attended"] }}</td>
-                        <td class="total">{{ info["total"] }}</td>
-                        <td class="percent {% if info.percent < 75 %}low-attendance{% endif %}">
+                        <td data-label="Subject">{{ subject }}</td>
+                        <td data-label="Present" class="attended">{{ info["attended"] }}</td>
+                        <td data-label="Total" class="total">{{ info["total"] }}</td>
+                        <td data-label="Percentage" class="percent {% if info.percent < 75 %}low-attendance{% endif %}">
                             <span>{{ info.percent }}%</span>
                             {% if info.percent < 75 and info.recovery_needed> 0 %}
                                 <div class="recovery-note"><i class="fa-solid fa-arrow-trend-up"></i> Attend next {{
                                     info.recovery_needed }} classes</div>
                                 {% endif %}
                         </td>
-                        <td>
+                        <td data-label="Actions">
                             <button class="btn btn-present" title="Mark Present"
                                 onclick="markAttendance('{{ sem }}', '{{ subject }}', 'p')"><i
                                     class="fa-solid fa-check"></i></button>
@@ -88,6 +88,7 @@
     </div>
 
     <script>
+        // All your existing JS functions go here...
         function openSem(sem, element) {
             document.querySelectorAll(".tabcontent").forEach(el => el.style.display = "none");
             document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -142,10 +143,13 @@
                 const tbody = document.getElementById(`tbody-${sem}`);
                 const newRow = document.createElement('tr');
                 newRow.id = `row-${sem}-${data.subject}`;
+                // Also add data-labels to the newly created row
                 newRow.innerHTML = `
-                    <td>${data.subject}</td><td class="attended">0</td><td class="total">0</td>
-                    <td class="percent"><span>0%</span></td>
-                    <td>
+                    <td data-label="Subject">${data.subject}</td>
+                    <td data-label="Present" class="attended">0</td>
+                    <td data-label="Total" class="total">0</td>
+                    <td data-label="Percentage" class="percent"><span>0%</span></td>
+                    <td data-label="Actions">
                         <button class="btn btn-present" title="Mark Present" onclick="markAttendance('${sem}', '${data.subject}', 'p')"><i class="fa-solid fa-check"></i></button>
                         <button class="btn btn-absent" title="Mark Absent" onclick="markAttendance('${sem}', '${data.subject}', 'a')"><i class="fa-solid fa-xmark"></i></button>
                         <button class="btn btn-undo-subject" title="Undo last mark" onclick="undoSubjectAction('${sem}', '${data.subject}')"><i class="fa-solid fa-reply"></i></button>
