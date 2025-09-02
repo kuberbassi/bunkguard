@@ -1,0 +1,205 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Evergreen / Natural Tones */
+:root {
+    --bg-color: #f3f4f6;
+    --container-color: #ffffff;
+    --primary-text: #1f2937;
+    --secondary-text: #6b7280;
+    --accent-color: #10b981;
+    --success-color: #22c55e;
+    --danger-color: #ef4444;
+    --border-color: #e5e7eb;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --border-radius: 12px;
+}
+
+body {
+    font-family: 'Poppins', Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--primary-text);
+    margin: 0;
+    padding: 30px;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    background-color: var(--container-color);
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 30px var(--shadow-color);
+    border: 1px solid var(--border-color);
+}
+
+h1 {
+    text-align: center;
+    font-weight: 700;
+    color: #fff; /* Fallback color for older browsers */
+    background: linear-gradient(90deg, var(--accent-color), #9a67ea);
+    
+    /* For older browser compatibility */
+    -webkit-background-clip: text;
+    
+    /* The modern, standard property */
+    background-clip: text;
+
+    /* Makes the text color transparent to show the background */
+    -webkit-text-fill-color: transparent;
+    
+    margin-bottom: 20px;
+}
+
+h2 {
+    color: var(--primary-text);
+    margin-top: 0;
+}
+
+.tab-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.tab-buttons button {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: var(--border-color);
+    color: var(--secondary-text);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.tab-buttons button:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+.tab-buttons button.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+.tabcontent { display: none; animation: fadeIn 0.5s ease-in-out; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.header-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+}
+
+.action-buttons { display: flex; gap: 10px; }
+
+.btn-redo {
+    padding: 8px 15px;
+    color: white;
+    background-color: var(--secondary-text);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+.btn-redo:hover { background-color: var(--accent-color); }
+
+.summary-box {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: var(--bg-color);
+    padding: 20px;
+    margin: 25px 0;
+    border-radius: var(--border-radius);
+    border-left: 5px solid var(--accent-color);
+    text-align: center;
+}
+
+.summary-item b {
+    display: block;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--secondary-text);
+}
+.summary-item span { font-size: 24px; font-weight: 700; color: var(--primary-text); }
+
+table { width: 100%; border-collapse: collapse; margin-top: 25px; }
+th, td { padding: 15px; border-bottom: 1px solid var(--border-color); text-align: center; vertical-align: middle; }
+thead { background: var(--bg-color); color: var(--primary-text); font-weight: 600; }
+tbody tr:hover { background-color: #74e2bd; }
+
+.percent.low-attendance span { color: #ff6b6b; font-weight: 700; }
+.recovery-note { font-size: 12px; color: var(--secondary-text); opacity: 0.9; margin-top: 4px; }
+
+.btn, .btn-undo-subject {
+    padding: 8px 12px;
+    margin: 0 3px;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn:hover, .btn-undo-subject:hover { opacity: 0.85; }
+
+.btn-present { background-color: var(--success-color); }
+.btn-absent { background-color: var(--danger-color); }
+.btn-delete { background-color: #6c757d; }
+.btn-undo-subject { background-color: #ff9f43; }
+.btn-undo-subject:hover { background-color: #e67e22; opacity: 1; }
+
+
+form { margin-top: 30px; display: flex; gap: 10px; }
+form input[type="text"] {
+    flex-grow: 1; padding: 12px; font-size: 16px;
+    border: 1px solid var(--border-color); background-color: var(--bg-color);
+    color: var(--primary-text); border-radius: 8px;
+}
+form button[type="submit"] {
+    padding: 12px 20px; font-size: 16px; font-weight: 600;
+    border: none; background-color: var(--secondary-text);
+    color: white; border-radius: 8px; cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+form button[type="submit"]:hover { background-color: var(--accent-color); }
+
+/* =============================================== */
+/* == Global Button Hover Transition (NEW CODE) == */
+/* =============================================== */
+
+/* 1. Define the transition properties on the base state of all buttons */
+.btn, 
+.btn-undo-subject,
+.tab-btn,
+.btn-redo,
+form button[type="submit"] {
+  /* This tells the browser to animate changes to transform and box-shadow */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 2. Define the style for the :hover state (what happens on mouse-over) */
+.btn:hover, 
+.btn-undo-subject:hover,
+.tab-btn:hover,
+.btn-redo:hover,
+form button[type="submit"]:hover {
+  /* Lifts the button up by 2 pixels */
+  transform: translateY(-2px);
+  /* Adds a subtle shadow to enhance the "lifted" effect */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
