@@ -13,7 +13,6 @@ import math
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "your_fallback_secret_key")
-app.config['SERVER_NAME'] = os.getenv('SERVER_NAME', '127.0.0.1:5000')
 
 # --- Database ---
 client = MongoClient(os.getenv('MONGO_URI'))
@@ -342,6 +341,3 @@ def callback():
 def logout():
     session.clear()
     return redirect(f"https://{os.getenv('AUTH0_DOMAIN')}/v2/logout?" + urlencode({"returnTo": url_for("login", _external=True), "client_id": os.getenv("AUTH0_CLIENT_ID")}, quote_via=quote_plus))
-
-if __name__ == "__main__":
-    app.run(debug=True)
