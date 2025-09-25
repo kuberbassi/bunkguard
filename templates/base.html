@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,40 +10,78 @@
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     {% block head_scripts %}{% endblock %}
 </head>
+
 <body class="">
     <div class="app-container">
         <header class="top-nav">
-             <div class="nav-left">
+            <div class="nav-left">
                 <div class="logo"><i class='bx bxs-shield-alt-2'></i><span>BunkGuard</span></div>
                 <nav class="main-nav">
-                    <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.path == url_for('dashboard') %}active{% endif %}"><i class='bx bxs-dashboard'></i><span>Dashboard</span></a>
-                    <a href="{{ url_for('mark_attendance_page') }}" class="nav-link {% if request.path == url_for('mark_attendance_page') %}active{% endif %}"><i class='bx bx-check-square'></i><span>Mark</span></a>
-                    <a href="{{ url_for('reports_page') }}" class="nav-link {% if request.path == url_for('reports_page') %}active{% endif %}"><i class='bx bx-line-chart'></i><span>Reports</span></a>
-                    <a href="{{ url_for('schedule_page') }}" class="nav-link {% if request.path == url_for('schedule_page') %}active{% endif %}"><i class='bx bx-calendar'></i><span>Schedule</span></a>
-                    <a href="{{ url_for('settings_page') }}" class="nav-link {% if request.path == url_for('settings_page') %}active{% endif %}"><i class='bx bx-cog'></i><span>Settings</span></a>
+                    <a href="{{ url_for('dashboard') }}"
+                        class="nav-link {% if request.path == url_for('dashboard') %}active{% endif %}"><i
+                            class='bx bxs-dashboard'></i><span>Dashboard</span></a>
+                    <a href="{{ url_for('mark_attendance_page') }}"
+                        class="nav-link {% if request.path == url_for('mark_attendance_page') %}active{% endif %}"><i
+                            class='bx bx-check-square'></i><span>Mark</span></a>
+                    <a href="{{ url_for('reports_page') }}"
+                        class="nav-link {% if request.path == url_for('reports_page') %}active{% endif %}"><i
+                            class='bx bx-line-chart'></i><span>Reports</span></a>
+                    <a href="{{ url_for('schedule_page') }}"
+                        class="nav-link {% if request.path == url_for('schedule_page') %}active{% endif %}"><i
+                            class='bx bx-calendar'></i><span>Schedule</span></a>
+                    <a href="{{ url_for('settings_page') }}"
+                        class="nav-link {% if request.path == url_for('settings_page') %}active{% endif %}"><i
+                            class='bx bx-cog'></i><span>Settings</span></a>
                 </nav>
             </div>
             <div class="nav-right">
+                <div class="custom-select-wrapper" id="semesterSelector">
+                    <div class="custom-select-trigger">
+                        <span>Semester</span>
+                        <strong id="selectedSemester">1</strong>
+                        <i class='bx bx-chevron-down'></i>
+                    </div>
+                    <div class="custom-options">
+                        {% for i in range(1, 9) %}
+                        <div class="custom-option" data-value="{{ i }}">Semester {{ i }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
                 <div class="nav-icons">
                     <i id="themeToggleBtn" class='bx bx-moon'></i>
-                    <div class="notification-bell"><i class='bx bx-bell'></i><span class="notification-count hidden">0</span></div>
+                    <div class="notification-bell" id="notificationBell">
+                        <i class='bx bx-bell'></i>
+                        <div class="nav-dropdown notification-dropdown hidden" id="notificationDropdown">
+                            <div class="dropdown-header"><strong>Notifications</strong></div>
+                            <ul class="notification-list">
+                                <li class="no-notifications">
+                                    <p>No new notifications yet.</p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
                 <div class="user-profile" id="userProfile">
                     <img src="{{ session.user.picture }}" alt="{{ session.user.name }}">
-                    <div class="profile-dropdown hidden" id="profileDropdown">
-                        <div class="dropdown-header"><img src="{{ session.user.picture }}" alt="{{ session.user.name }}"><div class="user-info"><strong>Hi, {{ session.user.given_name }}!</strong><span>{{ session.user.email }}</span></div></div>
-                        <ul class="dropdown-menu"><li><a href="#"><i class='bx bx-info-circle'></i> About BunkGuard</a></li></ul>
-                        <div class="dropdown-footer"><a href="/logout" class="logout-link">Sign Out</a></div>
+                    <div class="nav-dropdown profile-dropdown hidden" id="profileDropdown">
+                        <div class="dropdown-header user-info-header"> ... </div>
+                        <ul class="dropdown-menu"> ... </ul>
+                        <div class="dropdown-footer"> ... </div>
                     </div>
                 </div>
             </div>
         </header>
         <main class="content-area">
-            <div class="background-aurora"><div class="aurora-shape shape1"></div><div class="aurora-shape shape2"></div></div>
+            <div class="background-aurora">
+                <div class="aurora-shape shape1"></div>
+                <div class="aurora-shape shape2"></div>
+            </div>
             {% block content %}{% endblock %}
         </main>
     </div>
     {% block body_scripts %}{% endblock %}
     <script src="{{ url_for('static', filename='nav.js') }}"></script>
+    <script src="{{ url_for('static', filename='global.js') }}"></script>
 </body>
+
 </html>

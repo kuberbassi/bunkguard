@@ -170,7 +170,7 @@ body {
 .progress-inner { z-index: 1; text-align: center; }
 .progress-value { font-size: 3.5rem; font-weight: 700; }
 .progress-value span { font-size: 1.5rem; color: var(--text-secondary); }
-.progress-label { font-size: 0.9rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;}
+.progress-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;}
 
 .deadline-tracker-widget ul { list-style: none; display: flex; flex-direction: column; gap: 15px; }
 .deadline-item { display: flex; align-items: center; justify-content: space-between; }
@@ -1540,3 +1540,470 @@ body.light-theme .form-group select { background-color: #E9ECEF; }
 .calendar-day.any_absent::after { background-color: var(--primary-accent); }
 
 .deadline-skeleton { height: 50px; }
+
+/* --- LAYOUT & ALIGNMENT FIXES --- */
+.all-time-stats-widget .stat-item {
+    text-align: center; /* Center align the stats */
+}
+.all-time-stats-widget .stat-label {
+    margin-top: 4px; /* Add a bit of space */
+    display: block;
+}
+
+/* --- COMPACT BUNK METER --- */
+.bunk-meter-item-compact {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 20px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.bunk-meter-item-compact:last-child {
+    border-bottom: none;
+}
+.bunk-info-compact h4 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0;
+}
+.bunk-info-compact .status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.bunk-info-compact .status.safe { color: var(--status-safe); }
+.bunk-info-compact .status.danger { color: var(--primary-accent); }
+.bunk-progress-compact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.progress-bar-wrapper {
+    width: 100%;
+    height: 6px;
+    background-color: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background-color: var(--text-secondary);
+}
+.progress-bar-fill.safe { background-color: var(--status-safe); }
+.progress-bar-fill.danger { background-color: var(--primary-accent); }
+.bunk-progress-compact .percentage {
+    font-size: 0.9rem;
+    font-weight: 600;
+    width: 45px; /* Fixed width for alignment */
+    text-align: right;
+}
+
+/* --- CALENDAR DOTS & INTERACTIVITY --- */
+.calendar-day {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.calendar-day:not(.empty):hover {
+    cursor: pointer;
+    background-color: var(--border-color);
+    transform: scale(1.1);
+}
+.calendar-day::before {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: transparent;
+}
+.calendar-day.all_present::before { background-color: var(--status-safe); }
+.calendar-day.any_absent::before { background-color: var(--primary-accent); }
+
+/* --- DAILY DETAIL MODAL --- */
+.daily-log-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: var(--card-bg);
+    margin-bottom: 10px;
+}
+.daily-log-item i {
+    font-size: 1.4rem;
+}
+.daily-log-item span {
+    flex-grow: 1; /* Pushes the status to the right */
+    font-weight: 500;
+}
+.daily-log-item strong {
+    text-transform: capitalize;
+    font-size: 0.9rem;
+}
+/* --- MORE COMPACT BUNK METER --- */
+.bunk-meter-item-compact {
+    display: grid;
+    grid-template-columns: 1fr auto; /* Make second column fit its content */
+    gap: 15px; /* Reduce gap between elements */
+    align-items: center;
+    padding: 10px 0; /* Reduce top and bottom padding */
+    border-bottom: 1px solid var(--border-color);
+}
+
+.bunk-info-compact h4 {
+    font-size: 1rem; /* Slightly smaller subject name */
+    font-weight: 500;
+    white-space: nowrap; /* Prevent long names from wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add ... if name is too long */
+}
+/* --- NEW BUNK METER CIRCLES GRID --- */
+.bunk-meter-grid {
+    display: grid;
+    /* Create a responsive grid of circles */
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 25px;
+    padding-top: 10px;
+}
+
+.subject-circle-item {
+    text-align: center;
+    cursor: help; /* Show a help cursor to indicate a tooltip is available */
+}
+
+.progress-circle {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 10px auto;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    position: relative;
+    /* The conic-gradient creates the progress effect */
+    background: conic-gradient(
+        var(--color, var(--primary-accent)) calc(var(--p, 0) * 1%), 
+        var(--border-color) 0
+    );
+    transition: transform 0.2s ease;
+}
+
+.subject-circle-item:hover .progress-circle {
+    transform: scale(1.08); /* A nice hover effect */
+}
+
+/* Set the progress color based on the status class */
+.subject-circle-item.status-safe { --color: var(--status-safe); }
+.subject-circle-item.status-danger { --color: var(--primary-accent); }
+.subject-circle-item.status-neutral { --color: var(--text-secondary); }
+
+/* This pseudo-element creates the "hole" in the middle */
+.progress-circle::before {
+    content: '';
+    position: absolute;
+    height: 80%;
+    width: 80%;
+    background: var(--card-bg-solid);
+    border-radius: 50%;
+}
+
+.progress-value {
+    z-index: 1; /* Ensure the text is on top */
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.subject-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hide the old list-based styles to prevent conflicts */
+.bunk-meter-item-compact {
+    display: none;
+}
+
+/* --- NEW DATA-RICH BUNK METER CARDS --- */
+
+.bunk-meter-card-grid {
+    display: grid;
+    /* Responsive grid for cards */
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+    padding-top: 10px;
+}
+
+.subject-card-item {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: 8px;
+    border-left-width: 4px; /* Thick status indicator border */
+    transition: all 0.2s ease-in-out;
+}
+
+.subject-card-item:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary-accent);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+/* Status colors for the left border */
+.subject-card-item.status-safe { border-left-color: var(--status-safe); }
+.subject-card-item.status-danger { border-left-color: var(--primary-accent); }
+.subject-card-item.status-neutral { border-left-color: var(--text-secondary); }
+
+.subject-card-item .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+}
+
+.subject-card-item .subject-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.subject-card-item .percentage {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* Status colors for the percentage text */
+.subject-card-item.status-safe .percentage { color: var(--status-safe); }
+.subject-card-item.status-danger .percentage { color: var(--primary-accent); }
+.subject-card-item.status-neutral .percentage { color: var(--text-secondary); }
+
+.subject-card-item .progress-bar-wrapper {
+    width: 100%;
+    height: 6px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.subject-card-item .progress-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+/* Status colors for the progress bar fill */
+.subject-card-item.status-safe .progress-bar-fill { background-color: var(--status-safe); }
+.subject-card-item.status-danger .progress-bar-fill { background-color: var(--primary-accent); }
+.subject-card-item.status-neutral .progress-bar-fill { background-color: var(--text-secondary); }
+
+.subject-card-item .status-message {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0;
+    padding-top: 5px;
+}
+
+/* --- Cleanup: Hide the old Bunk Meter styles --- */
+.subject-circle-item, .bunk-meter-item-compact, .bunk-meter-grid {
+    display: none; /* Hide old styles to prevent conflicts */
+}
+/* Re-enable the new grid specifically */
+.bunk-meter-card-grid {
+    display: grid;
+}
+/* --- UI Fixes for Light/Dark Mode --- */
+
+/* 1. Light Mode Form Inputs */
+body.light-theme .form-group input,
+body.light-theme .form-group select {
+    background-color: #E9ECEF; /* A lighter grey for the input fields */
+    border: 1px solid #ced4da;
+    color: var(--text-primary);
+}
+
+/* 2. Dark Mode Dropdown Options (Limited Browser Support) */
+/* This improves the look in Firefox; Chrome may still show default OS styles */
+select option {
+    background: var(--card-bg-solid, #121212);
+    color: var(--text-primary, #FFFFFF);
+}
+/* --- NAV BAR DROPDOWNS --- */
+.notification-bell, .user-profile {
+    position: relative; /* This is the anchor for the dropdown */
+    cursor: pointer;
+}
+
+.nav-dropdown {
+    position: absolute;
+    top: calc(100% + 15px);
+    right: 0;
+    width: 320px;
+    background-color: var(--card-bg-solid);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 1001;
+    overflow: hidden;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.nav-dropdown.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+.dropdown-header { padding: 15px; font-weight: 600; border-bottom: 1px solid var(--border-color);z-index: 1;}
+
+/* Profile Dropdown Specific */
+.dropdown-header.user-info-header { display: flex; align-items: center; gap: 15px; }
+.user-info-header img { width: 40px; height: 40px; border-radius: 50%; }
+.user-info strong { display: block; font-size: 1rem; color: var(--text-primary); }
+.user-info span { font-size: 0.8rem; color: var(--text-secondary); }
+.dropdown-menu { list-style: none; padding: 8px; }
+.dropdown-menu li a { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 8px; text-decoration: none; color: var(--text-secondary); font-weight: 500; transition: all 0.2s ease; }
+.dropdown-menu li a:hover { background-color: var(--border-color); color: var(--text-primary); }
+.dropdown-menu i { font-size: 1.3rem; }
+.dropdown-footer { padding: 8px; border-top: 1px solid var(--border-color); }
+.logout-link { display: block; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: 500; color: var(--primary-accent); transition: background-color 0.2s ease;}
+.logout-link:hover { background-color: var(--border-color); }
+
+/* Notification Dropdown Specific */
+.notification-list { list-style: none; max-height: 400px; overflow-y: auto; }
+.notification-list .no-notifications { padding: 40px 20px; text-align: center; color: var(--text-secondary); }
+
+/* --- NEW OS-INSPIRED SETTINGS PAGE --- */
+
+.settings-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.settings-sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.sidebar-link.active {
+    background-color: var(--primary-accent);
+    color: var(--text-primary);
+    box-shadow: 0 4px 15px var(--primary-accent-glow);
+}
+
+.sidebar-link i {
+    font-size: 1.4rem;
+}
+
+.settings-pane {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-pane.active {
+    display: flex;
+}
+
+/* Redesigned Subject Management List */
+.subject-management-list {
+    display: flex;
+    flex-direction: column;
+}
+.subject-management-item {
+    display: grid;
+    grid-template-columns: 1fr repeat(2, auto) auto;
+    gap: 20px;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.subject-management-item:last-child {
+    border-bottom: none;
+}
+.subject-name-wrapper h4 { font-size: 1.1rem; margin: 0; }
+.subject-name-wrapper span { font-size: 0.8rem; color: var(--text-secondary); }
+.subject-actions { display: flex; gap: 10px; }
+.action-btn { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-secondary); width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; transition: all 0.2s ease; }
+.action-btn i { font-size: 1.2rem; }
+.action-btn:hover { color: var(--text-primary); border-color: var(--primary-accent); }
+.action-btn.save-btn:hover { color: var(--status-safe); border-color: var(--status-safe); }
+.action-btn.delete-btn:hover { color: var(--primary-accent); border-color: var(--primary-accent); }
+
+
+/* Data Management & Danger Zone */
+.danger-zone {
+    border-color: var(--primary-accent);
+}
+.import-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+.hidden-file-input { display: none; }
+.file-name { color: var(--text-secondary); font-style: italic; flex-grow: 1; }
+.control-btn { /* Style for cancel/select file buttons */
+    background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 10px 20px; border-radius: 5px; cursor: pointer;
+}
+
+/* Confirmation Modal */
+.confirm-text {
+    margin: 20px 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 20px;
+}
+/* Custom Rename Modal Actions */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 20px;
+}
+/* --- TOP NAVIGATION --- */
+.top-nav {
+    /* ... existing styles ... */
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+    
+    /* ADD THESE TWO LINES */
+    position: relative; 
+    z-index: 1002;      
+}
+
+/* --- Custom Semester Selector --- */
+.custom-options {
+    /* ... existing styles ... */
+    pointer-events: none;
+    transition: all 0.3s ease;
+    /* overflow: hidden; */ /* <-- DELETE OR COMMENT OUT THIS LINE */
+}

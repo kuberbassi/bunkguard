@@ -122,10 +122,26 @@ def get_dashboard_summary():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     user_email = session['user']['email']
     try:
-        all_subjects = list(subjects_collection.find({"owner_email": user_email}))
-        total_attended = sum(s.get('attended', 0) for s in all_subjects)
-        total_classes = sum(s.get('total', 0) for s in all_subjects)
-        return json_util.dumps({"all_time_stats": {"percentage": calculate_percent(total_attended, total_classes), "attended": total_attended, "total": total_classes}})
+        # Get the semester from the request, default to 1 if not provided
+        current_semester = int(request.args.get('semester', 1))
+        
+        # Create the query to find subjects only for the selected semester
+        query = {"owner_email": user_email, "semester": current_semester}
+        
+        # Fetch only the subjects for the current semester
+        semester_subjects = list(subjects_collection.find(query))
+        
+        total_attended = sum(s.get('attended', 0) for s in semester_subjects)
+        total_classes = sum(s.get('total', 0) for s in semester_subjects)
+        
+        # The key name is changed to 'semester_stats' to be more accurate
+        return json_util.dumps({
+            "semester_stats": {
+                "percentage": calculate_percent(total_attended, total_classes), 
+                "attended": total_attended, 
+                "total": total_classes
+            }
+        })
     except Exception as e:
         print(f"---! ERROR IN /api/dashboard_summary: {e} !---")
         return jsonify({"error": "Could not process summary data."}), 500
@@ -235,12 +251,16 @@ def update_attendance_count():
 @app.route('/api/full_subjects_data')
 def get_full_subjects_data():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    return json_util.dumps(list(subjects_collection.find({"owner_email": session['user']['email']})))
+    semester = int(request.args.get('semester', 1)) # Get semester from request
+    query = {"owner_email": session['user']['email'], "semester": semester}
+    return json_util.dumps(list(subjects_collection.find(query)))
 
 @app.route('/api/subjects')
 def get_subjects():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    return json_util.dumps(list(subjects_collection.find({"owner_email": session['user']['email']}, {"name": 1, "semester": 1})))
+    semester = int(request.args.get('semester', 1)) # Get semester from request
+    query = {"owner_email": session['user']['email'], "semester": semester}
+    return json_util.dumps(list(subjects_collection.find(query, {"name": 1, "semester": 1, "_id": 1})))
 
 @app.route('/api/export_data')
 def export_data():
@@ -291,6 +311,21 @@ def calendar_data():
         elif 'present' in statuses:
             date_statuses[date_str] = 'all_present'
     return jsonify(date_statuses)
+
+@app.route('/api/logs_for_date')
+def get_logs_for_date():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    date_str = request.args.get('date')
+    if not date_str: return jsonify({"error": "Date parameter is required"}), 400
+    
+    pipeline = [
+        {'$match': {'owner_email': session['user']['email'], 'date': date_str}},
+        {'$lookup': {'from': 'subjects', 'localField': 'subject_id', 'foreignField': '_id', 'as': 'subject_info'}},
+        {'$unwind': '$subject_info'},
+        {'$project': {'_id': 0, 'subject_name': '$subject_info.name', 'status': '$status'}}
+    ]
+    logs = list(attendance_log_collection.aggregate(pipeline))
+    return jsonify(logs)
 
 # === Authentication Routes ===
 @app.route('/login')
