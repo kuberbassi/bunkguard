@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, session, redirect, url_for, jsonify, request, Response
+from flask import Flask, render_template, send_from_directory, session, redirect, url_for, jsonify, request, Response
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from authlib.integrations.flask_client import OAuth
@@ -54,6 +54,10 @@ def calculate_bunk_guard(attended, total, required_percent=75):
         return {"status": "danger", "status_message": status_msg, "percentage": round(current_percent * 100, 1)}
 
 # === Page Routes ===
+@app.route('/google75750b6bbd7a51d3.html')
+def google_verification():
+    return send_from_directory('static', 'google75750b6bbd7a51d3.html')
+
 @app.route('/')
 def dashboard():
     if 'user' not in session: return redirect('/login')
