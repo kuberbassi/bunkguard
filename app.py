@@ -7,6 +7,7 @@ from urllib.parse import urlencode, quote_plus
 from bson import json_util, ObjectId
 from datetime import datetime
 import calendar
+import math
 
 # --- Initialization & Config ---
 load_dotenv()
@@ -21,8 +22,9 @@ subjects_collection = db.get_collection('subjects')
 attendance_log_collection = db.get_collection('attendance_logs')
 timetable_collection = db.get_collection('timetable')
 system_logs_collection = db.get_collection('system_logs')
+deadlines_collection = db.get_collection('deadlines')
 
-# --- CORRECTED Auth0 OAuth Setup ---
+# --- Auth0 OAuth Setup ---
 oauth = OAuth(app)
 auth0 = oauth.register(
     'auth0',
@@ -41,38 +43,45 @@ def calculate_percent(attended, total):
 
 def calculate_bunk_guard(attended, total, required_percent=75):
     required_percent /= 100.0
-    if total == 0: return {"safe_skips": 0, "status": "neutral", "status_message": "No classes yet", "percentage": 0}
+    if total == 0:
+        return {"status": "neutral", "status_message": "No classes yet", "percentage": 0}
     current_percent = attended / total
     if current_percent >= required_percent:
-        safe_skips = int((attended - required_percent * total) / required_percent) if required_percent > 0 else float('inf')
-        return {"safe_skips": safe_skips, "status": "safe", "status_message": f"{safe_skips} safe skips", "percentage": round(current_percent * 100, 1)}
+        safe_skips = math.floor((attended - required_percent * total) / required_percent) if required_percent > 0 else float('inf')
+        return {"status": "safe", "status_message": f"You have {safe_skips} safe skips.", "percentage": round(current_percent * 100, 1)}
     else:
-        classes_to_attend = -1
-        if (1-required_percent) > 0: classes_to_attend = int((required_percent * total - attended) / (1 - required_percent))
-        return {"safe_skips": 0, "status": "danger", "status_message": f"Attend next {classes_to_attend}" if classes_to_attend !=-1 else "Attend all upcoming", "percentage": round(current_percent * 100, 1)}
+        classes_to_attend = math.ceil((required_percent * total - attended) / (1 - required_percent)) if (1 - required_percent) > 0 else -1
+        status_msg = f"Attend the next {classes_to_attend} classes." if classes_to_attend != -1 else "Attend all upcoming classes."
+        return {"status": "danger", "status_message": status_msg, "percentage": round(current_percent * 100, 1)}
 
 # === Page Routes ===
 @app.route('/')
 def dashboard():
     if 'user' not in session: return redirect('/login')
-    return render_template("dashboard.html", session=session)
+    cache_id = datetime.utcnow().timestamp() 
+    return render_template("dashboard.html", session=session, cache_id=cache_id)
+
 @app.route('/mark')
 def mark_attendance_page():
     if 'user' not in session: return redirect('/login')
     return render_template("mark_attendance.html", session=session, now=datetime.now())
+
 @app.route('/reports')
 def reports_page():
     if 'user' not in session: return redirect('/login')
     return render_template("reports.html", session=session)
+
 @app.route('/schedule')
 def schedule_page():
     if 'user' not in session: return redirect('/login')
     cache_id = datetime.utcnow().timestamp()
     return render_template("schedule.html", session=session, cache_id=cache_id)
+
 @app.route('/settings')
 def settings_page():
     if 'user' not in session: return redirect('/login')
     return render_template("settings.html", session=session)
+
 @app.route('/report/<int:semester>/print')
 def printable_report(semester):
     if 'user' not in session: return redirect('/login')
@@ -81,7 +90,13 @@ def printable_report(semester):
     total_attended = sum(s.get('attended', 0) for s in subjects)
     total_classes = sum(s.get('total', 0) for s in subjects)
     overall_percent = calculate_percent(total_attended, total_classes)
-    report_data = { "user_name": session['user']['name'], "semester": semester, "generated_date": datetime.now().strftime("%B %d, %Y"), "subjects": subjects, "overall_percentage": overall_percent }
+    report_data = {
+        "user_name": session['user']['name'],
+        "semester": semester,
+        "generated_date": datetime.now().strftime("%B %d, %Y"),
+        "subjects": subjects,
+        "overall_percentage": overall_percent
+    }
     return render_template("printable_report.html", data=report_data)
 
 # === API Routes ===
@@ -91,7 +106,8 @@ def get_dashboard_data():
     user_email = session['user']['email']
     try:
         current_semester = int(request.args.get('semester', 1))
-        subjects = list(subjects_collection.find({"owner_email": user_email, "semester": current_semester}))
+        query = {"owner_email": user_email, "semester": current_semester}
+        subjects = list(subjects_collection.find(query))
         total_attended = sum(s.get('attended', 0) for s in subjects)
         total_classes = sum(s.get('total', 0) for s in subjects)
         overall_percent = calculate_percent(total_attended, total_classes)
@@ -109,12 +125,7 @@ def get_dashboard_summary():
         all_subjects = list(subjects_collection.find({"owner_email": user_email}))
         total_attended = sum(s.get('attended', 0) for s in all_subjects)
         total_classes = sum(s.get('total', 0) for s in all_subjects)
-        at_risk_subjects = []
-        for s in all_subjects:
-            percent = calculate_percent(s.get('attended', 0), s.get('total', 0))
-            if 0 < percent < 75:
-                at_risk_subjects.append({"name": s.get('name'), "semester": s.get('semester'), "percentage": percent})
-        return json_util.dumps({"all_time_stats": {"percentage": calculate_percent(total_attended, total_classes), "attended": total_attended, "total": total_classes}, "at_risk_subjects": sorted(at_risk_subjects, key=lambda x: x['percentage'])})
+        return json_util.dumps({"all_time_stats": {"percentage": calculate_percent(total_attended, total_classes), "attended": total_attended, "total": total_classes}})
     except Exception as e:
         print(f"---! ERROR IN /api/dashboard_summary: {e} !---")
         return jsonify({"error": "Could not process summary data."}), 500
@@ -141,10 +152,8 @@ def analytics_day_of_week():
             day_data[day['_id']]['total'] += status_count['count']
     analytics = {"labels": [], "percentages": []}
     for i in range(2, 8):
-        analytics['labels'].append(day_map[i])
-        analytics['percentages'].append(calculate_percent(day_data[i]['present'], day_data[i]['total']))
-    analytics['labels'].append(day_map[1])
-    analytics['percentages'].append(calculate_percent(day_data[1]['present'], day_data[1]['total']))
+        analytics['labels'].append(day_map[i]); analytics['percentages'].append(calculate_percent(day_data[i]['present'], day_data[i]['total']))
+    analytics['labels'].append(day_map[1]); analytics['percentages'].append(calculate_percent(day_data[1]['present'], day_data[1]['total']))
     return json_util.dumps(analytics)
 
 @app.route('/api/add_subject', methods=['POST'])
@@ -189,13 +198,7 @@ def get_todays_classes():
     today_name = calendar.day_name[datetime.now().weekday()]
     timetable_doc = timetable_collection.find_one({'owner_email': user_email})
     if not timetable_doc: return json_util.dumps([])
-    todays_subject_ids = []
-    schedule = timetable_doc.get('schedule', {})
-    for time_slot, days in schedule.items():
-        if days.get(today_name):
-            slot_data = days[today_name]
-            if slot_data.get('type') == 'class' and slot_data.get('subjectId'):
-                todays_subject_ids.append(ObjectId(slot_data['subjectId']))
+    todays_subject_ids = [ObjectId(slot_data['subjectId']) for time_slot, days in timetable_doc.get('schedule', {}).items() if days.get(today_name) and (slot_data := days[today_name]) and slot_data.get('type') == 'class' and slot_data.get('subjectId')]
     if not todays_subject_ids: return json_util.dumps([])
     subjects = list(subjects_collection.find({"owner_email": user_email, "_id": {"$in": todays_subject_ids}}))
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -243,21 +246,63 @@ def get_subjects():
 def export_data():
     if 'user' not in session: return "Unauthorized", 401
     user_email = session['user']['email']
-    data_to_export = {
-        "subjects": list(subjects_collection.find({"owner_email": user_email}, {'_id': 0})),
-        "attendance_logs": list(attendance_log_collection.find({"owner_email": user_email}, {'_id': 0})),
-        "schedule": timetable_collection.find_one({"owner_email": user_email}, {'_id': 0, 'schedule': 1})
-    }
+    data_to_export = {"subjects": list(subjects_collection.find({"owner_email": user_email}, {'_id': 0})), "attendance_logs": list(attendance_log_collection.find({"owner_email": user_email}, {'_id': 0})), "schedule": timetable_collection.find_one({"owner_email": user_email}, {'_id': 0, 'schedule': 1})}
     return Response(json_util.dumps(data_to_export, indent=4), mimetype="application/json", headers={"Content-Disposition": "attachment;filename=bunkguard_data.json"})
+
+@app.route('/api/deadlines', methods=['GET'])
+def get_deadlines():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    deadlines = list(deadlines_collection.find({'owner_email': user_email, 'completed': False}).sort('due_date', 1))
+    return json_util.dumps(deadlines)
+
+@app.route('/api/add_deadline', methods=['POST'])
+def add_deadline():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    deadlines_collection.insert_one({'owner_email': session['user']['email'], 'title': data.get('title'), 'due_date': data.get('due_date'), 'completed': False, 'created_at': datetime.utcnow()})
+    return jsonify({"success": True})
+
+@app.route('/api/toggle_deadline/<deadline_id>', methods=['POST'])
+def toggle_deadline(deadline_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    deadlines_collection.update_one({'_id': ObjectId(deadline_id)}, {'$set': {'completed': True}})
+    return jsonify({"success": True})
+
+@app.route('/api/calendar_data')
+def calendar_data():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    try:
+        month = int(request.args.get('month'))
+        year = int(request.args.get('year'))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid month or year"}), 400
+    start_date = datetime(year, month, 1)
+    end_date = datetime(year, month, calendar.monthrange(year, month)[1], 23, 59, 59)
+    pipeline = [{'$match': {'owner_email': user_email, 'timestamp': {'$gte': start_date, '$lte': end_date}}}, {'$group': {'_id': '$date', 'statuses': {'$addToSet': '$status'}}}]
+    logs = list(attendance_log_collection.aggregate(pipeline))
+    date_statuses = {}
+    for log in logs:
+        date_str = log['_id']
+        statuses = set(log['statuses'])
+        if 'absent' in statuses:
+            date_statuses[date_str] = 'any_absent'
+        elif 'present' in statuses:
+            date_statuses[date_str] = 'all_present'
+    return jsonify(date_statuses)
 
 # === Authentication Routes ===
 @app.route('/login')
-def login(): return auth0.authorize_redirect(redirect_uri=url_for("callback", _external=True))
+def login():
+    return auth0.authorize_redirect(redirect_uri=url_for("callback", _external=True))
+
 @app.route('/callback')
 def callback():
     token = auth0.authorize_access_token()
     session["user"] = token["userinfo"]
     return redirect("/")
+
 @app.route('/logout')
 def logout():
     session.clear()

@@ -17,7 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvas = document.getElementById('dayOfWeekChart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        if (analyticsData.percentages.every(p => p === 0)) { loader.innerHTML = '<p class="empty-state">Not enough data for weekly trends.</p>'; return; }
+        if (!analyticsData || analyticsData.percentages.every(p => p === 0)) { 
+            loader.innerHTML = '<p class="empty-state">Not enough data for weekly trends.</p>'; 
+            return;
+        }
         loader.style.display = 'none';
         canvas.style.display = 'block';
         new Chart(ctx, {
@@ -26,7 +29,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const loadAttendanceLogs = async () => { /* ... (Keep this function from the previous turn) ... */ };
+    const renderAttendanceLogs = (logs) => {
+        const logListEl = document.getElementById('fullAttendanceLogList');
+        if (!logListEl) return;
+        logListEl.innerHTML = '';
+        if (logs.length === 0) { logListEl.innerHTML = '<p class="empty-state">No attendance has been marked yet.</p>'; return; }
+        logs.forEach(log => {
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            const icon = log.status === 'present' ? 'bx-check-circle' : 'bx-x-circle';
+            const statusClass = log.status === 'present' ? 'status-present' : 'status-absent';
+            item.innerHTML = `<i class='bx ${icon} ${statusClass}'></i><div class="log-details"><p>Marked <strong>${log.subject_info.name}</strong> as ${log.status}</p><span class="log-timestamp">${new Date(log.timestamp.$date).toLocaleString()}</span></div>`;
+            logListEl.appendChild(item);
+        });
+    };
 
     const loadPageData = async () => {
         try {
@@ -37,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
             renderSemesterOverview(await overviewRes.json());
             renderDayOfWeekChart(await analyticsRes.json());
-            loadAttendanceLogs(await logsRes.json()); // Pass data directly
+            renderAttendanceLogs(await logsRes.json());
         } catch (error) {
             console.error("Failed to load reports page:", error);
         }

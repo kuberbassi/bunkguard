@@ -1245,3 +1245,298 @@ body.light-theme .form-group select { background-color: #E9ECEF; }
     flex-basis: 0;
     flex-grow: 1;
 }
+/* --- FINAL POLISH & FIXES --- */
+
+/* Fix Navbar Alignment & Icons */
+.top-nav, .nav-left, .nav-right, .main-nav, .nav-icons {
+    align-items: center;
+}
+.main-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Fix All-Time Stats Alignment */
+.all-time-stats-widget #allTimeStats {
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline;
+    text-align: center;
+    padding: 10px 0;
+}
+
+/* Custom Semester Selector */
+.custom-select-wrapper {
+    position: relative;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+}
+.custom-select-trigger {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 15px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+.custom-select-wrapper:hover .custom-select-trigger {
+    border-color: var(--primary-accent);
+}
+.custom-select-trigger span {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.custom-select-trigger strong {
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+.custom-select-trigger .bx {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+.custom-select-wrapper.open .custom-select-trigger .bx {
+    transform: rotate(180deg);
+}
+.custom-options {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    width: 100%;
+    background-color: var(--card-bg-solid);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+.custom-select-wrapper.open .custom-options {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+}
+.custom-option {
+    padding: 12px 15px;
+    transition: background-color 0.2s ease;
+}
+.custom-option:hover {
+    background-color: var(--primary-accent);
+    color: var(--text-primary);
+}
+/* --- FINAL POLISH & FIXES --- */
+
+/* Fix Navbar Alignment & Icons */
+.top-nav, .nav-left, .nav-right, .main-nav, .nav-icons {
+    align-items: center;
+}
+.main-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.nav-icons i { cursor: pointer; }
+
+/* Fix All-Time Stats Alignment */
+.all-time-stats-widget #allTimeStats {
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline;
+    text-align: center;
+    padding: 10px 0;
+}
+
+/* Custom Semester Selector */
+.custom-select-wrapper {
+    position: relative;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+}
+.custom-select-trigger {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 15px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+.custom-select-wrapper:hover .custom-select-trigger {
+    border-color: var(--primary-accent);
+}
+.custom-select-trigger span {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.custom-select-trigger strong {
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+.custom-select-trigger .bx {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+.custom-select-wrapper.open .custom-select-trigger .bx {
+    transform: rotate(180deg);
+}
+.custom-options {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    width: 100%;
+    background-color: var(--card-bg-solid);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+.custom-select-wrapper.open .custom-options {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+}
+.custom-option {
+    padding: 12px 15px;
+    transition: background-color 0.2s ease;
+}
+.custom-option:hover {
+    background-color: var(--primary-accent);
+    color: var(--text-primary);
+}
+.progress-bar {
+    width: 100%; height: 6px; background: rgba(0,0,0,0.3); border-radius: 3px; overflow: hidden; margin-top: 5px;
+}
+.progress {
+    height: 100%; background: var(--primary-accent); border-radius: 3px;
+}
+/* --- BUNK METER WIDGET --- */
+.bunk-meter-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid;
+    transition: all 0.2s ease;
+    margin-bottom: 10px;
+}
+.bunk-meter-item:hover {
+    background-color: var(--card-bg);
+    transform: translateX(5px);
+}
+.bunk-meter-item.status-safe { border-color: var(--status-safe); }
+.bunk-meter-item.status-danger { border-color: var(--primary-accent); }
+.bunk-meter-item.status-neutral { border-color: var(--text-secondary); }
+
+.bunk-info p {
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+}
+.bunk-info span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.bunk-info .status.safe { color: var(--status-safe); }
+.bunk-info .status.danger { color: var(--primary-accent); }
+
+.bunk-percent {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* --- ALL-TIME STATS ALIGNMENT FIX --- */
+.all-time-stats-widget #allTimeStats {
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline; /* This aligns the text properly */
+}
+
+/* --- RECENT ACTIVITY MODAL --- */
+.widget-link {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.widget-link:hover {
+    color: var(--primary-accent);
+}
+
+.full-activity-log {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 15px; /* space for scrollbar */
+}
+
+/* Custom Scrollbar for activity log */
+.full-activity-log::-webkit-scrollbar {
+    width: 6px;
+}
+.full-activity-log::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}
+.full-activity-log::-webkit-scrollbar-thumb {
+    background-color: var(--primary-accent);
+    border-radius: 3px;
+}
+/* --- NEW 3-COLUMN LAYOUT --- */
+.ultimate-dashboard-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 320px;
+    gap: 20px;
+    align-items: start;
+}
+.grid-column.wide {
+    grid-column: span 1;
+}
+.grid-column {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* --- DEADLINE TRACKER WIDGET --- */
+.deadline-tracker-widget ul { list-style: none; }
+.deadline-item { display: flex; align-items: center; justify-content: space-between; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color);}
+.deadline-item:last-child { border-bottom: none; margin-bottom: 0;}
+.deadline-info { display: flex; align-items: center; gap: 15px; }
+.deadline-dot { width: 10px; height: 10px; background-color: var(--status-safe); border-radius: 50%; }
+.deadline-dot.past-due { background-color: var(--primary-accent); }
+.deadline-text p { font-weight: 500; }
+.deadline-text span { font-size: 0.8rem; color: var(--text-secondary); }
+.complete-btn { background: none; border: 1px solid var(--text-secondary); color: var(--text-secondary); border-radius: 50%; width: 30px; height: 30px; cursor: pointer; transition: all 0.2s ease; display: grid; place-items: center;}
+.complete-btn:hover { background: var(--status-safe); border-color: var(--status-safe); color: var(--text-dark); }
+.deadline-item.completed .deadline-text p { text-decoration: line-through; }
+
+/* --- CALENDAR WIDGET --- */
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.calendar-header h3 { font-size: 1.1rem; }
+.calendar-header button { background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+.calendar-day { height: 35px; border-radius: 50%; display: grid; place-items: center; position: relative; font-size: 0.9rem; }
+.calendar-day.empty { background: none; }
+.calendar-day .day-number { z-index: 1; }
+.calendar-day::after {
+    content: '';
+    position: absolute;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    opacity: 0.3;
+}
+.calendar-day.all_present::after { background-color: var(--status-safe); }
+.calendar-day.any_absent::after { background-color: var(--primary-accent); }
+
+.deadline-skeleton { height: 50px; }

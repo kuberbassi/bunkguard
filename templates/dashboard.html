@@ -7,40 +7,50 @@
         <p id="systemStatus">SYSTEM STATUS: LOADING...</p>
     </div>
     <div class="page-actions">
-        <div class="semester-selector">
-            <label for="semesterSelect">Semester:</label>
-            <select id="semesterSelect">
-                {% for i in range(1, 9) %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
-            </select>
+        <div class="custom-select-wrapper" id="semesterSelector">
+            <div class="custom-select-trigger">
+                <span>Semester</span>
+                <strong id="selectedSemester">1</strong>
+                <i class='bx bx-chevron-down'></i>
+            </div>
+            <div class="custom-options">
+                {% for i in range(1, 9) %}
+                <div class="custom-option" data-value="{{ i }}">Semester {{ i }}</div>
+                {% endfor %}
+            </div>
         </div>
         <button id="addNewBtn" class="create-new-btn"><i class='bx bx-plus'></i> Add Subject</button>
     </div>
 </div>
-<div class="dashboard-grid-new">
-    <div class="dash-column-left">
-        <div class="widget attendance-widget">
-            <div class="radial-progress" style="--progress: 0;"><div class="progress-inner"><div id="progressValue" class="progress-value">0<span>%</span></div><div class="progress-label">Semester Attendance</div></div></div>
-        </div>
-        <div class="widget all-time-stats-widget">
-            <div class="widget-header"><h3><i class='bx bxs-component'></i> All-Time Stats</h3></div>
-            <div id="allTimeStats"></div>
-        </div>
-        <div class="widget recent-activity-widget">
-            <div class="widget-header"><h3><i class='bx bx-history'></i> Recent Activity</h3></div>
-            <div id="recentActivityList"></div>
-        </div>
+
+<div class="ultimate-dashboard-grid">
+    <div class="grid-column">
+        <div class="widget attendance-widget"><div class="radial-progress" style="--progress: 0;"><div class="progress-inner"><div id="progressValue" class="progress-value">0<span>%</span></div><div class="progress-label">Semester Attendance</div></div></div></div>
+        <div class="widget all-time-stats-widget"><div class="widget-header"><h3><i class='bx bxs-component'></i> All-Time Stats</h3></div><div id="allTimeStats"></div></div>
     </div>
-    <div class="dash-column-right">
-        <div class="widget at-risk-widget">
-            <div class="widget-header"><h3><i class='bx bxs-hot'></i> At-Risk Subjects</h3></div>
-            <div id="atRiskSubjectsList"></div>
+    
+    <div class="grid-column wide">
+        <div class="widget bunk-meter-widget"><div class="widget-header"><h3><i class='bx bxs-hot'></i> Bunk Meter</h3></div><div id="bunkMeterList"></div></div>
+        <div class="widget recent-activity-widget"><div class="widget-header"><h3><i class='bx bx-history'></i> Recent Activity</h3><button id="viewAllActivityBtn" class="widget-link">View All</button></div><div id="recentActivityList"></div></div>
+    </div>
+    
+    <div class="grid-column">
+        <div class="widget deadline-tracker-widget">
+            <div class="widget-header"><h3><i class='bx bx-task'></i> Deadlines</h3></div>
+            <ul id="deadlineList"></ul>
+            <button id="addDeadlineBtn" class="create-new-btn" style="width: 100%; justify-content: center; margin-top: 15px;">Add Deadline</button>
         </div>
-        <div class="widget subject-performance-widget">
-            <div class="widget-header"><h3><i class='bx bxs-bar-chart-alt-2'></i> Subject Performance</h3></div>
-            <div id="subjectPerformanceList"></div>
+        <div class="widget calendar-widget">
+            <div class="calendar-header">
+                <button id="prevMonthBtn"><i class='bx bx-chevron-left'></i></button>
+                <h3 id="monthYear">Loading...</h3>
+                <button id="nextMonthBtn"><i class='bx bx-chevron-right'></i></button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
         </div>
     </div>
 </div>
+
 <div id="addModal" class="modal-overlay hidden">
     <div class="modal-content">
         <div class="modal-header"><h2>Add New Subject</h2><button id="closeModalBtn" class="close-btn">&times;</button></div>
@@ -51,7 +61,27 @@
         </form>
     </div>
 </div>
+
+<div id="activityModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header"><h2>Full Activity Log</h2><button id="closeActivityModalBtn" class="close-btn">&times;</button></div>
+        <div id="fullActivityLog" class="full-activity-log"></div>
+    </div>
+</div>
+
+<div id="deadlineModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header"><h2>Add New Deadline</h2><button id="closeDeadlineModalBtn" class="close-btn">&times;</button></div>
+        <form id="addDeadlineForm">
+            <div class="form-group"><label for="deadlineTitle">Task / Assignment</label><input type="text" id="deadlineTitle" required></div>
+            <div class="form-group"><label for="deadlineDate">Due Date</label><input type="date" id="deadlineDate" required></div>
+            <button type="submit" class="create-new-btn">Add Deadline</button>
+        </form>
+    </div>
+</div>
 {% endblock %}
+
 {% block body_scripts %}
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+{# The v=cache_id is important to prevent browser caching issues #}
+<script src="{{ url_for('static', filename='script.js', v=cache_id) }}"></script>
 {% endblock %}
