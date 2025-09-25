@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - BunkGuard{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>Welcome back, {{ session.user.given_name }}</h1>
+        <p id="systemStatus">SYSTEM STATUS: LOADING...</p>
+    </div>
+    <div class="page-actions">
+        <div class="semester-selector">
+            <label for="semesterSelect">Semester:</label>
+            <select id="semesterSelect">
+                {% for i in range(1, 9) %}<option value="{{ i }}">{{ i }}</option>{% endfor %}
+            </select>
+        </div>
+        <button id="addNewBtn" class="create-new-btn"><i class='bx bx-plus'></i> Add Subject</button>
+    </div>
+</div>
+<div class="dashboard-grid-new">
+    <div class="dash-column-left">
+        <div class="widget attendance-widget">
+            <div class="radial-progress" style="--progress: 0;"><div class="progress-inner"><div id="progressValue" class="progress-value">0<span>%</span></div><div class="progress-label">Semester Attendance</div></div></div>
+        </div>
+        <div class="widget all-time-stats-widget">
+            <div class="widget-header"><h3><i class='bx bxs-component'></i> All-Time Stats</h3></div>
+            <div id="allTimeStats"></div>
+        </div>
+        <div class="widget recent-activity-widget">
+            <div class="widget-header"><h3><i class='bx bx-history'></i> Recent Activity</h3></div>
+            <div id="recentActivityList"></div>
+        </div>
+    </div>
+    <div class="dash-column-right">
+        <div class="widget at-risk-widget">
+            <div class="widget-header"><h3><i class='bx bxs-hot'></i> At-Risk Subjects</h3></div>
+            <div id="atRiskSubjectsList"></div>
+        </div>
+        <div class="widget subject-performance-widget">
+            <div class="widget-header"><h3><i class='bx bxs-bar-chart-alt-2'></i> Subject Performance</h3></div>
+            <div id="subjectPerformanceList"></div>
+        </div>
+    </div>
+</div>
+<div id="addModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header"><h2>Add New Subject</h2><button id="closeModalBtn" class="close-btn">&times;</button></div>
+        <form id="addSubjectForm">
+            <div class="form-group"><label for="subjectName">Subject Name</label><input type="text" id="subjectName" required></div>
+            <div class="form-group"><label for="subjectSemester">Semester</label><select id="subjectSemester" required>{% for i in range(1, 9) %}<option value="{{ i }}">Semester {{ i }}</option>{% endfor %}</select></div>
+            <button type="submit" class="create-new-btn">Add Subject</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block body_scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}

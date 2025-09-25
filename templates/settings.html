@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Settings - BunkGuard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="header-text">
+        <h1>Settings</h1>
+        <p>Manually edit subject attendance data. Use with caution.</p>
+    </div>
+</div>
+
+<div class="settings-container widget">
+    <div class="widget-header">
+        <h3><i class='bx bx-edit'></i> Manage Subjects</h3>
+    </div>
+    <div id="subjectManagementList">
+    </div>
+</div>
+
+<div class="widget log-widget">
+    <div class="widget-header">
+        <h3><i class='bx bx-chip'></i> System Log</h3>
+    </div>
+    <div id="systemLogList">
+    </div>
+</div>
+<div class="widget">
+    <div class="widget-header">
+        <h3><i class='bx bx-export'></i> Export Data</h3>
+    </div>
+    <p>Download a JSON file containing all your subjects, attendance logs, and schedule data.</p>
+    <a href="{{ url_for('export_data') }}" class="create-new-btn" style="margin-top: 15px;">Export All Data</a>
+</div>
+
+{% endblock %}
+
+{% block body_scripts %}
+<script src="{{ url_for('static', filename='settings.js') }}"></script>
+{% endblock %}
