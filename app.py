@@ -58,6 +58,15 @@ def calculate_bunk_guard(attended, total, required_percent=75):
 def google_verification():
     return send_from_directory('static', 'google75750b6bbd7a51d3.html')
 
+# === Add this new route for the sitemap ===
+@app.route('/sitemap.xml')
+def sitemap():
+    return send_from_directory('static', 'sitemap.xml')
+
+@app.route('/robots.txt')
+def robots_txt():
+    return send_from_directory('static', 'robots.txt')
+
 @app.route('/')
 def dashboard():
     if 'user' not in session: return redirect('/login')
