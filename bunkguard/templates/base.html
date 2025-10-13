@@ -92,7 +92,30 @@
                     </div>
                 </div>
             </div>
+
         </header>
+        <nav class="mobile-tabs-nav hidden-on-desktop">
+            <a href="{{ url_for('views.dashboard') }}"
+                class="tab-link {% if request.path == url_for('views.dashboard') %}active{% endif %}">
+                <i class='bx bxs-dashboard'></i><span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('views.mark_attendance_page') }}"
+                class="tab-link {% if request.path == url_for('views.mark_attendance_page') %}active{% endif %}">
+                <i class='bx bx-check-square'></i><span>Mark</span>
+            </a>
+            <a href="{{ url_for('views.reports_page') }}"
+                class="tab-link {% if request.path == url_for('views.reports_page') %}active{% endif %}">
+                <i class='bx bx-line-chart'></i><span>Reports</span>
+            </a>
+            <a href="{{ url_for('views.schedule_page') }}"
+                class="tab-link {% if request.path == url_for('views.schedule_page') %}active{% endif %}">
+                <i class='bx bx-calendar'></i><span>Schedule</span>
+            </a>
+            <a href="{{ url_for('views.settings_page') }}"
+                class="tab-link {% if request.path == url_for('views.settings_page') %}active{% endif %}">
+                <i class='bx bx-cog'></i><span>Settings</span>
+            </a>
+        </nav>
         <main class="content-area">
             <div class="background-aurora">
                 <div class="aurora-shape shape1"></div>
@@ -101,6 +124,8 @@
             {% block content %}{% endblock %}
         </main>
     </div>
+
+
     {% block body_scripts %}{% endblock %}
     <script src="{{ url_for('static', filename='nav.js') }}"></script>
     <script src="{{ url_for('static', filename='global.js') }}"></script>

@@ -683,3 +683,182 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
+/* --- New Mark Attendance Buttons Design --- */
+
+.attendance-actions-new {
+    width: 100%;
+    display: flex;
+    flex-direction: column; /* Stack the button group and links vertically */
+    align-items: flex-start; /* Align to the left */
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.button-group {
+    display: flex;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border-radius: 12px;
+    overflow: hidden; /* This is key to making the corners work */
+}
+
+.action-btn-new {
+    border: none;
+    padding: 12px 24px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-radius: 0; /* Remove individual radius */
+}
+
+.action-btn-new:hover {
+    transform: scale(1.05);
+}
+
+.action-btn-new.present {
+    background-color: var(--status-safe);
+    color: var(--text-dark);
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+.action-btn-new.absent {
+    background-color: var(--status-danger);
+    color: var(--text-dark);
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.more-options-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.action-btn-new.more {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1.2rem;
+}
+.action-btn-new.more:hover {
+    color: var(--text-primary);
+    border-color: var(--primary-accent);
+}
+
+.more-options-links a {
+    color: #8ab4f8; /* A nice blue link color */
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-right: 15px;
+    transition: all 0.2s ease;
+}
+.more-options-links a:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+/* We don't need the popup menu for this design */
+.action-more-wrapper .more-menu {
+    display: none;
+}
+/* 8. Responsiveness & Media Queries */
+@media (max-width: 1200px) {
+    .ultimate-dashboard-grid { grid-template-columns: 1fr 1fr; }
+    .bento-grid-reports { grid-template-columns: 1fr 1fr; }
+    .settings-layout { grid-template-columns: 1fr; }
+    .settings-sidebar nav { flex-direction: row; justify-content: space-between; }
+    .nav-link span, .logo span { display: none; }
+    .nav-left { gap: 15px; }
+}
+
+@media (max-width: 768px) {
+    .app-container { padding: 15px; }
+    .page-header h1 { font-size: 2rem; }
+    .ultimate-dashboard-grid { grid-template-columns: 1fr; }
+    .settings-layout { grid-template-columns: 1fr; }
+    .settings-sidebar { width: 100%; overflow-x: auto; }
+    .settings-sidebar nav { flex-direction: row; }
+    .bento-grid-reports { grid-template-columns: 1fr; }
+    .top-nav { display: none; } /* Hide the top navigation on mobile */
+    .mobile-tabs-nav { display: flex; }
+    .hidden-on-mobile { display: none; }
+    .attendance-card h3 { font-size: 1.5rem; }
+}
+/* Mobile Tab Bar */
+.mobile-tabs-nav {
+    display: none; /* Initially hidden */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background-color: var(--card-bg-solid);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.mobile-tabs-nav .tab-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.7rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    flex: 1;
+}
+
+.mobile-tabs-nav .tab-link i {
+    font-size: 1.5rem;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.mobile-tabs-nav .tab-link:hover {
+    color: var(--primary-accent);
+}
+
+.mobile-tabs-nav .tab-link.active {
+    color: var(--primary-accent);
+}
+
+.mobile-tabs-nav .tab-link.active i {
+    transform: translateY(-2px);
+    text-shadow: 0 0 10px var(--primary-accent-glow);
+}
+@media (max-width: 768px) {
+    /* ... other rules */
+    .top-nav { display: none; }
+    .mobile-tabs-nav { display: flex; }
+    /* ... other rules */
+}
+/* In your style.css file */
+
+/* Add this rule at a global level */
+.hidden-on-desktop {
+    display: none;
+}
+
+/* Update your media query */
+@media (max-width: 768px) {
+    /* ... other rules */
+    .top-nav { display: none; } /* This is correct to hide desktop nav */
+    .hidden-on-desktop {
+        display: flex; /* This will now show the mobile nav */
+    }
+    /* ... other rules */
+}

@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (e.target.closest('.action-btn-new.more')) {
             e.preventDefault();
-            const menu = card.querySelector('.more-menu');
+            const menu = card.querySelector('.options-menu');
             if (menu) menu.classList.toggle('hidden');
             return;
         }

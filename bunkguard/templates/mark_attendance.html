@@ -7,19 +7,7 @@
         <h1>Mark Today's Attendance</h1>
         <p>Your schedule for {{ now.strftime('%A, %B %d, %Y') }}.</p>
     </div>
-    <div class="card-actions">
-        <button class="btn-present" data-id="${sub._id.$oid}" data-status="present">Present</button>
-        <button class="btn-absent" data-id="${sub._id.$oid}" data-status="absent">Absent</button>
-        <div class="more-options">
-            <button class="options-btn" data-id="${sub._id.$oid}"><i class='bx bx-dots-horizontal-rounded'></i></button>
-            <div class="options-menu hidden">
-                <a href="#" data-status="pending_medical">Medical Leave</a>
-                <a href="#" data-status="cancelled">Cancelled</a>
-                <a href="#" data-status="substituted">Substituted</a>
-            </div>
-        </div>
     </div>
-</div>
 
 <div class="attendance-list-container" id="attendanceList">
 </div>
