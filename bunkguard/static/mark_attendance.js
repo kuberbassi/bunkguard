@@ -101,17 +101,32 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
+    // static/mark_attendance.js
+
     attendanceList.addEventListener('click', async e => {
-        if (e.target.matches('button[data-id]')) {
-            const subjectId = e.target.dataset.id;
-            const status = e.target.dataset.status;
-            const success = await markSingleAttendance(subjectId, status);
-            if (success) {
-                // Optimistically update UI before full reload
-                const card = e.target.closest('.attendance-card');
-                card.querySelector('.attendance-actions').innerHTML = `<div class="marked-status ${status}">${status}</div>`;
-                card.querySelector('.status-text').textContent = status;
-            }
+        e.preventDefault();
+        const target = e.target;
+
+        // Handle the main present/absent buttons
+        if (target.matches('.btn-present, .btn-absent')) {
+            const subjectId = target.dataset.id;
+            const status = target.dataset.status;
+            await markSingleAttendance(subjectId, status);
+            // ... (update UI)
+        }
+
+        // Toggle the dropdown menu
+        if (target.closest('.options-btn')) {
+            const menu = target.closest('.more-options').querySelector('.options-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Handle dropdown menu clicks
+        if (target.matches('.options-menu a')) {
+            const subjectId = target.closest('.more-options').querySelector('.options-btn').dataset.id;
+            const status = target.dataset.status;
+            await markSingleAttendance(subjectId, status);
+            // ... (update UI)
         }
     });
 

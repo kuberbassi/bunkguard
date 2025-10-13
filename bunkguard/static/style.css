@@ -1963,3 +1963,276 @@ select option {
         font-size: 1.5rem;
     }
 }
+/* static/style.css */
+
+/* --- Better Data Import UI --- */
+.import-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.hidden-file-input {
+    display: none; /* Hides the default ugly input */
+}
+
+.file-name {
+    color: var(--text-secondary);
+    font-style: italic;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Add a status message area for feedback */
+#importStatus {
+    margin-top: 15px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+.status-success { color: var(--status-safe); }
+.status-error { color: var(--status-danger); }
+
+/* ==========================================================================
+   1. Global Setup & Theming
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root {
+    --bg-color: #0A0A0A;
+    --primary-accent: #FF003B;
+    --primary-accent-glow: rgba(255, 0, 59, 0.4);
+    --card-bg: rgba(18, 18, 18, 0.65);
+    --card-bg-solid: #121212;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-primary: #FFFFFF;
+    --text-secondary: #AAAAAA;
+    --text-dark: #0A0A0A;
+    --status-safe: #00FFAB;
+    --status-danger: #FFD15C;
+    --status-system: #5c8aff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    overflow-x: hidden;
+}
+/* ... (Keep all your other existing CSS rules from here) ... */
+/* ... All sections 1 through 5.4 should remain the same ... */
+
+/* Find the section for Settings and replace it with this */
+
+/* --------------------------------------------------------------------------
+   5.5. Settings (REVISED SECTION)
+   -------------------------------------------------------------------------- */
+.settings-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.settings-sidebar nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center; /* Crucial for vertical alignment */
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.sidebar-link.active {
+    background-color: var(--primary-accent);
+    color: var(--text-primary);
+    box-shadow: 0 4px 15px var(--primary-accent-glow);
+}
+
+/* This is the key new rule to fix the icons */
+.sidebar-link i {
+    font-size: 1.4rem;
+    line-height: 1; /* Prevents extra vertical space */
+    width: 24px;    /* Gives icons a consistent width */
+    text-align: center;
+    flex-shrink: 0; /* Prevents the icon from shrinking */
+}
+
+.settings-pane {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-pane.active {
+    display: flex;
+}
+
+.subject-management-list,
+.leaves-management-list,
+.activity-log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.subject-management-item, .leave-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 20px;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.subject-management-item:last-child, .leave-item:last-child {
+    border-bottom: none;
+}
+
+.subject-name-wrapper h4, .leave-info p {
+    font-size: 1.1rem;
+    margin: 0;
+}
+.subject-name-wrapper span, .leave-info span {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.subject-actions { display: flex; gap: 10px; }
+.count-editor { display: flex; align-items: center; gap: 10px; }
+.count-editor label { color: var(--text-secondary); }
+.count-editor input {
+    width: 70px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.danger-zone { border: 1px solid var(--primary-accent); }
+
+.import-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.hidden-file-input { display: none; }
+.file-name {
+    color: var(--text-secondary);
+    font-style: italic;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#importStatus {
+    margin-top: 15px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+.status-success { color: var(--status-safe); }
+.status-error { color: var(--status-danger); }
+/* static/style.css */
+
+/* --- Ultimate Reports Page: Bento Grid --- */
+.bento-grid-reports {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 column grid */
+    grid-auto-rows: minmax(150px, auto);
+    gap: 20px;
+}
+
+.bento-box {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 24px;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+    transition: all 0.3s ease;
+}
+
+/* --- Box Sizing & Placement --- */
+.bento-box.kpi { grid-column: span 1; }
+.bento-box.chart-main { grid-column: span 2; grid-row: span 2; }
+.bento-box.subject-breakdown { grid-column: span 2; grid-row: span 3; }
+.bento-box.calendar-heatmap { grid-column: span 2; grid-row: span 2; }
+.bento-box.full-log { grid-column: span 4; } /* Full width */
+
+
+/* --- KPI Box Styling --- */
+.kpi-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.kpi-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.kpi-sub {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+#bestSubjectPercent { color: var(--status-safe); }
+#worstSubjectPercent { color: var(--status-danger); }
+
+/* --- Subject Breakdown List --- */
+.subject-breakdown-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+.subject-breakdown-info { flex-grow: 1; }
+.subject-breakdown-info h5 { font-size: 1rem; margin-bottom: 4px; }
+.subject-breakdown-percent { font-size: 1.2rem; font-weight: 600; }
+
+/* --- Calendar Heatmap Styling --- */
+#heatmapContainer {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-top: 10px;
+}
+.heatmap-day {
+    aspect-ratio: 1 / 1;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.05);
+    opacity: 0.7;
+    transition: all 0.2s ease;
+}
+.heatmap-day:hover { transform: scale(1.1); }
+.heatmap-day.present { background-color: var(--status-safe); opacity: 1; }
+.heatmap-day.absent { background-color: var(--primary-accent); opacity: 1; }
+.heatmap-day.partial {
+    background: linear-gradient(45deg, var(--primary-accent) 50%, var(--status-safe) 50%);
+    opacity: 1;
+}
