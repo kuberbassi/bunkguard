@@ -3,68 +3,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const markAllPresentBtn = document.getElementById('markAllPresentBtn');
     const markAllAbsentBtn = document.getElementById('markAllAbsentBtn');
 
-    let todaysClasses = []; // Store the classes to manage state
+    let todaysClasses = [];
 
-    // In static/mark_attendance.js, replace the entire loadTodaysClasses function
-
-    const loadTodaysClasses = async () => {
-        try {
-            const response = await fetch('/api/todays_classes');
-            todaysClasses = JSON.parse(await response.text());
-
-            attendanceList.innerHTML = '';
-            if (todaysClasses.length === 0) {
-                // Display a much better empty state message
-                attendanceList.innerHTML = `
-                <div class="empty-state-container">
-                    <i class='bx bx-calendar-check'></i>
-                    <h3>All Clear for Today!</h3>
-                    <p>No classes are scheduled, or you've already marked them all. Enjoy your day!</p>
-                </div>`;
-                // Modify the container to center the message
-                attendanceList.className = 'attendance-list-empty';
-                markAllPresentBtn.style.display = 'none';
-                markAllAbsentBtn.style.display = 'none';
-                return;
-            }
-
-            // If there are classes, ensure the grid layout is active
-            attendanceList.className = 'attendance-list-container';
-            markAllPresentBtn.style.display = 'inline-flex';
-            markAllAbsentBtn.style.display = 'inline-flex';
-
-            todaysClasses.forEach(sub => {
-                const card = document.createElement('div');
-                card.className = 'attendance-card';
-                // Add a subtle animation delay for each card
-                card.style.setProperty('--animation-order', todaysClasses.indexOf(sub));
-
-                let actionsHtml = `
-                <div class="attendance-actions">
-                    <button class="btn-present" data-id="${sub._id.$oid}" data-status="present">Present</button>
-                    <button class="btn-absent" data-id="${sub._id.$oid}" data-status="absent">Absent</button>
-                </div>`;
-
-                if (sub.marked_status !== 'pending') {
-                    actionsHtml = `<div class="marked-status ${sub.marked_status}">${sub.marked_status}</div>`;
-                }
-
-                card.innerHTML = `
-                <div class="card-info">
-                    <h3>${sub.name}</h3>
-                    <p>Status: <span class="status-text">${sub.marked_status}</span></p>
-                </div>
-                ${actionsHtml}
-            `;
-                attendanceList.appendChild(card);
-            });
-
-        } catch (error) {
-            console.error("Error loading today's classes:", error);
-            attendanceList.innerHTML = `<p class="empty-state">Could not load today's schedule. Please set up your schedule first.</p>`;
-        }
+    // Utility to show toast notifications
+    const showToast = (message, type = 'error') => {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, 3000);
     };
 
+    // API call to mark attendance for a single subject
     const markSingleAttendance = async (subjectId, status) => {
         try {
             const response = await fetch('/api/mark_attendance', {
@@ -76,62 +30,125 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 return true;
             } else {
-                console.warn(`Could not mark ${subjectId}: ${result.error}`);
+                showToast(result.error || 'Could not mark attendance.');
                 return false;
             }
         } catch (error) {
             console.error('Error marking attendance:', error);
+            showToast('A server error occurred.');
             return false;
         }
     };
 
-    const markAll = async (status) => {
-        const pendingClasses = todaysClasses.filter(c => c.marked_status === 'pending');
-        if (pendingClasses.length === 0) {
-            alert('All classes for today have already been marked.');
+    // Main function to load and render today's classes
+    const loadTodaysClasses = async () => {
+        try {
+            const response = await fetch('/api/todays_classes');
+            todaysClasses = await response.json();
+            attendanceList.innerHTML = '';
+
+            if (todaysClasses.length === 0) {
+                attendanceList.innerHTML = `
+                <div class="empty-state-container">
+                    <i class='bx bx-calendar-check'></i>
+                    <h3>All Clear for Today!</h3>
+                    <p>No classes are scheduled in your timetable for today.</p>
+                </div>`;
+                attendanceList.className = 'attendance-list-empty';
+                if(markAllPresentBtn) markAllPresentBtn.style.display = 'none';
+                if(markAllAbsentBtn) markAllAbsentBtn.style.display = 'none';
+                return;
+            }
+
+            attendanceList.className = 'attendance-list-container';
+            if(markAllPresentBtn) markAllPresentBtn.style.display = 'inline-flex';
+            if(markAllAbsentBtn) markAllAbsentBtn.style.display = 'inline-flex';
+
+            todaysClasses.forEach((sub, index) => {
+                const card = document.createElement('div');
+                card.className = 'attendance-card';
+                card.dataset.id = sub._id.$oid;
+                card.style.setProperty('--animation-order', index);
+
+                let actionsHtml;
+                const actionsContainerOpen = `<div class="card-actions-container">`;
+                const actionsContainerClose = `</div>`;
+
+                if (sub.marked_status !== 'pending') {
+                    actionsHtml = `<div class="marked-status ${sub.marked_status}">${sub.marked_status.replace('_', ' ')}</div>`;
+                } else {
+                    actionsHtml = `
+                        <div class="attendance-actions-new">
+                            <button class="action-btn-new present" data-status="present">Present</button>
+                            <button class="action-btn-new absent" data-status="absent">Absent</button>
+                            <div class="action-more-wrapper">
+                                <button class="action-btn-new more"><i class='bx bx-dots-horizontal-rounded'></i></button>
+                                <div class="more-menu hidden">
+                                    <a href="#" data-status="pending_medical">Medical Leave</a>
+                                    <a href="#" data-status="cancelled">Cancelled</a>
+                                    <a href="#" data-status="substituted">Substituted</a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="card-info">
+                        <h3>${sub.name}</h3>
+                        <p>Status: <span class="status-text">${sub.marked_status}</span></p>
+                    </div>
+                    ${actionsContainerOpen}${actionsHtml}${actionsContainerClose}
+                `;
+                attendanceList.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error("Error loading today's classes:", error);
+            attendanceList.innerHTML = `<p class="empty-state">Could not load today's schedule. Please set up your schedule first.</p>`;
+        }
+    };
+
+    // Event listener to handle all clicks within the card list
+    attendanceList.addEventListener('click', async (e) => {
+        const card = e.target.closest('.attendance-card');
+        if (!card) return;
+
+        const subjectId = card.dataset.id;
+        let status = null;
+
+        if (e.target.matches('[data-status]')) {
+            e.preventDefault();
+            status = e.target.dataset.status;
+        }
+
+        if (e.target.closest('.action-btn-new.more')) {
+            e.preventDefault();
+            const menu = card.querySelector('.more-menu');
+            if (menu) menu.classList.toggle('hidden');
             return;
         }
 
-        for (const subject of pendingClasses) {
-            await markSingleAttendance(subject._id.$oid, status);
-        }
-
-        // Refresh the list after all are marked
-        loadTodaysClasses();
-    };
-
-
-    // static/mark_attendance.js
-
-    attendanceList.addEventListener('click', async e => {
-        e.preventDefault();
-        const target = e.target;
-
-        // Handle the main present/absent buttons
-        if (target.matches('.btn-present, .btn-absent')) {
-            const subjectId = target.dataset.id;
-            const status = target.dataset.status;
-            await markSingleAttendance(subjectId, status);
-            // ... (update UI)
-        }
-
-        // Toggle the dropdown menu
-        if (target.closest('.options-btn')) {
-            const menu = target.closest('.more-options').querySelector('.options-menu');
-            menu.classList.toggle('hidden');
-        }
-
-        // Handle dropdown menu clicks
-        if (target.matches('.options-menu a')) {
-            const subjectId = target.closest('.more-options').querySelector('.options-btn').dataset.id;
-            const status = target.dataset.status;
-            await markSingleAttendance(subjectId, status);
-            // ... (update UI)
+        if (status) {
+            if (await markSingleAttendance(subjectId, status)) {
+                const actionsContainer = card.querySelector('.card-actions-container');
+                if (actionsContainer) {
+                    actionsContainer.innerHTML = `<div class="marked-status ${status}">${status.replace('_', ' ')}</div>`;
+                }
+                const statusText = card.querySelector('.status-text');
+                if (statusText) {
+                    statusText.textContent = status;
+                }
+            }
         }
     });
-
-    markAllPresentBtn.addEventListener('click', () => markAll('present'));
-    markAllAbsentBtn.addEventListener('click', () => markAll('absent'));
+    
+    // Close dropdowns if clicking anywhere else on the page
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.action-more-wrapper')) {
+            document.querySelectorAll('.more-menu').forEach(menu => menu.classList.add('hidden'));
+        }
+    });
 
     loadTodaysClasses();
 });
