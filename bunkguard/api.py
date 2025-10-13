@@ -160,18 +160,32 @@ def get_attendance_logs():
         traceback.print_exc()
         return jsonify({"error": "Failed to fetch logs."}), 500
 
+# In bunkguard/api.py, replace the old mark_attendance function
+
 @api_bp.route('/mark_attendance', methods=['POST'])
 def mark_attendance():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    subject_id, status = ObjectId(data.get('subject_id')), data.get('status')
+    subject_id = ObjectId(data.get('subject_id'))
+    status = data.get('status')
+    # New: Get the date from the request, or default to today
+    date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
+
     subject = subjects_collection.find_one({'_id': subject_id})
     if not subject: return jsonify({"error": "Subject not found"}), 404
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    if attendance_log_collection.find_one({"subject_id": subject_id, "date": today_str}):
-        return jsonify({"error": "Already marked today"}), 400
     
-    attendance_log_collection.insert_one({"subject_id": subject_id, "owner_email": session['user']['email'], "date": today_str, "status": status, "timestamp": datetime.utcnow(), "semester": subject.get('semester')})
+    # Check if already marked for the specific date
+    if attendance_log_collection.find_one({"subject_id": subject_id, "date": date_str}):
+        return jsonify({"error": "Already marked for this day"}), 400
+    
+    attendance_log_collection.insert_one({
+        "subject_id": subject_id,
+        "owner_email": session['user']['email'],
+        "date": date_str,
+        "status": status,
+        "timestamp": datetime.utcnow(), # Timestamp is still 'now'
+        "semester": subject.get('semester')
+    })
     
     update_query = {}
     if status in ['present', 'absent', 'pending_medical']:
@@ -180,6 +194,7 @@ def mark_attendance():
             update_query['$inc']['attended'] = 1
     if update_query:
         subjects_collection.update_one({'_id': subject_id}, update_query)
+        
     return jsonify({"success": True})
 
 @api_bp.route('/todays_classes')
@@ -498,3 +513,44 @@ def analytics_day_of_week():
         print(f"---! ERROR IN /api/analytics/day_of_week: {e} !---")
         traceback.print_exc()
         return jsonify({"error": "Could not fetch analytics."}), 500
+    
+# In bunkguard/api.py, add this new function
+
+@api_bp.route('/classes_for_date')
+def get_classes_for_date():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({"error": "Date parameter is required"}), 400
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+    user_email = session['user']['email']
+    day_name = target_date.strftime('%A')
+    
+    timetable_doc = timetable_collection.find_one({'owner_email': user_email})
+    if not timetable_doc:
+        return Response(json_util.dumps([]), mimetype='application/json')
+
+    subject_ids = []
+    schedule = timetable_doc.get('schedule', {})
+    if isinstance(schedule, dict):
+        for days in schedule.values():
+            if isinstance(days, dict) and day_name in days:
+                slot_data = days[day_name]
+                if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
+                    subject_ids.append(ObjectId(slot_data['subjectId']))
+    
+    if not subject_ids:
+        return Response(json_util.dumps([]), mimetype='application/json')
+
+    subjects = list(subjects_collection.find({"owner_email": user_email, "_id": {"$in": subject_ids}}))
+    for subject in subjects:
+        log = attendance_log_collection.find_one({"subject_id": subject["_id"], "date": date_str})
+        subject["marked_status"] = log["status"] if log else "pending"
+        
+    return Response(json_util.dumps(subjects), mimetype='application/json')
