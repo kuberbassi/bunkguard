@@ -15,6 +15,7 @@
             <a href="#subjects" class="sidebar-link active" data-pane="subjects"><i class='bx bxs-book-content'></i><span>Manage Subjects</span></a>
             <a href="#prefs" class="sidebar-link" data-pane="prefs"><i class='bx bxs-tune'></i><span>Preferences</span></a>
             <a href="#leaves" class="sidebar-link" data-pane="leaves"><i class='bx bxs-first-aid'></i><span>Manage Leaves</span></a>
+            <a href="#substitutions" class="sidebar-link" data-pane="substitutions"><i class='bx bx-transfer-alt'></i><span>Resolve Substitutions</span></a>
             <a href="#log" class="sidebar-link" data-pane="log"><i class='bx bx-chip'></i><span>System Log</span></a>
             <a href="#data" class="sidebar-link" data-pane="data"><i class='bx bxs-data'></i><span>Data Management</span></a>
         </nav>
@@ -47,6 +48,14 @@
             </div>
         </div>
 
+        <div id="substitutions" class="settings-pane">
+            <div class="widget">
+                <div class="widget-header"><h3>Unresolved Substituted Classes</h3></div>
+                <p class="text-secondary" style="margin-bottom: 20px;">Select a class that was marked as substituted to assign the correct subject that was taught instead.</p>
+                <div id="unresolvedSubstitutionsList"></div>
+            </div>
+        </div>
+
         <div id="log" class="settings-pane">
             <div class="widget">
                 <div class="widget-header"><h3>System Activity Log</h3></div>
@@ -75,6 +84,17 @@
             </div>
         </div>
     </main>
+</div>
+
+<div id="substitutionModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Which class was taken instead?</h2>
+            <button id="closeSubstitutionModalBtn" class="close-btn">&times;</button>
+        </div>
+        <div id="substitutionSubjectList" class="subject-grid">
+            </div>
+    </div>
 </div>
 {% endblock %}
 

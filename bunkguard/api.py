@@ -554,3 +554,71 @@ def get_classes_for_date():
         subject["marked_status"] = log["status"] if log else "pending"
         
     return Response(json_util.dumps(subjects), mimetype='application/json')
+
+# In bunkguard/api.py
+
+@api_bp.route('/mark_substituted', methods=['POST'])
+def mark_substituted():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    original_subject_id = ObjectId(data.get('original_subject_id'))
+    substitute_subject_id = ObjectId(data.get('substitute_subject_id'))
+    date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
+    user_email = session['user']['email']
+
+    # --- 1. Mark the original subject as 'substituted' ---
+    # Check if it was already marked
+    existing_log = attendance_log_collection.find_one_and_update(
+        {"subject_id": original_subject_id, "date": date_str},
+        {'$set': {"status": "substituted"}},
+    )
+    # If no log existed, create one. This doesn't affect percentages.
+    if not existing_log:
+        original_subject = subjects_collection.find_one({'_id': original_subject_id})
+        attendance_log_collection.insert_one({
+            "subject_id": original_subject_id, "owner_email": user_email,
+            "date": date_str, "status": "substituted", "timestamp": datetime.utcnow(),
+            "semester": original_subject.get('semester')
+        })
+
+    # --- 2. Mark the substitute subject as 'present' ---
+    # Check if a log already exists for the substitute on the same day
+    substitute_log = attendance_log_collection.find_one(
+        {"subject_id": substitute_subject_id, "date": date_str}
+    )
+    
+    if substitute_log:
+        # If it was marked 'absent', we correct the record.
+        if substitute_log['status'] in ['absent', 'pending_medical']:
+            subjects_collection.update_one({'_id': substitute_subject_id}, {'$inc': {'attended': 1}})
+        # Update the log status to 'present'
+        attendance_log_collection.update_one({'_id': substitute_log['_id']}, {'$set': {'status': 'present'}})
+    else:
+        # If no log existed, create a new 'present' one and update counts.
+        substitute_subject = subjects_collection.find_one({'_id': substitute_subject_id})
+        attendance_log_collection.insert_one({
+            "subject_id": substitute_subject_id, "owner_email": user_email,
+            "date": date_str, "status": "present", "timestamp": datetime.utcnow(),
+            "semester": substitute_subject.get('semester')
+        })
+        subjects_collection.update_one(
+            {'_id': substitute_subject_id},
+            {'$inc': {'attended': 1, 'total': 1}}
+        )
+
+    return jsonify({"success": True})
+# In bunkguard/api.py, add this new function
+
+@api_bp.route('/unresolved_substitutions')
+def get_unresolved_substitutions():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    pipeline = [
+        {'$match': {'owner_email': session['user']['email'], 'status': 'substituted'}},
+        {'$lookup': {'from': 'subjects', 'localField': 'subject_id', 'foreignField': '_id', 'as': 'subject_info'}},
+        {'$unwind': '$subject_info'},
+        {'$sort': {'date': -1}}
+    ]
+    unresolved_logs = list(attendance_log_collection.aggregate(pipeline))
+    return Response(json_util.dumps(unresolved_logs), mimetype='application/json')

@@ -23,6 +23,16 @@
 
 <div class="attendance-list-container" id="attendanceList">
 </div>
+<div id="substitutionModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Which class was taken instead?</h2>
+            <button id="closeSubstitutionModalBtn" class="close-btn">&times;</button>
+        </div>
+        <div id="substitutionSubjectList" class="subject-grid">
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block body_scripts %}
