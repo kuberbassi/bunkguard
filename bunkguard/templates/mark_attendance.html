@@ -7,17 +7,27 @@
         <h1>Mark Today's Attendance</h1>
         <p>Your schedule for {{ now.strftime('%A, %B %d, %Y') }}.</p>
     </div>
+    <div class="page-actions">
+        <button id="markAllPresentBtn" class="btn-present-all" style="display: none;">Mark All Present</button>
+        <button id="markAllAbsentBtn" class="btn-absent-all" style="display: none;">Mark All Absent</button>
     </div>
+</div>
 
 <div class="attendance-list-container" id="attendanceList">
-</div>
-<div id="substitutionModal" class="modal-overlay hidden">
+    </div>
+
+<div id="noteModal" class="modal-overlay hidden">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Which class was taken instead?</h2>
-            <button id="closeSubstitutionModalBtn" class="close-btn">&times;</button>
+            <h2>Add a Note (Optional)</h2>
+            <button id="closeNoteModalBtn" class="close-btn">&times;</button>
         </div>
-        <div id="substitutionSubjectList" class="subject-grid">
+        <div class="form-group">
+            <label for="attendanceNote">Why was this class missed?</label>
+            <textarea id="attendanceNote" rows="3" placeholder="e.g., Doctor's appointment, family event..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button id="saveNoteBtn" class="create-new-btn">Save Attendance</button>
         </div>
     </div>
 </div>

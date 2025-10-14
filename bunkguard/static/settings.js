@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const systemLogContainer = document.getElementById('systemLogList');
     const pendingLeavesContainer = document.getElementById('pendingLeavesList');
     const unresolvedSubstitutionsContainer = document.getElementById('unresolvedSubstitutionsList');
+    const holidayListContainer = document.getElementById('holidayList');
 
     // Modals
     const substitutionModal = document.getElementById('substitutionModal');
@@ -24,11 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const importDataBtn = document.getElementById('importDataBtn');
     const fileNameSpan = document.getElementById('fileName');
     const importStatus = document.getElementById('importStatus');
+    
+    // Holiday Pane
+    const addHolidayForm = document.getElementById('addHolidayForm');
 
     // --- STATE ---
     const currentSemester = localStorage.getItem('selectedSemester') || 1;
     let loadedTabs = new Set();
-    let substitutionContext = {}; // Stores info for the substitution modal
+    let substitutionContext = {};
 
     // --- API CALLS ---
     const api = {
@@ -48,6 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ subject_id: subjectId, attended, total })
         }).then(res => res.json()),
+        updateSubjectDetails: (subjectId, professor, classroom) => fetch('/api/update_subject_details', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject_id: subjectId, professor, classroom })
+        }).then(res => res.json()),
         getPreferences: () => fetch('/api/preferences').then(res => res.json()),
         savePreferences: (threshold) => fetch('/api/preferences', {
             method: 'POST',
@@ -59,6 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(jsonData)
         }).then(res => res.json()),
+        getHolidays: () => fetch('/api/holidays').then(res => res.json()),
+        addHoliday: (date, name) => fetch('/api/holidays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, name })
+        }).then(res => res.json()),
+        deleteHoliday: (holidayId) => fetch(`/api/holidays/${holidayId}`, { method: 'DELETE' }).then(res => res.json())
     };
 
     // --- RENDER FUNCTIONS ---
@@ -75,8 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 item.className = 'subject-management-item';
                 item.dataset.id = sub._id.$oid;
                 item.innerHTML = `
-                    <div class="subject-name-wrapper">
+                    <div class="subject-details-wrapper">
                         <h4 class="subject-title">${sub.name}</h4>
+                        <input type="text" class="prof-input" value="${sub.professor || ''}" placeholder="Professor Name">
+                        <input type="text" class="room-input" value="${sub.classroom || ''}" placeholder="Classroom / Link">
                     </div>
                     <div class="count-editor">
                         <label>Attended:</label>
@@ -146,13 +164,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="control-btn resolve-sub-btn">Resolve</button>
                 </div>
             `).join('');
+        },
+        holidays: (holidays) => {
+            if (!holidayListContainer) return;
+            holidayListContainer.innerHTML = '';
+            if (!holidays || holidays.length === 0) {
+                holidayListContainer.innerHTML = `<p class="empty-state">No holidays added yet.</p>`;
+                return;
+            }
+            holidays.forEach(holiday => {
+                const item = document.createElement('div');
+                item.className = 'holiday-item';
+                item.dataset.id = holiday._id.$oid;
+                item.innerHTML = `
+                    <span><strong>${holiday.name}</strong> - ${new Date(holiday.date + 'T12:00:00Z').toLocaleDateString()}</span>
+                    <button class="action-btn delete-holiday-btn" title="Delete Holiday"><i class='bx bx-trash'></i></button>
+                `;
+                holidayListContainer.appendChild(item);
+            });
         }
     };
 
     // --- MAIN LOGIC & EVENT HANDLERS ---
     const loadPaneContent = async (paneId) => {
-        // Always reload these tabs for fresh data
-        if (['subjects', 'leaves', 'substitutions'].includes(paneId)) {
+        if (['subjects', 'leaves', 'substitutions', 'holidays'].includes(paneId)) {
             loadedTabs.delete(paneId);
         }
         if (loadedTabs.has(paneId)) return;
@@ -169,12 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             case 'prefs':
                 const prefs = await api.getPreferences();
-                if (attendanceThresholdInput && prefs.threshold) {
-                    attendanceThresholdInput.value = prefs.threshold;
-                }
+                if (attendanceThresholdInput) attendanceThresholdInput.value = prefs.threshold || 75;
                 break;
             case 'substitutions':
                 render.unresolvedSubstitutions(await api.getUnresolvedSubstitutions());
+                break;
+            case 'holidays':
+                render.holidays(await api.getHolidays());
                 break;
         }
         loadedTabs.add(paneId);
@@ -195,24 +231,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Delegation for dynamically loaded content
     document.addEventListener('click', async (e) => {
-        // Save subject count changes
+        // CORRECTED: Save subject count and details changes
         const saveBtn = e.target.closest('.save-btn');
         if (saveBtn) {
             const item = saveBtn.closest('.subject-management-item');
             const subjectId = item.dataset.id;
             const attended = item.querySelector('.attended-input').value;
             const total = item.querySelector('.total-input').value;
+            const professor = item.querySelector('.prof-input').value;
+            const classroom = item.querySelector('.room-input').value;
 
-            const result = await api.updateCounts(subjectId, attended, total);
-            if (result.success) {
+            // Call both API endpoints
+            const countResult = await api.updateCounts(subjectId, attended, total);
+            const detailsResult = await api.updateSubjectDetails(subjectId, professor, classroom);
+
+            if (countResult.success && detailsResult.success) {
                 saveBtn.style.color = 'var(--status-safe)';
                 setTimeout(() => { saveBtn.style.color = ''; }, 2000);
             } else {
-                alert(result.error);
+                alert(countResult.error || detailsResult.error || "An error occurred.");
             }
         }
 
-        // Approve pending leaves
         if (e.target.classList.contains('approve-leave-btn')) {
             const item = e.target.closest('.leave-item');
             const logId = item.dataset.logId;
@@ -224,8 +264,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
+        
+        if (e.target.closest('.delete-holiday-btn')) {
+            const item = e.target.closest('.holiday-item');
+            await api.deleteHoliday(item.dataset.id);
+            loadPaneContent('holidays');
+        }
 
-        // Handle "Resolve" button for substitutions
         if (e.target.classList.contains('resolve-sub-btn')) {
             const item = e.target.closest('.substitution-item');
             substitutionContext = {
@@ -245,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ).join('');
         }
 
-        // Handle choice in substitution modal
         const subChoice = e.target.closest('#substitutionSubjectList .subject-option');
         if (subChoice) {
             const substitute_subject_id = subChoice.dataset.id;
@@ -256,13 +300,23 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             if (result.success) {
-                // The fix is here: reload the page to get fresh data everywhere.
-                window.location.reload();
+                substitutionModal.classList.add('hidden');
+                loadPaneContent('substitutions');
             }
         }
     });
+    
+    if (addHolidayForm) {
+        addHolidayForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const date = e.target.holidayDate.value;
+            const name = e.target.holidayName.value;
+            await api.addHoliday(date, name);
+            e.target.reset();
+            loadPaneContent('holidays');
+        });
+    }
 
-    // Listeners for static elements
     if (savePrefsBtn) savePrefsBtn.addEventListener('click', async () => {
         const threshold = attendanceThresholdInput.value;
         const result = await api.savePreferences(threshold);

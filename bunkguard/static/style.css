@@ -9,7 +9,7 @@
 body{font-family:'Poppins',sans-serif;background-color:var(--bg-color);color:var(--text-primary);overflow-x:hidden;}
 body.light-theme{--bg-color:#F0F2F5;--primary-accent:#E00034;--card-bg:rgba(255,255,255,0.8);--card-bg-solid:#FFFFFF;--border-color:rgba(0,0,0,0.1);--text-primary:#0A0A0A;--text-secondary:#555555;--text-dark:#FFFFFF;}
 body.light-theme .aurora-shape{opacity:0.2;}
-body.light-theme .form-group input,body.light-theme .form-group select{background-color:#E9ECEF;border:1px solid #ced4da;color:var(--text-primary);}
+body.light-theme .form-group input,body.light-theme .form-group select, body.light-theme .form-group textarea{background-color:#E9ECEF;border:1px solid #ced4da;color:var(--text-primary);}
 body.light-theme .slot-break,body.light-theme .slot-holiday,body.light-theme .slot-free{background-color:#e9ecef;color:#6c757d;}
 select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#FFFFFF);}
 
@@ -67,8 +67,12 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .dropdown-footer{padding:8px;border-top:1px solid var(--border-color);}
 .logout-link{display:block;text-align:center;padding:12px;border-radius:8px;text-decoration:none;font-weight:500;color:var(--primary-accent);transition:background-color 0.2s ease;}
 .logout-link:hover{background-color:var(--border-color);}
+.notification-bell .notification-badge { position: absolute; top: -5px; right: -5px; background-color: var(--primary-accent); color: var(--text-dark); border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .notification-list{list-style:none;max-height:400px;overflow-y:auto;}
-.notification-list .no-notifications{padding:40px 20px;text-align:center;color:var(--text-secondary);}
+.notification-list .no-notifications, .notification-item{padding:15px;text-align:center;color:var(--text-secondary); border-bottom: 1px solid var(--border-color);}
+.notification-item { display: flex; align-items: center; gap: 10px; text-align: left;}
+.notification-item:last-child { border-bottom: none; }
+.notification-item i { font-size: 1.2rem; }
 .custom-select-trigger{display:flex;align-items:baseline;gap:8px;padding:10px 15px;background:var(--card-bg);border:1px solid var(--border-color);border-radius:8px;transition:all 0.2s ease;}
 .custom-select-wrapper:hover .custom-select-trigger{border-color:var(--primary-accent);}
 .custom-select-trigger span{font-size:0.9rem;color:var(--text-secondary);}
@@ -89,9 +93,9 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .progress-value{font-size:3.5rem;font-weight:700;}
 .progress-value span{font-size:1.5rem;color:var(--text-secondary);}
 .progress-label{font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;}
-.all-time-stats-widget #allTimeStats{display:flex;justify-content:space-around;align-items:center;text-align:center;padding:10px 0;}
+.all-time-stats-widget #allTimeStats{display:flex;justify-content:space-around;align-items:center;text-align:center;padding:10px 0; gap: 15px;}
 .all-time-stats-widget .stat-item{flex:1;}
-.all-time-stats-widget .stat-value{display:block;font-size:2.5rem;font-weight:700;line-height:1.1;}
+.all-time-stats-widget .stat-value{display:block;font-size:2rem;font-weight:700;line-height:1.1;}
 .all-time-stats-widget .stat-label{margin-top:8px;display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);}
 .deadline-tracker-widget ul{list-style:none;}
 .deadline-item{display:flex;align-items:center;justify-content:space-between;padding-bottom:15px;margin-bottom:15px;border-bottom:1px solid var(--border-color);}
@@ -107,6 +111,7 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .activity-item i{font-size:1.8rem;}
 .activity-text p{font-size:0.9rem;font-weight:500;}
 .activity-text span{font-size:0.8rem;color:var(--text-secondary);}
+.activity-note { font-size: 0.75rem; color: var(--text-secondary); font-style: italic; margin-top: 4px; display: block;}
 .bunk-meter-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:15px;padding-top:10px;}
 .subject-card-item{background-color:var(--card-bg);border:1px solid var(--border-color);padding:15px;border-radius:8px;border-left-width:4px;transition:all 0.2s ease-in-out;}
 .subject-card-item:hover{transform:translateY(-5px);border-color:var(--primary-accent);box-shadow:0 5px 20px rgba(0,0,0,0.2);}
@@ -136,6 +141,10 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .calendar-day::before{content:'';position:absolute;bottom:5px;width:6px;height:6px;border-radius:50%;background-color:transparent;}
 .calendar-day.all_present::before{background-color:var(--status-safe);}
 .calendar-day.any_absent::before{background-color:var(--primary-accent);}
+.achievements-widget .achievement-item { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+.achievements-widget .achievement-item i { font-size: 1.8rem; color: #FFD700; }
+.achievements-widget .achievement-text p { font-weight: 600; }
+.achievements-widget .achievement-text span { font-size: 0.8rem; color: var(--text-secondary); }
 
 /* 5.2. Reports */
 .bento-grid-reports{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(150px,auto);gap:20px;}
@@ -161,148 +170,34 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .heatmap-day.absent{background-color:var(--primary-accent);opacity:1;}
 .heatmap-day.partial{background:linear-gradient(45deg,var(--primary-accent) 50%,var(--status-safe) 50%);opacity:1;}
 
-/* ==========================================================================
-   BunkGuard Stylesheet
-   ========================================================================== */
-
-/* ... (Keep all your other existing CSS rules from sections 1 through 5.2) ... */
-
-/* --------------------------------------------------------------------------
-   5.3. Mark Attendance (REVISED SECTION)
-   -------------------------------------------------------------------------- */
-.attendance-list-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
-}
-
-.attendance-card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
-    padding: 24px;
-    border-radius: 8px; /* Simplified border */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Ensures content and actions are spaced */
-    opacity: 0;
-    animation: fadeInSlideUp 0.5s ease forwards;
-    animation-delay: calc(var(--animation-order, 0) * 70ms);
-    transition: all 0.2s ease-in-out;
-}
-
-.attendance-card:hover {
-    transform: translateY(-5px);
-    border-color: var(--primary-accent);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-}
-
-.attendance-card h3 {
-    font-size: 1.8rem;
-    margin-bottom: 4px;
-    font-weight: 700;
-}
-
-.attendance-card p {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    text-transform: capitalize;
-}
-
-.attendance-list-empty { /* Styles for the "All Clear" message */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 50vh;
-    text-align: center;
-    grid-column: 1 / -1; /* Make it span the full width */
-}
-
-/* --- New Mark Attendance Buttons --- */
-.attendance-actions-new {
-    width: 100%;
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.action-btn-new {
-    flex-grow: 1;
-    border: none;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.action-btn-new:hover { transform: translateY(-2px); }
-.action-btn-new.present { background-color: var(--status-safe); color: var(--text-dark); }
-.action-btn-new.absent { background-color: var(--status-danger); color: var(--text-dark); }
-.action-btn-new.more {
-    flex-grow: 0;
-    width: 45px;
-    background-color: var(--card-bg-solid);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
-.action-btn-new.more:hover { color: var(--text-primary); border-color: var(--primary-accent); }
-
-.action-more-wrapper { position: relative; }
-.more-menu {
-    position: absolute;
-    bottom: calc(100% + 10px);
-    right: 0;
-    width: 180px;
-    background-color: var(--card-bg-solid);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    z-index: 10;
-    overflow: hidden;
-    padding: 5px;
-}
-.more-menu.hidden { display: none; }
-.more-menu a {
-    display: block;
-    padding: 10px 15px;
-    color: var(--text-secondary);
-    text-decoration: none;
-    border-radius: 5px;
-    font-size: 0.9rem;
-}
-.more-menu a:hover { background-color: var(--primary-accent); color: var(--text-primary); }
-
-/* --- THIS IS THE CORRECTED STYLE FOR THE FINAL STATUS --- */
-.marked-status {
-    width: 100%;
-    text-align: center;
-    font-weight: 600;
-    padding: 12px 20px;
-    border-radius: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 20px;
-}
-.marked-status.present, .marked-status.approved_medical {
-    background-color: var(--status-safe);
-    color: var(--text-dark);
-}
-.marked-status.absent, .marked-status.pending_medical {
-    background-color: var(--status-danger);
-    color: var(--text-dark);
-}
-.marked-status.cancelled, .marked-status.substituted {
-    background-color: var(--card-bg-solid);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
+/* 5.3. Mark Attendance */
+.attendance-list-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+.attendance-card { background-color: var(--card-bg); border: 1px solid var(--border-color); padding: 24px; border-radius: 8px; display: flex; flex-direction: column; justify-content: space-between; opacity: 0; animation: fadeInSlideUp 0.5s ease forwards; animation-delay: calc(var(--animation-order, 0) * 70ms); transition: all 0.2s ease-in-out; }
+.attendance-card:hover { transform: translateY(-5px); border-color: var(--primary-accent); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
+.attendance-card h3 { font-size: 1.8rem; margin-bottom: 4px; font-weight: 700; }
+.attendance-card p { font-size: 0.9rem; color: var(--text-secondary); text-transform: capitalize; }
+.attendance-list-empty { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 50vh; text-align: center; grid-column: 1 / -1; }
+.empty-state-container i { font-size: 4rem; color: var(--primary-accent); margin-bottom: 20px;}
+.attendance-actions-new { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.button-group { display: flex; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-radius: 12px; overflow: hidden; }
+.action-btn-new { border: none; padding: 12px 24px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; text-transform: uppercase; letter-spacing: 0.8px; border-radius: 0; flex-grow: 1; }
+.action-btn-new:hover { transform: scale(1.05); }
+.action-btn-new.present { background-color: var(--status-safe); color: var(--text-dark); border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+.action-btn-new.absent { background-color: var(--status-danger); color: var(--text-dark); border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+.more-options-links { display: flex; gap: 15px; margin-top: 10px; flex-wrap: wrap;}
+.more-options-links a { color: #8ab4f8; text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s ease; }
+.more-options-links a:hover { text-decoration: underline; opacity: 0.8; }
+.marked-status-container { display: flex; align-items: center; gap: 10px; margin-top: 20px;}
+.marked-status { flex-grow: 1; text-align: center; font-weight: 600; padding: 12px 20px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px; animation: fadeInSlideUp 0.3s ease;}
+.marked-status.present, .marked-status.approved_medical { background-color: var(--status-safe); color: var(--text-dark); }
+.marked-status.absent, .marked-status.pending_medical { background-color: var(--status-danger); color: var(--text-dark); }
+.marked-status.cancelled, .marked-status.substituted, .marked-status.substitution_resolved { background-color: var(--card-bg-solid); color: var(--text-secondary); border: 1px solid var(--border-color); }
+.edit-btn { background: none; border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 8px; padding: 0 12px; height: 45px; cursor: pointer; transition: all 0.2s ease; font-size: 0.9rem;}
+.edit-btn:hover { border-color: var(--primary-accent); color: var(--text-primary); }
 
 /* 5.4. Schedule */
 .schedule-container{padding:0;}
 .table-wrapper{max-height:75vh;overflow:auto;}
-.table-wrapper::-webkit-scrollbar{width:8px;height:8px;}
-.table-wrapper::-webkit-scrollbar-track{background:rgba(0,0,0,0.2);border-radius:4px;}
-.table-wrapper::-webkit-scrollbar-thumb{background-color:var(--primary-accent);border-radius:4px;}
 #scheduleTable{width:100%;border-collapse:collapse;text-align:center;}
 #scheduleTable th,#scheduleTable td{border:1px solid var(--border-color);padding:15px;min-width:120px;}
 #scheduleTable th{font-weight:600;color:var(--text-secondary);}
@@ -313,11 +208,6 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .schedule-subject{font-weight:500;padding:8px;border-radius:4px;background-color:var(--primary-accent);color:var(--text-primary);}
 .slot-break,.slot-holiday,.slot-free{background-color:rgba(30,30,30,0.7);color:var(--text-secondary);font-style:italic;}
 .time-cell{font-weight:600;cursor:text;}
-.time-input{background-color:var(--card-bg-solid);color:var(--text-primary);border:1px solid var(--primary-accent);padding:6px;width:auto;border-radius:4px;}
-.time-editor{display:flex;align-items:center;justify-content:center;gap:5px;}
-.time-save-btn{background:var(--status-safe);color:var(--text-dark);border:none;border-radius:50%;width:30px;height:30px;font-size:1.2rem;cursor:pointer;display:grid;place-items:center;}
-.holiday-btn{background:#333;color:var(--text-secondary);border:none;border-radius:50%;width:24px;height:24px;font-size:0.7rem;font-weight:700;line-height:24px;padding:0;cursor:pointer;transition:all 0.2s ease;}
-.holiday-btn:hover{background:var(--primary-accent);color:var(--text-primary);}
 .subject-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
 .subject-grid .subject-option{padding:12px;border-radius:8px;text-align:center;font-size:0.9rem;cursor:pointer;transition:all 0.2s ease;background-color:var(--card-bg);border:1px solid var(--border-color);}
 .subject-grid .subject-option:hover{background-color:var(--primary-accent);color:var(--text-primary);border-color:var(--primary-accent);transform:scale(1.05) rotate(1deg);}
@@ -331,24 +221,22 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .sidebar-link i{font-size:1.4rem;line-height:1;width:24px;text-align:center;flex-shrink:0;}
 .settings-pane{display:none;flex-direction:column;gap:20px;}
 .settings-pane.active{display:flex;}
-.subject-management-list,.leaves-management-list,.activity-log-list{display:flex;flex-direction:column;gap:10px;}
-.subject-management-item,.leave-item{display:grid;grid-template-columns:1fr auto auto;gap:20px;align-items:center;padding:15px 0;border-bottom:1px solid var(--border-color);}
-.subject-management-item:last-child,.leave-item:last-child{border-bottom:none;}
-.subject-name-wrapper h4,.leave-info p{font-size:1.1rem;margin:0;}
-.subject-name-wrapper span,.leave-info span{font-size:0.8rem;color:var(--text-secondary);}
-.subject-actions{display:flex;gap:10px;}
+.subject-management-item { display: grid; grid-template-columns: 1fr auto auto; gap: 15px; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-color);}
+.subject-management-item:last-child { border-bottom: none; }
+.subject-details-wrapper { display: flex; flex-direction: column; gap: 8px; }
+.subject-details-wrapper input { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 4px; padding: 8px; color: var(--text-primary); font-size: 0.9rem;}
 .count-editor{display:flex;align-items:center;gap:10px;}
-.count-editor label{color:var(--text-secondary);}
+.count-editor label{color:var(--text-secondary); font-size: 0.9rem;}
 .count-editor input{width:70px;padding:8px;background:rgba(0,0,0,0.3);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);text-align:center;}
 .danger-zone{border:1px solid var(--primary-accent);}
-.import-controls{display:flex;align-items:center;gap:15px;margin-top:15px;}
-.hidden-file-input{display:none;}
-.file-name{color:var(--text-secondary);font-style:italic;flex-grow:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#importStatus{margin-top:15px;font-weight:500;font-size:0.9rem;}
-.status-success{color:var(--status-safe);}
-.status-error{color:var(--status-danger);}
+.holiday-form { display: flex; gap: 10px; }
+.holiday-form input[type="date"] { flex-basis: 150px; }
+.holiday-form input[type="text"] { flex-grow: 1; }
+.holiday-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color);}
+.holiday-item:last-child { border-bottom: none; }
+.delete-holiday-btn:hover { border-color: var(--primary-accent); color: var(--primary-accent); }
 
-/* 6. Reusable Components */
+/* 6. Reusable Components & Modals */
 .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);backdrop-filter:blur(5px);display:grid;place-items:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 0.3s ease;}
 .modal-overlay:not(.hidden){opacity:1;pointer-events:all;}
 .modal-content{background:var(--card-bg-solid);border:1px solid var(--border-color);width:90%;max-width:500px;padding:30px;clip-path:polygon(0 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%);transform:scale(0.95);transition:transform 0.3s ease;}
@@ -357,20 +245,14 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .modal-header h2{font-size:1.5rem;}
 .close-btn{background:none;border:none;color:var(--text-secondary);font-size:2rem;cursor:pointer;}
 .modal-actions{display:flex;justify-content:flex-end;gap:15px;margin-top:20px;}
-.modal-divider{border:none;height:1px;background-color:rgba(255,255,255,0.05);}
-.modal-subtitle{margin-bottom:15px;color:var(--text-primary);font-weight:500;letter-spacing:0.5px;}
-.daily-log-item{display:flex;align-items:center;gap:15px;padding:15px;border-radius:8px;background-color:var(--card-bg);margin-bottom:10px;}
-.daily-log-item i{font-size:1.4rem;}
-.daily-log-item span{flex-grow:1;font-weight:500;}
-.daily-log-item strong{text-transform:capitalize;font-size:0.9rem;}
-.full-activity-log{max-height:60vh;overflow-y:auto;padding-right:15px;}
-.full-activity-log::-webkit-scrollbar{width:6px;}
-.full-activity-log::-webkit-scrollbar-track{background:rgba(0,0,0,0.2);border-radius:3px;}
-.full-activity-log::-webkit-scrollbar-thumb{background-color:var(--primary-accent);border-radius:3px;}
+#markDateModal .modal-content { max-width: 800px; }
+#markDateModalContent { max-height: 70vh; overflow-y: auto; padding-right: 15px; }
+#markDateModal .attendance-card { padding: 20px; }
+#markDateModal .attendance-card h3 { font-size: 1.5rem; }
 .form-group{margin-bottom:20px;}
 .form-group label{display:block;margin-bottom:8px;font-weight:500;color:var(--text-secondary);}
-.form-group input,.form-group select{width:100%;padding:12px;background:rgba(0,0,0,0.3);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:1rem;}
-.form-group select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23AAAAAA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 1rem center;background-size:1em;padding-right:2.5rem;}
+.form-group input,.form-group select, .form-group textarea {width:100%;padding:12px;background:rgba(0,0,0,0.3);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:1rem;}
+.form-group textarea { resize: vertical; }
 .create-new-btn{background:var(--primary-accent);color:var(--text-primary);border:none;padding:12px 24px;font-size:0.9rem;font-weight:600;letter-spacing:0.5px;cursor:pointer;display:flex;align-items:center;gap:8px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));transition:transform 0.2s ease-out,box-shadow 0.3s ease;}
 .create-new-btn:hover{transform:scale(1.05);box-shadow:0 5px 20px var(--primary-accent-glow);}
 .btn-present-all,.btn-absent-all{padding:12px 24px;font-size:0.9rem;font-weight:600;cursor:pointer;border:none;transition:all 0.2s ease;}
@@ -380,7 +262,6 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .btn-absent-all:hover{transform:scale(1.05);box-shadow:0 0 15px var(--status-danger);}
 .control-btn{background:var(--card-bg);border:1px solid var(--border-color);color:var(--text-secondary);padding:10px 20px;border-radius:5px;cursor:pointer;font-size:0.9rem;font-weight:500;display:flex;align-items:center;gap:8px;transition:all 0.2s ease;}
 .control-btn:hover{color:var(--text-primary);border-color:var(--primary-accent);}
-.control-btn.btn-danger:hover{color:var(--text-primary);border-color:var(--primary-accent);}
 .action-btn{background:var(--card-bg);border:1px solid var(--border-color);color:var(--text-secondary);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;transition:all 0.2s ease;}
 .action-btn i{font-size:1.2rem;}
 .action-btn:hover{color:var(--text-primary);border-color:var(--primary-accent);}
@@ -395,470 +276,47 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 .toast-success{background-color:var(--status-safe);box-shadow:0 0 20px rgba(0,255,171,0.4);}
 .toast-error{background-color:var(--status-danger);box-shadow:0 0 20px rgba(255,209,92,0.4);}
+.empty-state { text-align: center; color: var(--text-secondary); padding: 20px; }
 
-/* 7. Utility & Animations */
-.status-present{color:var(--status-safe);}
-.status-absent{color:var(--status-danger);}
-.status-system{color:var(--status-system);}
-.progress-bar{width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;}
-.progress-bar .progress{height:100%;background:var(--primary-accent);border-radius:3px;}
+/* 7. Animations */
 @keyframes shimmer{0%{background-position:-1000px 0;}100%{background-position:1000px 0;}}
 @keyframes fadeInSlideUp{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
 
-/* 8. Responsiveness & Media Queries */
-@media (max-width: 1200px){.ultimate-dashboard-grid{grid-template-columns:1fr 1fr;}.reports-grid,.settings-layout{grid-template-columns:1fr;}.settings-sidebar{width:100%;overflow-x:auto;}.settings-sidebar nav{flex-direction:row;justify-content:space-between;}.nav-link span,.logo span{display:none;}.nav-left{gap:15px;}}
-@media (max-width: 768px){.app-container{padding:15px;}.page-header h1{font-size:2rem;}.ultimate-dashboard-grid,.settings-layout,.reports-grid{grid-template-columns:1fr;}.top-nav{justify-content:space-between;}.main-nav{order:3;width:100%;overflow-x:auto;padding-bottom:10px;justify-content:space-between;}.nav-link{padding:8px 12px;}.nav-link i{font-size:1.5rem;}.nav-right{order:2;}.custom-select-trigger span{display:none;}.custom-select-trigger{padding:8px 12px;}.attendance-card h3{font-size:1.5rem;}}
-/* --- New Mark Attendance Buttons Design --- */
+/* 8. Mobile & Responsive Styles */
+.mobile-tabs-nav{display:none;}
+.mobile-more-menu { display: none; position: fixed; bottom: 75px; right: 15px; background-color: var(--card-bg-solid); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); z-index: 999; overflow: hidden;}
+.mobile-more-menu.hidden { display: none; }
+.more-menu-link { display: flex; align-items: center; gap: 15px; padding: 15px 20px; text-decoration: none; color: var(--text-secondary); }
+.more-menu-link:hover { background-color: var(--border-color); color: var(--text-primary); }
+.more-menu-link i { font-size: 1.4rem; }
 
-.attendance-actions-new {
-    width: 100%;
-    display: flex;
-    flex-direction: column; /* Stack the button group and links vertically */
-    align-items: flex-start; /* Align to the left */
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.button-group {
-    display: flex;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    border-radius: 12px;
-    overflow: hidden; /* This is key to making the corners work */
+/* Tablet Styles */
+@media (max-width: 1200px){
+    .ultimate-dashboard-grid{grid-template-columns:1fr 1fr;}
+    .bento-grid-reports{grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(120px, auto);}
+    .settings-layout{grid-template-columns:1fr;}
+    .settings-sidebar nav{flex-direction:row;justify-content:flex-start; gap: 10px; flex-wrap: wrap;}
+    .nav-link span,.logo span{display:none;}
+    .nav-left{gap:15px;}
 }
 
-.action-btn-new {
-    border: none;
-    padding: 12px 24px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    border-radius: 0; /* Remove individual radius */
+/* Mobile Styles */
+@media (max-width: 768px){
+    body { padding-bottom: 60px; }
+    .app-container{padding:15px;}
+    .page-header h1{font-size:2rem;}
+    .page-header { flex-direction: column; align-items: flex-start;}
+    .top-nav{display:none;}
+    .mobile-tabs-nav{display:flex;}
+    .ultimate-dashboard-grid, .bento-grid-reports, .settings-layout{grid-template-columns:1fr;}
+    .bento-box.kpi, .bento-box.chart-main, .bento-box.subject-breakdown, .bento-box.calendar-heatmap, .bento-box.full-log { grid-column: span 1; grid-row: span 1;}
+    .attendance-card h3{font-size:1.5rem;}
+    .settings-sidebar nav { justify-content: space-around; }
+    .table-wrapper { overflow-x: auto; }
 }
 
-.action-btn-new:hover {
-    transform: scale(1.05);
-}
-
-.action-btn-new.present {
-    background-color: var(--status-safe);
-    color: var(--text-dark);
-    border-top-left-radius: 12px;
-    border-bottom-left-radius: 12px;
-}
-
-.action-btn-new.absent {
-    background-color: var(--status-danger);
-    color: var(--text-dark);
-    border-top-right-radius: 12px;
-    border-bottom-right-radius: 12px;
-}
-
-.more-options-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 5px;
-}
-
-.action-btn-new.more {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1.2rem;
-}
-.action-btn-new.more:hover {
-    color: var(--text-primary);
-    border-color: var(--primary-accent);
-}
-
-.more-options-links a {
-    color: #8ab4f8; /* A nice blue link color */
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin-right: 15px;
-    transition: all 0.2s ease;
-}
-.more-options-links a:hover {
-    text-decoration: underline;
-    opacity: 0.8;
-}
-
-/* We don't need the popup menu for this design */
-.action-more-wrapper .more-menu {
-    display: none;
-}
-/* In static/style.css */
-
-/* Update the layout to create space between the two stats */
-.all-time-stats-widget #allTimeStats {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    text-align: center;
-    padding: 10px 0;
-    gap: 15px; /* Adds space between items */
-}
-
-/* Reduce the font size of the large numbers */
-.all-time-stats-widget .stat-value {
-    display: block;
-    font-size: 2rem; /* Reduced from 2.5rem */
-    font-weight: 700;
-    line-height: 1.1;
-}
-/* --- Mark Attendance Modal Optimizations --- */
-
-/* Makes the content area scrollable if it gets too tall */
-#markDateModalContent {
-    max-height: 70vh;
-    overflow-y: auto;
-    padding-right: 15px; /* Add some space for the scrollbar */
-}
-
-/* Reduces the minimum width of cards inside the modal */
-#markDateModal .attendance-list-container {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-}
-
-/* Reduces padding and font size on cards inside the modal for a better fit */
-#markDateModal .attendance-card {
-    padding: 20px;
-}
-#markDateModal .attendance-card h3 {
-    font-size: 1.5rem;
-}
-
-/* --- Styling for Medical Leave & Other Action Buttons --- */
-
-.more-options-container {
-    display: flex;
-    flex-wrap: wrap; /* Allows buttons to wrap on small screens */
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-/* Hide the old blue text links */
-.more-options-links {
-    display: none;
-}
-
-/* Style the new "more options" buttons inside the card */
-.attendance-actions-new .action-btn-new.option {
-    flex-grow: 1;
-    background-color: var(--card-bg-solid);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    font-size: 0.8rem;
-    padding: 8px 12px;
-}
-
-.attendance-actions-new .action-btn-new.option:hover {
-    background-color: var(--primary-accent);
-    color: var(--text-primary);
-    border-color: var(--primary-accent);
-}
-/* static/style.css */
-
-/* --- New Mark Attendance Buttons & Status --- */
-
-.card-actions-container {
-    margin-top: 20px;
-}
-
-.attendance-actions-new {
-    width: 100%;
-    display: flex;
-    flex-direction: column; /* Stack the button group and links vertically */
-    align-items: flex-start; /* Align to the left */
-    gap: 10px;
-}
-
-.button-group {
-    display: flex;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    border-radius: 12px;
-    overflow: hidden; /* This is key to making the corners work */
-}
-
-.action-btn-new {
-    border: none;
-    padding: 12px 24px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    border-radius: 0; /* Remove individual radius */
-}
-
-.action-btn-new:hover {
-    transform: scale(1.05);
-}
-
-.action-btn-new.present {
-    background-color: var(--status-safe);
-    color: var(--text-dark);
-    border-top-left-radius: 12px;
-    border-bottom-left-radius: 12px;
-}
-
-.action-btn-new.absent {
-    background-color: var(--status-danger);
-    color: var(--text-dark);
-    border-top-right-radius: 12px;
-    border-bottom-right-radius: 12px;
-}
-
-.more-options-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 5px;
-}
-
-.action-btn-new.more {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1.2rem;
-}
-.action-btn-new.more:hover {
-    color: var(--text-primary);
-    border-color: var(--primary-accent);
-}
-
-.more-options-links a {
-    color: #8ab4f8; /* A nice blue link color */
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin-right: 15px;
-    transition: all 0.2s ease;
-}
-.more-options-links a:hover {
-    text-decoration: underline;
-    opacity: 0.8;
-}
-
-/* We don't need the popup menu for this design */
-.action-more-wrapper .more-menu {
-    display: none;
-}
-
-/* Style for the final status indicator after marking */
-.marked-status {
-    width: 100%;
-    text-align: center;
-    font-weight: 600;
-    padding: 12px 20px;
-    border-radius: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    animation: fadeInSlideUp 0.3s ease;
-}
-.marked-status.present, .marked-status.approved_medical {
-    background-color: var(--status-safe);
-    color: var(--text-dark);
-}
-.marked-status.absent, .marked-status.pending_medical {
-    background-color: var(--status-danger);
-    color: var(--text-dark);
-}
-.marked-status.cancelled, .marked-status.substituted {
-    background-color: var(--card-bg-solid);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
-/* --- New Mark Attendance Buttons Design --- */
-
-.attendance-actions-new {
-    width: 100%;
-    display: flex;
-    flex-direction: column; /* Stack the button group and links vertically */
-    align-items: flex-start; /* Align to the left */
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.button-group {
-    display: flex;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    border-radius: 12px;
-    overflow: hidden; /* This is key to making the corners work */
-}
-
-.action-btn-new {
-    border: none;
-    padding: 12px 24px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    border-radius: 0; /* Remove individual radius */
-}
-
-.action-btn-new:hover {
-    transform: scale(1.05);
-}
-
-.action-btn-new.present {
-    background-color: var(--status-safe);
-    color: var(--text-dark);
-    border-top-left-radius: 12px;
-    border-bottom-left-radius: 12px;
-}
-
-.action-btn-new.absent {
-    background-color: var(--status-danger);
-    color: var(--text-dark);
-    border-top-right-radius: 12px;
-    border-bottom-right-radius: 12px;
-}
-
-.more-options-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 5px;
-}
-
-.action-btn-new.more {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1.2rem;
-}
-.action-btn-new.more:hover {
-    color: var(--text-primary);
-    border-color: var(--primary-accent);
-}
-
-.more-options-links a {
-    color: #8ab4f8; /* A nice blue link color */
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin-right: 15px;
-    transition: all 0.2s ease;
-}
-.more-options-links a:hover {
-    text-decoration: underline;
-    opacity: 0.8;
-}
-
-/* We don't need the popup menu for this design */
-.action-more-wrapper .more-menu {
-    display: none;
-}
-/* 8. Responsiveness & Media Queries */
-@media (max-width: 1200px) {
-    .ultimate-dashboard-grid { grid-template-columns: 1fr 1fr; }
-    .bento-grid-reports { grid-template-columns: 1fr 1fr; }
-    .settings-layout { grid-template-columns: 1fr; }
-    .settings-sidebar nav { flex-direction: row; justify-content: space-between; }
-    .nav-link span, .logo span { display: none; }
-    .nav-left { gap: 15px; }
-}
-
-@media (max-width: 768px) {
-    .app-container { padding: 15px; }
-    .page-header h1 { font-size: 2rem; }
-    .ultimate-dashboard-grid { grid-template-columns: 1fr; }
-    .settings-layout { grid-template-columns: 1fr; }
-    .settings-sidebar { width: 100%; overflow-x: auto; }
-    .settings-sidebar nav { flex-direction: row; }
-    .bento-grid-reports { grid-template-columns: 1fr; }
-    .top-nav { display: none; } /* Hide the top navigation on mobile */
-    .mobile-tabs-nav { display: flex; }
-    .hidden-on-mobile { display: none; }
-    .attendance-card h3 { font-size: 1.5rem; }
-}
-/* Mobile Tab Bar */
-.mobile-tabs-nav {
-    display: none; /* Initially hidden */
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
-    background-color: var(--card-bg-solid);
-    border-top: 1px solid var(--border-color);
-    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    justify-content: space-around;
-    align-items: center;
-}
-
-.mobile-tabs-nav .tab-link {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 0.7rem;
-    font-weight: 500;
-    transition: color 0.2s ease;
-    flex: 1;
-}
-
-.mobile-tabs-nav .tab-link i {
-    font-size: 1.5rem;
-    transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.mobile-tabs-nav .tab-link:hover {
-    color: var(--primary-accent);
-}
-
-.mobile-tabs-nav .tab-link.active {
-    color: var(--primary-accent);
-}
-
-.mobile-tabs-nav .tab-link.active i {
-    transform: translateY(-2px);
-    text-shadow: 0 0 10px var(--primary-accent-glow);
-}
-@media (max-width: 768px) {
-    /* ... other rules */
-    .top-nav { display: none; }
-    .mobile-tabs-nav { display: flex; }
-    /* ... other rules */
-}
-/* In your style.css file */
-
-/* Add this rule at a global level */
-.hidden-on-desktop {
-    display: none;
-}
-
-/* Update your media query */
-@media (max-width: 768px) {
-    /* ... other rules */
-    .top-nav { display: none; } /* This is correct to hide desktop nav */
-    .hidden-on-desktop {
-        display: flex; /* This will now show the mobile nav */
-    }
-    /* ... other rules */
-}
+.mobile-tabs-nav{position:fixed;bottom:0;left:0;width:100%;height:60px;background-color:var(--card-bg-solid);border-top:1px solid var(--border-color);box-shadow:0 -5px 20px rgba(0,0,0,0.2);z-index:1000;justify-content:space-around;align-items:center;}
+.mobile-tabs-nav .tab-link{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--text-secondary);text-decoration:none;font-size:0.7rem;font-weight:500;transition:color 0.2s ease;flex:1; height: 100%; cursor: pointer;}
+.mobile-tabs-nav .tab-link i{font-size:1.5rem;transition:color 0.2s ease,transform 0.2s ease;}
+.mobile-tabs-nav .tab-link:hover,.mobile-tabs-nav .tab-link.active{color:var(--primary-accent);}
+.mobile-tabs-nav .tab-link.active i{transform:translateY(-2px);text-shadow:0 0 10px var(--primary-accent-glow);}

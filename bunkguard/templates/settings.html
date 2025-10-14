@@ -16,6 +16,7 @@
             <a href="#prefs" class="sidebar-link" data-pane="prefs"><i class='bx bxs-tune'></i><span>Preferences</span></a>
             <a href="#leaves" class="sidebar-link" data-pane="leaves"><i class='bx bxs-first-aid'></i><span>Manage Leaves</span></a>
             <a href="#substitutions" class="sidebar-link" data-pane="substitutions"><i class='bx bx-transfer-alt'></i><span>Resolve Substitutions</span></a>
+            <a href="#holidays" class="sidebar-link" data-pane="holidays"><i class='bx bxs-calendar-star'></i><span>Manage Holidays</span></a>
             <a href="#log" class="sidebar-link" data-pane="log"><i class='bx bx-chip'></i><span>System Log</span></a>
             <a href="#data" class="sidebar-link" data-pane="data"><i class='bx bxs-data'></i><span>Data Management</span></a>
         </nav>
@@ -35,7 +36,7 @@
                 <div class="form-group">
                     <label for="attendanceThreshold">Required Attendance Percentage (%)</label>
                     <input type="number" id="attendanceThreshold" min="1" max="100" value="75">
-                    <p class="text-secondary" style="font-size: 0.8rem; margin-top: 8px;">This percentage is used to calculate your "Bunk Meter" status.</p>
+                    <p class="text-secondary" style="font-size: 0.8rem; margin-top: 8px;">This percentage is used for notifications and calculating your "Bunk Meter" status.</p>
                 </div>
                 <button id="savePrefsBtn" class="create-new-btn">Save Preferences</button>
             </div>
@@ -53,6 +54,20 @@
                 <div class="widget-header"><h3>Unresolved Substituted Classes</h3></div>
                 <p class="text-secondary" style="margin-bottom: 20px;">Select a class that was marked as substituted to assign the correct subject that was taught instead.</p>
                 <div id="unresolvedSubstitutionsList"></div>
+            </div>
+        </div>
+        
+        <div id="holidays" class="settings-pane">
+            <div class="widget">
+                <div class="widget-header"><h3>Manage Holidays</h3></div>
+                <p class="text-secondary" style="margin-bottom: 20px;">Add official holidays. These dates will be ignored in streak calculations.</p>
+                <form id="addHolidayForm" class="holiday-form">
+                    <input type="date" id="holidayDate" required>
+                    <input type="text" id="holidayName" placeholder="Holiday Name (e.g., Mid-term Break)" required>
+                    <button type="submit" class="create-new-btn">Add Holiday</button>
+                </form>
+                <hr class="modal-divider" style="margin: 20px 0;">
+                <div id="holidayList"></div>
             </div>
         </div>
 

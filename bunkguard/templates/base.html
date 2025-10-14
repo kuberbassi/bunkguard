@@ -32,10 +32,6 @@
                     <a href="{{ url_for('views.schedule_page') }}"
                         class="nav-link {% if request.path == url_for('views.schedule_page') %}active{% endif %}"><i
                             class='bx bx-calendar'></i><span>Schedule</span></a>
-
-                    <a href="{{ url_for('views.settings_page') }}"
-                        class="nav-link {% if request.path == url_for('views.settings_page') %}active{% endif %}"><i
-                            class='bx bx-cog'></i><span>Settings</span></a>
                 </nav>
             </div>
             <div class="nav-right">
@@ -55,9 +51,10 @@
                     <i id="themeToggleBtn" class='bx bx-moon'></i>
                     <div class="notification-bell" id="notificationBell">
                         <i class='bx bx-bell'></i>
+                        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
                         <div class="nav-dropdown notification-dropdown hidden" id="notificationDropdown">
                             <div class="dropdown-header"><strong>Notifications</strong></div>
-                            <ul class="notification-list">
+                            <ul class="notification-list" id="notificationList">
                                 <li class="no-notifications">
                                     <p>No new notifications yet.</p>
                                 </li>
@@ -92,30 +89,8 @@
                     </div>
                 </div>
             </div>
-
         </header>
-        <nav class="mobile-tabs-nav hidden-on-desktop">
-            <a href="{{ url_for('views.dashboard') }}"
-                class="tab-link {% if request.path == url_for('views.dashboard') %}active{% endif %}">
-                <i class='bx bxs-dashboard'></i><span>Dashboard</span>
-            </a>
-            <a href="{{ url_for('views.mark_attendance_page') }}"
-                class="tab-link {% if request.path == url_for('views.mark_attendance_page') %}active{% endif %}">
-                <i class='bx bx-check-square'></i><span>Mark</span>
-            </a>
-            <a href="{{ url_for('views.reports_page') }}"
-                class="tab-link {% if request.path == url_for('views.reports_page') %}active{% endif %}">
-                <i class='bx bx-line-chart'></i><span>Reports</span>
-            </a>
-            <a href="{{ url_for('views.schedule_page') }}"
-                class="tab-link {% if request.path == url_for('views.schedule_page') %}active{% endif %}">
-                <i class='bx bx-calendar'></i><span>Schedule</span>
-            </a>
-            <a href="{{ url_for('views.settings_page') }}"
-                class="tab-link {% if request.path == url_for('views.settings_page') %}active{% endif %}">
-                <i class='bx bx-cog'></i><span>Settings</span>
-            </a>
-        </nav>
+
         <main class="content-area">
             <div class="background-aurora">
                 <div class="aurora-shape shape1"></div>
@@ -123,6 +98,39 @@
             </div>
             {% block content %}{% endblock %}
         </main>
+    </div>
+
+    <nav class="mobile-tabs-nav">
+        <a href="{{ url_for('views.dashboard') }}"
+            class="tab-link {% if request.path == url_for('views.dashboard') %}active{% endif %}">
+            <i class='bx bxs-dashboard'></i><span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('views.mark_attendance_page') }}"
+            class="tab-link {% if request.path == url_for('views.mark_attendance_page') %}active{% endif %}">
+            <i class='bx bx-check-square'></i><span>Mark</span>
+        </a>
+        <a href="{{ url_for('views.reports_page') }}"
+            class="tab-link {% if request.path == url_for('views.reports_page') %}active{% endif %}">
+            <i class='bx bx-line-chart'></i><span>Reports</span>
+        </a>
+        <a href="{{ url_for('views.schedule_page') }}"
+            class="tab-link {% if request.path == url_for('views.schedule_page') %}active{% endif %}">
+            <i class='bx bx-calendar'></i><span>Schedule</span>
+        </a>
+        <div class="tab-link" id="mobileMoreTab">
+            <i class='bx bx-dots-horizontal-rounded'></i><span>More</span>
+        </div>
+    </nav>
+
+    <div class="mobile-more-menu hidden" id="mobileMoreMenu">
+        <a href="{{ url_for('views.settings_page') }}" class="more-menu-link">
+            <i class='bx bx-cog'></i>
+            <span>Settings</span>
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="more-menu-link">
+            <i class='bx bx-log-out'></i>
+            <span>Log Out</span>
+        </a>
     </div>
 
 

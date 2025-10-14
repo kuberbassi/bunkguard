@@ -5,6 +5,7 @@ import traceback
 from datetime import datetime, timedelta
 from bson import json_util, ObjectId
 from flask import Blueprint, jsonify, request, session, Response
+from itertools import groupby
 
 from . import db # Import the shared db instance
 
@@ -16,6 +17,8 @@ attendance_log_collection = db.get_collection('attendance_logs')
 timetable_collection = db.get_collection('timetable')
 system_logs_collection = db.get_collection('system_logs')
 deadlines_collection = db.get_collection('deadlines')
+holidays_collection = db.get_collection('holidays')
+
 
 # --- Helper Functions ---
 def create_system_log(user_email, action, description):
@@ -45,6 +48,52 @@ def calculate_bunk_guard(attended, total, required_percent=75):
         classes_to_attend = math.ceil((required_percent * total - attended) / (1 - required_percent)) if (1 - required_percent) > 0 else -1
         status_msg = f"Attend the next {classes_to_attend} classes." if classes_to_attend != -1 else "Attend all upcoming classes."
         return {"status": "danger", "status_message": status_msg, "percentage": round(current_percent * 100, 1)}
+
+def calculate_streak(user_email):
+    """
+    Calculates the user's current perfect attendance streak.
+    A day counts towards the streak if all scheduled classes on that day were attended.
+    Holidays are skipped and do not break the streak.
+    """
+    today = datetime.utcnow().date()
+    current_streak = 0
+    
+    holidays = {h['date'] for h in holidays_collection.find({'owner_email': user_email}, {'date': 1})}
+    
+    logs = list(attendance_log_collection.find(
+        {'owner_email': user_email},
+        {'date': 1, 'status': 1, '_id': 0}
+    ).sort('date', -1))
+
+    if not logs:
+        return 0
+
+    logs_by_date = {k: list(v) for k, v in groupby(logs, key=lambda x: x['date'])}
+    
+    day_to_check = today
+    while True:
+        date_str = day_to_check.strftime("%Y-%m-%d")
+        
+        if date_str in holidays:
+            day_to_check -= timedelta(days=1)
+            continue
+
+        if date_str in logs_by_date:
+            day_logs = logs_by_date[date_str]
+            was_absent = any(log['status'] in ['absent', 'pending_medical'] for log in day_logs)
+            
+            if was_absent:
+                break
+            else:
+                current_streak += 1
+        else:
+            if day_to_check.weekday() < 5: # If it's a weekday with no logs, streak is broken
+                 break
+
+        day_to_check -= timedelta(days=1)
+        
+    return current_streak
+
 
 # === CORE API ROUTES ===
 
@@ -109,7 +158,8 @@ def get_reports_data():
                 heatmap_data_sets[date_str].add('absent')
 
         heatmap_data_lists = {date: list(statuses) for date, statuses in heatmap_data_sets.items()}
-        streak = 0 
+        
+        streak = calculate_streak(user_email)
 
         response_data = {
             "kpis": {
@@ -160,41 +210,41 @@ def get_attendance_logs():
         traceback.print_exc()
         return jsonify({"error": "Failed to fetch logs."}), 500
 
-# In bunkguard/api.py, replace the old mark_attendance function
-
-# In bunkguard/api.py
-
 @api_bp.route('/mark_attendance', methods=['POST'])
 def mark_attendance():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     data = request.json
     subject_id = ObjectId(data.get('subject_id'))
     status = data.get('status')
+    notes = data.get('notes', None)
     date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
 
     subject = subjects_collection.find_one({'_id': subject_id})
     if not subject: return jsonify({"error": "Subject not found"}), 404
     
-    # Check if already marked for the specific date
     existing_log = attendance_log_collection.find_one({"subject_id": subject_id, "date": date_str})
     if existing_log:
         return jsonify({"error": f"'{subject.get('name')}' has already been marked for this day."}), 400
     
-    attendance_log_collection.insert_one({
+    log_entry = {
         "subject_id": subject_id,
         "owner_email": session['user']['email'],
         "date": date_str,
         "status": status,
         "timestamp": datetime.utcnow(),
         "semester": subject.get('semester')
-    })
+    }
+    if notes:
+        log_entry['notes'] = notes
+
+    attendance_log_collection.insert_one(log_entry)
     
     update_query = {}
-    # CORRECTED: Added 'substituted' to the list of statuses that increment total count.
-    if status in ['present', 'absent', 'pending_medical', 'substituted']:
-        update_query['$inc'] = {'total': 1}
-        if status == 'present':
-            update_query['$inc']['attended'] = 1
+    if status in ['present', 'absent', 'pending_medical', 'substituted', 'approved_medical']:
+        if status != 'cancelled':
+            update_query['$inc'] = {'total': 1}
+        if status == 'present' or status == 'approved_medical':
+            update_query.setdefault('$inc', {})['attended'] = 1
             
     if update_query:
         subjects_collection.update_one({'_id': subject_id}, update_query)
@@ -205,6 +255,36 @@ def mark_attendance():
         f"Marked '{subject.get('name')}' as {status} for {date_str}"
     )
     return jsonify({"success": True})
+
+
+@api_bp.route('/mark_all_attendance', methods=['POST'])
+def mark_all_attendance():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    subject_ids = [ObjectId(id) for id in data.get('subject_ids', [])]
+    status = data.get('status')
+    date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
+    user_email = session['user']['email']
+
+    marked_count = 0
+    for subject_id in subject_ids:
+        if not attendance_log_collection.find_one({"subject_id": subject_id, "date": date_str}):
+            subject = subjects_collection.find_one({'_id': subject_id})
+            if subject:
+                attendance_log_collection.insert_one({
+                    "subject_id": subject_id, "owner_email": user_email,
+                    "date": date_str, "status": status, "timestamp": datetime.utcnow(),
+                    "semester": subject.get('semester')
+                })
+                update_query = {'$inc': {'total': 1}}
+                if status == 'present':
+                    update_query['$inc']['attended'] = 1
+                subjects_collection.update_one({'_id': subject_id}, update_query)
+                marked_count += 1
+
+    create_system_log(user_email, "Bulk Attendance", f"Marked {marked_count} classes as {status} for {date_str}.")
+    return jsonify({"success": True, "message": f"Marked {marked_count} classes."})
+
 
 @api_bp.route('/todays_classes')
 def get_todays_classes():
@@ -232,8 +312,104 @@ def get_todays_classes():
     for subject in subjects:
         log = attendance_log_collection.find_one({"subject_id": subject["_id"], "date": today_str})
         subject["marked_status"] = log["status"] if log else "pending"
-        
+        if log:
+            subject["log_id"] = str(log["_id"])
+
     return Response(json_util.dumps(subjects), mimetype='application/json')
+
+
+@api_bp.route('/classes_for_date')
+def get_classes_for_date():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({"error": "Date parameter is required"}), 400
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+    user_email = session['user']['email']
+    day_name = target_date.strftime('%A')
+    
+    timetable_doc = timetable_collection.find_one({'owner_email': user_email})
+    if not timetable_doc:
+        return Response(json_util.dumps([]), mimetype='application/json')
+
+    subject_ids = []
+    schedule = timetable_doc.get('schedule', {})
+    if isinstance(schedule, dict):
+        for days in schedule.values():
+            if isinstance(days, dict) and day_name in days:
+                slot_data = days[day_name]
+                if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
+                    subject_ids.append(ObjectId(slot_data['subjectId']))
+    
+    if not subject_ids:
+        return Response(json_util.dumps([]), mimetype='application/json')
+
+    subjects = list(subjects_collection.find({"owner_email": user_email, "_id": {"$in": subject_ids}}))
+    for subject in subjects:
+        log = attendance_log_collection.find_one({"subject_id": subject["_id"], "date": date_str})
+        subject["marked_status"] = log["status"] if log else "pending"
+        if log:
+            subject["log_id"] = str(log["_id"])
+
+    return Response(json_util.dumps(subjects), mimetype='application/json')
+
+
+@api_bp.route('/edit_attendance/<log_id>', methods=['POST'])
+def edit_attendance(log_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    new_status = data.get('status')
+    new_notes = data.get('notes', None)
+    
+    log = attendance_log_collection.find_one({'_id': ObjectId(log_id)})
+    if not log:
+        return jsonify({"error": "Log not found"}), 404
+        
+    old_status = log['status']
+    subject_id = log['subject_id']
+    
+    # --- 1. Reverse the old statistics ---
+    update_query = {}
+    if old_status in ['present', 'absent', 'pending_medical', 'substituted', 'approved_medical']:
+        if old_status != 'cancelled':
+             update_query['$inc'] = {'total': -1}
+        if old_status == 'present' or old_status == 'approved_medical':
+            update_query.setdefault('$inc', {})['attended'] = -1
+    
+    if update_query:
+        subjects_collection.update_one({'_id': subject_id}, update_query)
+
+    # --- 2. Apply the new statistics ---
+    update_query = {}
+    if new_status in ['present', 'absent', 'pending_medical', 'substituted', 'approved_medical']:
+        if new_status != 'cancelled':
+            update_query['$inc'] = {'total': 1}
+        if new_status == 'present' or new_status == 'approved_medical':
+            update_query.setdefault('$inc', {})['attended'] = 1
+    
+    if update_query:
+        subjects_collection.update_one({'_id': subject_id}, update_query)
+        
+    # --- 3. Update the log entry itself ---
+    log_update = {'$set': {'status': new_status}}
+    if new_notes:
+        log_update['$set']['notes'] = new_notes
+    else:
+        log_update['$unset'] = {'notes': ""} # Remove notes field if empty
+        
+    attendance_log_collection.update_one({'_id': ObjectId(log_id)}, log_update)
+
+    subject = subjects_collection.find_one({'_id': subject_id})
+    create_system_log(session['user']['email'], "Attendance Edited", f"Changed '{subject['name']}' from {old_status} to {new_status}.")
+    
+    return jsonify({"success": True})
 
 
 # === SETTINGS PAGE AND OTHER ROUTES ===
@@ -310,6 +486,7 @@ def delete_all_data():
     timetable_collection.delete_many({'owner_email': user_email})
     system_logs_collection.delete_many({'owner_email': user_email})
     deadlines_collection.delete_many({'owner_email': user_email})
+    holidays_collection.delete_many({'owner_email': user_email})
     create_system_log(user_email, "Data Deleted", "User deleted all their account data.")
     return jsonify({"success": True})
 
@@ -348,6 +525,22 @@ def add_subject():
     subjects_collection.insert_one({"name": subject_name, "owner_email": session['user']['email'], "semester": semester, "attended": 0, "total": 0, "created_at": datetime.utcnow()})
     create_system_log(session['user']['email'], "Subject Added", f"Added '{subject_name}' to Semester {semester}")
     return jsonify({"success": True, "message": "Subject added successfully"})
+
+@api_bp.route('/update_subject_details', methods=['POST'])
+def update_subject_details():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    subject_id = ObjectId(data.get('subject_id'))
+    details = {
+        'professor': data.get('professor'),
+        'classroom': data.get('classroom')
+    }
+    subjects_collection.update_one(
+        {'_id': subject_id, 'owner_email': session['user']['email']},
+        {'$set': details}
+    )
+    return jsonify({"success": True})
+
 
 @api_bp.route('/update_attendance_count', methods=['POST'])
 def update_attendance_count():
@@ -449,7 +642,7 @@ def get_logs_for_date():
         {'$match': {'owner_email': session['user']['email'], 'date': date_str}},
         {'$lookup': {'from': 'subjects', 'localField': 'subject_id', 'foreignField': '_id', 'as': 'subject_info'}},
         {'$unwind': '$subject_info'},
-        {'$project': {'_id': 0, 'subject_name': '$subject_info.name', 'status': '$status'}}
+        {'$project': {'_id': 1, 'subject_name': '$subject_info.name', 'status': '$status', 'notes': 1}}
     ]
     logs = list(attendance_log_collection.aggregate(pipeline))
     return Response(json_util.dumps(logs), mimetype='application/json')
@@ -523,50 +716,6 @@ def analytics_day_of_week():
         traceback.print_exc()
         return jsonify({"error": "Could not fetch analytics."}), 500
     
-# In bunkguard/api.py, add this new function
-
-@api_bp.route('/classes_for_date')
-def get_classes_for_date():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    
-    date_str = request.args.get('date')
-    if not date_str:
-        return jsonify({"error": "Date parameter is required"}), 400
-
-    try:
-        target_date = datetime.strptime(date_str, "%Y-%m-%d")
-    except ValueError:
-        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
-
-    user_email = session['user']['email']
-    day_name = target_date.strftime('%A')
-    
-    timetable_doc = timetable_collection.find_one({'owner_email': user_email})
-    if not timetable_doc:
-        return Response(json_util.dumps([]), mimetype='application/json')
-
-    subject_ids = []
-    schedule = timetable_doc.get('schedule', {})
-    if isinstance(schedule, dict):
-        for days in schedule.values():
-            if isinstance(days, dict) and day_name in days:
-                slot_data = days[day_name]
-                if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
-                    subject_ids.append(ObjectId(slot_data['subjectId']))
-    
-    if not subject_ids:
-        return Response(json_util.dumps([]), mimetype='application/json')
-
-    subjects = list(subjects_collection.find({"owner_email": user_email, "_id": {"$in": subject_ids}}))
-    for subject in subjects:
-        log = attendance_log_collection.find_one({"subject_id": subject["_id"], "date": date_str})
-        subject["marked_status"] = log["status"] if log else "pending"
-        
-    return Response(json_util.dumps(subjects), mimetype='application/json')
-
-# In bunkguard/api.py
-
-# In bunkguard/api.py
 
 @api_bp.route('/mark_substituted', methods=['POST'])
 def mark_substituted():
@@ -575,14 +724,12 @@ def mark_substituted():
     data = request.json
     original_subject_id = ObjectId(data.get('original_subject_id'))
     substitute_subject_id = ObjectId(data.get('substitute_subject_id'))
-    date_str = data.get('date') # Date is crucial and must be provided
+    date_str = data.get('date')
     user_email = session['user']['email']
 
     if not date_str:
         return jsonify({"error": "Date is required to resolve a substitution"}), 400
 
-    # --- 1. Find and resolve the original 'substituted' log ---
-    # We change its status so it no longer appears in the "unresolved" list.
     original_log_update = attendance_log_collection.update_one(
         {"subject_id": original_subject_id, "date": date_str, "owner_email": user_email, "status": "substituted"},
         {'$set': {"status": "substitution_resolved"}}
@@ -591,7 +738,6 @@ def mark_substituted():
     if original_log_update.matched_count == 0:
         return jsonify({"error": "Could not find the original substituted log to resolve."}), 404
 
-    # --- 2. Correctly log attendance for the substitute subject ---
     substitute_log = attendance_log_collection.find_one(
         {"subject_id": substitute_subject_id, "date": date_str, "owner_email": user_email}
     )
@@ -600,7 +746,6 @@ def mark_substituted():
     sub_name = substitute_subject_info.get('name', 'Unknown')
 
     if substitute_log:
-        # A log already exists for this subject (e.g., was marked absent). We need to correct it.
         if substitute_log['status'] in ['absent', 'pending_medical']:
             subjects_collection.update_one(
                 {'_id': substitute_subject_id}, 
@@ -614,7 +759,6 @@ def mark_substituted():
         create_system_log(user_email, "Substitution Resolved", f"Corrected attendance for '{sub_name}' on {date_str}.")
 
     else:
-        # No log existed, so we create a new 'present' record and update counts.
         attendance_log_collection.insert_one({
             "subject_id": substitute_subject_id,
             "owner_email": user_email,
@@ -643,3 +787,88 @@ def get_unresolved_substitutions():
     ]
     unresolved_logs = list(attendance_log_collection.aggregate(pipeline))
     return Response(json_util.dumps(unresolved_logs), mimetype='application/json')
+
+@api_bp.route('/holidays', methods=['GET', 'POST'])
+def handle_holidays():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    if request.method == 'POST':
+        data = request.json
+        holidays_collection.insert_one({
+            'owner_email': user_email,
+            'date': data.get('date'),
+            'name': data.get('name')
+        })
+        create_system_log(user_email, "Holiday Added", f"Added holiday: {data.get('name')} on {data.get('date')}")
+        return jsonify({"success": True})
+    
+    holidays = list(holidays_collection.find({'owner_email': user_email}).sort('date', 1))
+    return Response(json_util.dumps(holidays), mimetype='application/json')
+
+@api_bp.route('/holidays/<holiday_id>', methods=['DELETE'])
+def delete_holiday(holiday_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    holidays_collection.delete_one({'_id': ObjectId(holiday_id)})
+    return jsonify({"success": True})
+
+
+@api_bp.route('/notifications')
+def get_notifications():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    notifications = []
+
+    # Deadline notifications
+    two_days_from_now = (datetime.utcnow() + timedelta(days=2)).strftime('%Y-%m-%d')
+    upcoming_deadlines = deadlines_collection.find({
+        'owner_email': user_email,
+        'completed': False,
+        'due_date': {'$lte': two_days_from_now}
+    })
+    for deadline in upcoming_deadlines:
+        notifications.append({
+            "type": "deadline",
+            "message": f"Deadline for '{deadline['title']}' is approaching.",
+            "timestamp": datetime.utcnow()
+        })
+
+    # Low attendance notifications
+    user_prefs_doc = timetable_collection.find_one({'owner_email': user_email}, {'preferences': 1})
+    threshold = user_prefs_doc.get('preferences', {}).get('threshold', 75) if user_prefs_doc else 75
+    
+    subjects = list(subjects_collection.find({'owner_email': user_email}))
+    for subject in subjects:
+        percentage = calculate_percent(subject.get('attended', 0), subject.get('total', 0))
+        if percentage < threshold and subject.get('total', 0) > 0:
+            notifications.append({
+                "type": "attendance",
+                "message": f"Attendance for '{subject['name']}' is low ({percentage}%).",
+                "timestamp": datetime.utcnow()
+            })
+    
+    notifications.sort(key=lambda x: x['timestamp'], reverse=True)
+    return Response(json_util.dumps(notifications), mimetype='application/json')
+
+
+@api_bp.route('/achievements')
+def get_achievements():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    achievements = []
+
+    # Perfect Streak Achievements
+    streak = calculate_streak(user_email)
+    if streak >= 7:
+        achievements.append({"name": "Perfect Week", "description": "7 consecutive days of perfect attendance."})
+    if streak >= 30:
+        achievements.append({"name": "On a Roll", "description": "30 consecutive days of perfect attendance."})
+
+    # Comeback Kid Achievement
+    subjects = list(subjects_collection.find({'owner_email': user_email}))
+    for subject in subjects:
+        # This is a simplified check. A real implementation would need to track historical data.
+        if calculate_percent(subject.get('attended', 0), subject.get('total', 0)) > 75:
+             # A placeholder for a more complex logic
+             pass
+
+    return jsonify(achievements)
