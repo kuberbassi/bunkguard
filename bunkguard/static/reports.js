@@ -126,12 +126,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // in bunkguard/static/reports.js
+
     const loadInitialData = async () => {
         try {
             const [reportsRes, analyticsRes, initialLogsRes] = await Promise.all([
                 fetch(`/api/reports_data?semester=${currentSemester}`),
                 fetch('/api/analytics/day_of_week'),
-                fetch(`/api/attendance_logs?page=1&limit=3`) // Fetch only the first 3 logs
+                // CORRECTED: Changed limit from 3 to 15 to show more logs initially.
+                fetch(`/api/attendance_logs?page=1&limit=15`) 
             ]);
 
             if (!reportsRes.ok) throw new Error(`Reports API failed`);

@@ -252,7 +252,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (dom.viewAllActivityBtn) dom.viewAllActivityBtn.addEventListener('click', async () => {
             dom.activityModal.classList.remove('hidden');
-            render.recentActivity(await (await fetch('/api/attendance_logs')).json().logs, dom.fullActivityLog);
+            
+            // --- THIS IS THE FIX ---
+            // Old, problematic code:
+            // render.recentActivity(await (await fetch('/api/attendance_logs')).json().logs, dom.fullActivityLog);
+
+            // New, robust code:
+            try {
+                const response = await fetch('/api/attendance_logs'); // Fetches with default limit (15 logs)
+                const fullLogsData = await response.json();
+                render.recentActivity(fullLogsData.logs, dom.fullActivityLog);
+            } catch (error) {
+                console.error("Failed to load full activity log:", error);
+                dom.fullActivityLog.innerHTML = '<p class="empty-state">Could not load activity.</p>';
+            }
         });
         if (dom.closeActivityModalBtn) dom.closeActivityModalBtn.addEventListener('click', () => dom.activityModal.classList.add('hidden'));
 

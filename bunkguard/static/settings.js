@@ -2,18 +2,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DOM ELEMENTS ---
     const sidebarLinks = document.querySelectorAll('.sidebar-link');
     const panes = document.querySelectorAll('.settings-pane');
-    
+
     // Content Containers
     const subjectListContainer = document.getElementById('subjectManagementList');
     const systemLogContainer = document.getElementById('systemLogList');
     const pendingLeavesContainer = document.getElementById('pendingLeavesList');
     const unresolvedSubstitutionsContainer = document.getElementById('unresolvedSubstitutionsList');
-    
+
     // Modals
     const substitutionModal = document.getElementById('substitutionModal');
     const substitutionSubjectList = document.getElementById('substitutionSubjectList');
     const closeSubstitutionModalBtn = document.getElementById('closeSubstitutionModalBtn');
-    
+
     // Preferences Pane
     const attendanceThresholdInput = document.getElementById('attendanceThreshold');
     const savePrefsBtn = document.getElementById('savePrefsBtn');
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const importDataBtn = document.getElementById('importDataBtn');
     const fileNameSpan = document.getElementById('fileName');
     const importStatus = document.getElementById('importStatus');
-    
+
     // --- STATE ---
     const currentSemester = localStorage.getItem('selectedSemester') || 1;
     let loadedTabs = new Set();
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `).join('');
         }
     };
-    
+
     // --- MAIN LOGIC & EVENT HANDLERS ---
     const loadPaneContent = async (paneId) => {
         // Always reload these tabs for fresh data
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'leaves':
                 render.pendingLeaves(await api.getPendingLeaves());
                 break;
-            case 'prefs': 
+            case 'prefs':
                 const prefs = await api.getPreferences();
                 if (attendanceThresholdInput && prefs.threshold) {
                     attendanceThresholdInput.value = prefs.threshold;
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const subjectId = item.dataset.id;
             const attended = item.querySelector('.attended-input').value;
             const total = item.querySelector('.total-input').value;
-            
+
             const result = await api.updateCounts(subjectId, attended, total);
             if (result.success) {
                 saveBtn.style.color = 'var(--status-safe)';
@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const allSubjects = await api.getAllSubjectsForSemester(item.dataset.semester);
             const choices = allSubjects.filter(s => s._id.$oid !== substitutionContext.original_subject_id);
 
-            substitutionSubjectList.innerHTML = choices.map(sub => 
+            substitutionSubjectList.innerHTML = choices.map(sub =>
                 `<div class="subject-option" data-id="${sub._id.$oid}">${sub.name}</div>`
             ).join('');
         }
@@ -256,17 +256,14 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             if (result.success) {
-                substitutionModal.classList.add('hidden');
-                substitutionContext.itemElement.remove();
-                if (unresolvedSubstitutionsContainer.children.length === 0) {
-                    render.unresolvedSubstitutions([]);
-                }
+                // The fix is here: reload the page to get fresh data everywhere.
+                window.location.reload();
             }
         }
     });
 
     // Listeners for static elements
-    if(savePrefsBtn) savePrefsBtn.addEventListener('click', async () => {
+    if (savePrefsBtn) savePrefsBtn.addEventListener('click', async () => {
         const threshold = attendanceThresholdInput.value;
         const result = await api.savePreferences(threshold);
         if (result.success) {
@@ -275,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if(deleteAllDataBtn) deleteAllDataBtn.addEventListener('click', () => {
+    if (deleteAllDataBtn) deleteAllDataBtn.addEventListener('click', () => {
         const confirmation = prompt('This action is IRREVERSIBLE. Type "DELETE" to confirm.');
         if (confirmation === 'DELETE') {
             fetch('/api/delete_all_data', { method: 'POST' })
@@ -289,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if(importFileInput) importFileInput.addEventListener('change', () => {
+    if (importFileInput) importFileInput.addEventListener('change', () => {
         if (importFileInput.files.length > 0) {
             fileNameSpan.textContent = importFileInput.files[0].name;
             importDataBtn.disabled = false;
@@ -299,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if(importDataBtn) importDataBtn.addEventListener('click', () => {
+    if (importDataBtn) importDataBtn.addEventListener('click', () => {
         const file = importFileInput.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -308,23 +305,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const jsonData = JSON.parse(event.target.result);
                 importDataBtn.textContent = 'Importing...';
                 importDataBtn.disabled = true;
-                if(importStatus) importStatus.textContent = '';
-                
+                if (importStatus) importStatus.textContent = '';
+
                 const result = await api.importData(jsonData);
                 if (result.success) {
-                    if(importStatus) {
+                    if (importStatus) {
                         importStatus.textContent = `Import complete! ${result.message}`;
                         importStatus.className = 'status-success';
                     }
                     setTimeout(() => window.location.reload(), 2000);
                 } else {
-                    if(importStatus) {
+                    if (importStatus) {
                         importStatus.textContent = `Import failed: ${result.error}`;
                         importStatus.className = 'status-error';
                     }
                 }
             } catch (e) {
-                if(importStatus) {
+                if (importStatus) {
                     importStatus.textContent = 'Invalid JSON file.';
                     importStatus.className = 'status-error';
                 }
@@ -332,12 +329,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         reader.readAsText(file);
     });
-    
-    if(closeSubstitutionModalBtn) closeSubstitutionModalBtn.addEventListener('click', () => substitutionModal.classList.add('hidden'));
-    if(substitutionModal) substitutionModal.addEventListener('click', (e) => {
+
+    if (closeSubstitutionModalBtn) closeSubstitutionModalBtn.addEventListener('click', () => substitutionModal.classList.add('hidden'));
+    if (substitutionModal) substitutionModal.addEventListener('click', (e) => {
         if (e.target === substitutionModal) substitutionModal.classList.add('hidden');
     });
-    
+
     // --- INITIALIZATION ---
     loadPaneContent('subjects');
 });
