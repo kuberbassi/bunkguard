@@ -1,10 +1,10 @@
 # api/views.py
 
-from flask import render_template, session, redirect, url_for, send_from_directory
+from flask import render_template, session, redirect, url_for, send_from_directory, current_app, Response
 from flask import Blueprint
 from datetime import datetime
-from . import db  # ✅ CORRECT - Import db from the same package
-from flask import Response
+from . import db
+import os
 
 views_bp = Blueprint('views', __name__)
 
@@ -70,3 +70,42 @@ def printable_report(semester):
 @views_bp.errorhandler(404)
 def not_found(e):
     return render_template('404.html'), 404
+
+# --- SEO & Verification Routes ---
+
+@views_bp.route('/robots.txt')
+def robots_txt():
+    """Serve robots.txt for search engines"""
+    content = """User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /callback
+
+Sitemap: https://bunkguard.vercel.app/sitemap.xml"""
+    return Response(content, mimetype='text/plain')
+
+@views_bp.route('/sitemap.xml')
+def sitemap():
+    """Serve sitemap.xml for search engines"""
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://bunkguard.vercel.app/</loc>
+    <lastmod>2025-11-09</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://bunkguard.vercel.app/login</loc>
+    <lastmod>2025-11-09</lastmod>
+    <priority>0.8</priority>
+  </url>
+</urlset>"""
+    return Response(content, mimetype='application/xml')
+
+@views_bp.route('/google75750b6bbd7a51d3.html')
+def google_verification():
+    """Serve Google Search Console verification file"""
+    # Return the exact content Google gave you
+    content = "google-site-verification: google75750b6bbd7a51d3.html"
+    return Response(content, mimetype='text/html')
