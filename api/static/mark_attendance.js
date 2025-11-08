@@ -11,77 +11,140 @@ document.addEventListener('DOMContentLoaded', () => {
     let noteContext = {}; // To store subjectId, status, and logId for the modal
 
     // Global variable to store attendance dates
-let attendanceDates = new Set();
+    let attendanceDates = new Set();
 
-// Function to load attendance dates for a specific month
-async function loadAttendanceDates(year, month) {
-    try {
-        // API call to get all attendance logs for the specified month
-        const response = await fetch(`/api/attendance_history?year=${year}&month=${month}`);
-        const data = await response.json();
-        
-        if (data.success && data.dates) {
-            // Clear existing dates
-            attendanceDates.clear();
-            
-            // Add all dates with attendance to the Set
-            data.dates.forEach(dateStr => {
-                attendanceDates.add(dateStr); // Format: "2025-10-21"
-            });
-            
-            // Update calendar dots
-            updateCalendarDots();
-        }
-    } catch (error) {
-        console.error('Error loading attendance dates:', error);
-    }
-}
+    // Calendar attendance data
+    let calendarAttendanceData = {};
 
-// Function to check if a date has attendance
-function hasAttendance(year, month, day) {
-    // Create date string in format "YYYY-MM-DD"
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return attendanceDates.has(dateStr);
-}
+    // Load attendance for calendar
+    async function loadCalendarAttendance(year, month) {
+        try {
+            const response = await fetch(`/api/attendance_calendar?year=${year}&month=${month}`);
+            const data = await response.json();
 
-// Function to update calendar visual dots
-function updateCalendarDots() {
-    // Get all calendar day cells
-    const dayCells = document.querySelectorAll('.calendar-day');
-    
-    dayCells.forEach(cell => {
-        const day = cell.dataset.day;
-        const month = cell.dataset.month;
-        const year = cell.dataset.year;
-        
-        // Check if this date has attendance
-        if (hasAttendance(year, month, day)) {
-            // Add green dot indicator
-            if (!cell.querySelector('.attendance-dot')) {
-                const dot = document.createElement('div');
-                dot.className = 'attendance-dot';
-                cell.appendChild(dot);
+            if (data.success) {
+                calendarAttendanceData = data.dates;
+                updateCalendarDots();
             }
-        } else {
-            // Remove dot if it exists
-            const existingDot = cell.querySelector('.attendance-dot');
+        } catch (error) {
+            console.error('Error loading calendar attendance:', error);
+        }
+    }
+
+    // Update calendar dots based on attendance status
+    function updateCalendarDots() {
+        const calendarDays = document.querySelectorAll('.calendar-day');
+
+        calendarDays.forEach(day => {
+            const dateStr = day.dataset.date; // Format: "2025-10-21"
+
+            // Remove existing dots
+            const existingDot = day.querySelector('.attendance-dot');
             if (existingDot) {
                 existingDot.remove();
             }
-        }
+
+            // Check if this date has attendance
+            if (calendarAttendanceData[dateStr]) {
+                const status = calendarAttendanceData[dateStr];
+                const dot = document.createElement('div');
+                dot.className = 'attendance-dot';
+
+                // Set color based on status
+                if (status.all_present) {
+                    dot.style.backgroundColor = '#10b981'; // Green - all present
+                } else if (status.all_absent) {
+                    dot.style.backgroundColor = '#ef4444'; // Red - all absent
+                } else if (status.mixed) {
+                    dot.style.backgroundColor = '#f59e0b'; // Orange - mixed
+                }
+
+                day.appendChild(dot);
+            }
+        });
+    }
+
+    // When calendar month changes
+    function onCalendarMonthChange(year, month) {
+        loadCalendarAttendance(year, month);
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        const now = new Date();
+        loadCalendarAttendance(now.getFullYear(), now.getMonth() + 1);
     });
-}
 
-// When calendar month changes, reload attendance dates
-function onMonthChange(year, month) {
-    loadAttendanceDates(year, month + 1); // month is 0-indexed, so add 1
-}
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const now = new Date();
-    loadAttendanceDates(now.getFullYear(), now.getMonth() + 1);
-});
+    // Function to load attendance dates for a specific month
+    async function loadAttendanceDates(year, month) {
+        try {
+            // API call to get all attendance logs for the specified month
+            const response = await fetch(`/api/attendance_history?year=${year}&month=${month}`);
+            const data = await response.json();
+
+            if (data.success && data.dates) {
+                // Clear existing dates
+                attendanceDates.clear();
+
+                // Add all dates with attendance to the Set
+                data.dates.forEach(dateStr => {
+                    attendanceDates.add(dateStr); // Format: "2025-10-21"
+                });
+
+                // Update calendar dots
+                updateCalendarDots();
+            }
+        } catch (error) {
+            console.error('Error loading attendance dates:', error);
+        }
+    }
+
+    // Function to check if a date has attendance
+    function hasAttendance(year, month, day) {
+        // Create date string in format "YYYY-MM-DD"
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        return attendanceDates.has(dateStr);
+    }
+
+    // Function to update calendar visual dots
+    function updateCalendarDots() {
+        // Get all calendar day cells
+        const dayCells = document.querySelectorAll('.calendar-day');
+
+        dayCells.forEach(cell => {
+            const day = cell.dataset.day;
+            const month = cell.dataset.month;
+            const year = cell.dataset.year;
+
+            // Check if this date has attendance
+            if (hasAttendance(year, month, day)) {
+                // Add green dot indicator
+                if (!cell.querySelector('.attendance-dot')) {
+                    const dot = document.createElement('div');
+                    dot.className = 'attendance-dot';
+                    cell.appendChild(dot);
+                }
+            } else {
+                // Remove dot if it exists
+                const existingDot = cell.querySelector('.attendance-dot');
+                if (existingDot) {
+                    existingDot.remove();
+                }
+            }
+        });
+    }
+
+    // When calendar month changes, reload attendance dates
+    function onMonthChange(year, month) {
+        loadAttendanceDates(year, month + 1); // month is 0-indexed, so add 1
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        const now = new Date();
+        loadAttendanceDates(now.getFullYear(), now.getMonth() + 1);
+    });
 
 
     // Utility to show toast notifications
@@ -118,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
     };
-    
+
     const editSingleAttendance = async (logId, status, notes = null) => {
         try {
             const response = await fetch(`/api/edit_attendance/${logId}`, {
@@ -144,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const unMarkedIds = todaysClasses
             .filter(c => c.marked_status === 'pending')
             .map(c => c._id.$oid);
-        
+
         if (unMarkedIds.length === 0) {
             showToast("All classes have already been marked.", 'info');
             return;
@@ -176,20 +239,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>No classes are scheduled in your timetable for today.</p>
                 </div>`;
                 attendanceList.className = 'attendance-list-empty';
-                if(markAllPresentBtn) markAllPresentBtn.style.display = 'none';
-                if(markAllAbsentBtn) markAllAbsentBtn.style.display = 'none';
+                if (markAllPresentBtn) markAllPresentBtn.style.display = 'none';
+                if (markAllAbsentBtn) markAllAbsentBtn.style.display = 'none';
                 return;
             }
 
             attendanceList.className = 'attendance-list-container';
-            if(markAllPresentBtn) markAllPresentBtn.style.display = 'inline-flex';
-            if(markAllAbsentBtn) markAllAbsentBtn.style.display = 'inline-flex';
+            if (markAllPresentBtn) markAllPresentBtn.style.display = 'inline-flex';
+            if (markAllAbsentBtn) markAllAbsentBtn.style.display = 'inline-flex';
 
             todaysClasses.forEach((sub, index) => {
                 const card = document.createElement('div');
                 card.className = 'attendance-card';
                 card.dataset.id = sub._id.$oid;
-                if(sub.log_id) card.dataset.logId = sub.log_id;
+                if (sub.log_id) card.dataset.logId = sub.log_id;
                 card.style.setProperty('--animation-order', index);
 
                 let actionsHtml;
@@ -236,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
         noteModal.classList.remove('hidden');
         noteTextarea.focus();
     };
-    
+
     const closeNoteModal = () => {
         noteModal.classList.add('hidden');
         noteTextarea.value = '';
@@ -252,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const status = e.target.dataset.status;
         const action = e.target.dataset.action;
 
-        if(action === 'edit') {
+        if (action === 'edit') {
             card.querySelector('.card-actions-container').innerHTML = `
                 <div class="attendance-actions-new">
                     <div class="button-group">
@@ -287,13 +350,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if(markAllPresentBtn) markAllPresentBtn.addEventListener('click', () => markAll('present'));
-    if(markAllAbsentBtn) markAllAbsentBtn.addEventListener('click', () => markAll('absent'));
-    
-    if(closeNoteModalBtn) closeNoteModalBtn.addEventListener('click', closeNoteModal);
-    if(noteModal) noteModal.addEventListener('click', (e) => e.target === noteModal && closeNoteModal());
+    if (markAllPresentBtn) markAllPresentBtn.addEventListener('click', () => markAll('present'));
+    if (markAllAbsentBtn) markAllAbsentBtn.addEventListener('click', () => markAll('absent'));
 
-    if(saveNoteBtn) saveNoteBtn.addEventListener('click', async () => {
+    if (closeNoteModalBtn) closeNoteModalBtn.addEventListener('click', closeNoteModal);
+    if (noteModal) noteModal.addEventListener('click', (e) => e.target === noteModal && closeNoteModal());
+
+    if (saveNoteBtn) saveNoteBtn.addEventListener('click', async () => {
         const { subjectId, status, logId } = noteContext;
         const notes = noteTextarea.value;
         let success = false;

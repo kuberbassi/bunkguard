@@ -335,3 +335,69 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
     background-color: #10b981; /* Green */
     border-radius: 50%;
 }
+/* Fix for Activity Log scrolling */
+.log-modal-content {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 10px; /* Space for scrollbar */
+}
+
+/* Custom scrollbar styling */
+.log-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.log-modal-content::-webkit-scrollbar-track {
+    background: #2d2d2d;
+    border-radius: 4px;
+}
+
+.log-modal-content::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 4px;
+}
+
+.log-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+/* Z-index hierarchy fix */
+nav, .navbar, header {
+    z-index: 100 !important;
+}
+
+.modal, .modal-overlay {
+    z-index: 1000 !important;
+}
+
+.modal-content {
+    z-index: 1001 !important;
+    position: relative;
+}
+
+/* Ensure date picker modal is above nav */
+.date-modal {
+    z-index: 1000 !important;
+}
+/* Calendar dot indicators */
+.calendar-day {
+    position: relative;
+    cursor: pointer;
+}
+
+.attendance-dot {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.calendar-day:hover .attendance-dot {
+    width: 8px;
+    height: 8px;
+    bottom: 3px;
+}
+

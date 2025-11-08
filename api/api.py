@@ -8,6 +8,7 @@ from bson import json_util, ObjectId
 from flask import Blueprint, jsonify, request, session, Response
 from itertools import groupby
 from . import db  # ✅ FIXED - Import db from the same package
+from datetime import timedelta
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -918,3 +919,88 @@ def get_attendance_history():
         'success': True,
         'dates': list(dates)
     })
+
+@api_bp.route('/attendance_calendar', methods=['GET'])
+def get_attendance_calendar():
+    """Get attendance status for calendar dots"""
+    if 'user' not in session:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    user_email = session['user']['userinfo']['email']
+    
+    # Get year and month from query parameters
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    
+    if not year or not month:
+        return jsonify({'success': False, 'error': 'Year and month required'}), 400
+    
+    from datetime import datetime
+    import calendar
+    
+    # Get first and last day of the month
+    first_day = datetime(year, month, 1)
+    last_day_num = calendar.monthrange(year, month)[1]
+    last_day = datetime(year, month, last_day_num, 23, 59, 59)
+    
+    # Fetch all attendance logs for this month
+    logs = list(attendance_log_collection.find({
+        'owner_email': user_email,
+        'date': {
+            '$gte': first_day.strftime('%Y-%m-%d'),
+            '$lte': last_day.strftime('%Y-%m-%d')
+        }
+    }))
+    
+    # Organize by date
+    date_status = {}
+    for log in logs:
+        date_key = log['date']  # Format: "2025-10-21"
+        
+        if date_key not in date_status:
+            date_status[date_key] = {
+                'has_attendance': True,
+                'all_present': True,
+                'all_absent': True,
+                'mixed': False
+            }
+        
+        # Check status
+        if log['status'] == 'present':
+            date_status[date_key]['all_absent'] = False
+        elif log['status'] == 'absent':
+            date_status[date_key]['all_present'] = False
+    
+    # Determine final status for each date
+    for date_key in date_status:
+        status = date_status[date_key]
+        if not status['all_present'] and not status['all_absent']:
+            status['mixed'] = True
+            status['all_present'] = False
+            status['all_absent'] = False
+    
+    return jsonify({
+        'success': True,
+        'dates': date_status
+    })
+
+def create_system_log_safe(user_email, action, description):
+    """Create system log with duplicate prevention"""
+    
+    # Check for duplicate in last 5 seconds
+    five_seconds_ago = datetime.utcnow() - timedelta(seconds=5)
+    
+    existing = system_logs_collection.find_one({
+        'owner_email': user_email,
+        'action': action,
+        'description': description,
+        'timestamp': {'$gte': five_seconds_ago}
+    })
+    
+    if not existing:
+        system_logs_collection.insert_one({
+            'owner_email': user_email,
+            'action': action,
+            'description': description,
+            'timestamp': datetime.utcnow()
+        })
