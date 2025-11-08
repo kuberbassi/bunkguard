@@ -7,40 +7,16 @@
       "config": {
         "maxLambdaSize": "50mb"
       }
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/public/static/$1"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "/public/static/images/BunkGuard.png"
-    },
-    {
-      "src": "/sitemap.xml",
-      "dest": "/public/static/sitemap.xml"
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/public/static/robots.txt"
-    },
-    {
-      "src": "/google75750b6bbd7a51d3.html",
-      "dest": "/public/static/google75750b6bbd7a51d3.html"
+      "dest": "/api/static/$1"
     },
     {
       "src": "/(.*)",
       "dest": "run.py"
     }
-  ],
-  "env": {
-    "PYTHONUNBUFFERED": "1",
-    "FLASK_ENV": "production"
-  }
+  ]
 }

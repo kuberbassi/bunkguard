@@ -1,4 +1,4 @@
-# api/__init__.py (simpler version)
+# api/__init__.py
 
 import os
 from flask import Flask
@@ -16,23 +16,14 @@ except Exception as e:
     db = None
 
 def create_app():
-    # Get the directory containing this file
+    # Templates and static are in the same directory as this file
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Go up one level to project root
-    project_root = os.path.dirname(current_dir)
+    template_folder = os.path.join(current_dir, 'templates')
+    static_folder = os.path.join(current_dir, 'static')
     
-    # Set template and static paths
-    template_folder = os.path.join(project_root, 'public', 'templates')
-    static_folder = os.path.join(project_root, 'public', 'static')
-    
-    # Fallback: try absolute path resolution
-    if not os.path.exists(template_folder):
-        # Alternative path for Vercel
-        template_folder = os.path.abspath('public/templates')
-        static_folder = os.path.abspath('public/static')
-    
-    print(f"Templates at: {template_folder}")
+    print(f"Current dir: {current_dir}")
+    print(f"Templates: {template_folder}")
     print(f"Templates exist: {os.path.exists(template_folder)}")
     
     app = Flask(__name__,
@@ -40,7 +31,7 @@ def create_app():
                 static_folder=static_folder,
                 static_url_path='/static')
     
-    app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-me-in-production")
+    app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-in-production")
     
     oauth.init_app(app)
     
