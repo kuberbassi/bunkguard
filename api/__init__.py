@@ -16,15 +16,11 @@ except Exception as e:
     db = None
 
 def create_app():
-    # Templates and static are in the same directory as this file
+    # Get current directory (api/)
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     template_folder = os.path.join(current_dir, 'templates')
     static_folder = os.path.join(current_dir, 'static')
-    
-    print(f"Current dir: {current_dir}")
-    print(f"Templates: {template_folder}")
-    print(f"Templates exist: {os.path.exists(template_folder)}")
     
     app = Flask(__name__,
                 template_folder=template_folder,
