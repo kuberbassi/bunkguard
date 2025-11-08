@@ -4,6 +4,7 @@ from flask import render_template, session, redirect, url_for, send_from_directo
 from flask import Blueprint
 from datetime import datetime
 from . import db  # ✅ CORRECT - Import db from the same package
+from flask import Response
 
 views_bp = Blueprint('views', __name__)
 
@@ -65,19 +66,6 @@ def printable_report(semester):
     }
     
     return render_template("printable_report.html", data=report_data)
-
-# --- Static file routes for verification, sitemap, robots.txt ---
-@views_bp.route('/google75750b6bbd7a51d3.html')
-def google_verification():
-    return send_from_directory('static', 'google75750b6bbd7a51d3.html')
-
-@views_bp.route('/sitemap.xml')
-def sitemap():
-    return send_from_directory('static', 'sitemap.xml')
-
-@views_bp.route('/robots.txt')
-def robots_txt():
-    return send_from_directory('static', 'robots.txt')
 
 @views_bp.errorhandler(404)
 def not_found(e):
