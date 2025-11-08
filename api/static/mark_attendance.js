@@ -10,6 +10,80 @@ document.addEventListener('DOMContentLoaded', () => {
     let todaysClasses = [];
     let noteContext = {}; // To store subjectId, status, and logId for the modal
 
+    // Global variable to store attendance dates
+let attendanceDates = new Set();
+
+// Function to load attendance dates for a specific month
+async function loadAttendanceDates(year, month) {
+    try {
+        // API call to get all attendance logs for the specified month
+        const response = await fetch(`/api/attendance_history?year=${year}&month=${month}`);
+        const data = await response.json();
+        
+        if (data.success && data.dates) {
+            // Clear existing dates
+            attendanceDates.clear();
+            
+            // Add all dates with attendance to the Set
+            data.dates.forEach(dateStr => {
+                attendanceDates.add(dateStr); // Format: "2025-10-21"
+            });
+            
+            // Update calendar dots
+            updateCalendarDots();
+        }
+    } catch (error) {
+        console.error('Error loading attendance dates:', error);
+    }
+}
+
+// Function to check if a date has attendance
+function hasAttendance(year, month, day) {
+    // Create date string in format "YYYY-MM-DD"
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return attendanceDates.has(dateStr);
+}
+
+// Function to update calendar visual dots
+function updateCalendarDots() {
+    // Get all calendar day cells
+    const dayCells = document.querySelectorAll('.calendar-day');
+    
+    dayCells.forEach(cell => {
+        const day = cell.dataset.day;
+        const month = cell.dataset.month;
+        const year = cell.dataset.year;
+        
+        // Check if this date has attendance
+        if (hasAttendance(year, month, day)) {
+            // Add green dot indicator
+            if (!cell.querySelector('.attendance-dot')) {
+                const dot = document.createElement('div');
+                dot.className = 'attendance-dot';
+                cell.appendChild(dot);
+            }
+        } else {
+            // Remove dot if it exists
+            const existingDot = cell.querySelector('.attendance-dot');
+            if (existingDot) {
+                existingDot.remove();
+            }
+        }
+    });
+}
+
+// When calendar month changes, reload attendance dates
+function onMonthChange(year, month) {
+    loadAttendanceDates(year, month + 1); // month is 0-indexed, so add 1
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const now = new Date();
+    loadAttendanceDates(now.getFullYear(), now.getMonth() + 1);
+});
+
+
     // Utility to show toast notifications
     const showToast = (message, type = 'success') => {
         const toast = document.createElement('div');

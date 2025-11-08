@@ -872,3 +872,49 @@ def get_achievements():
              pass
 
     return jsonify(achievements)
+
+@api_bp.route('/attendance_history', methods=['GET'])
+def get_attendance_history():
+    """Get all dates with attendance for a specific month"""
+    if 'user' not in session:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    user_email = session['user']['userinfo']['email']
+    
+    # Get year and month from query parameters
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    
+    if not year or not month:
+        return jsonify({'success': False, 'error': 'Year and month required'}), 400
+    
+    # Create start and end dates for the month
+    from datetime import datetime
+    import calendar
+    
+    # First day of the month
+    start_date = datetime(year, month, 1)
+    
+    # Last day of the month
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = datetime(year, month, last_day, 23, 59, 59)
+    
+    # Query attendance logs for this month
+    logs = list(attendance_log_collection.find({
+        'owner_email': user_email,
+        'timestamp': {
+            '$gte': start_date,
+            '$lte': end_date
+        }
+    }))
+    
+    # Extract unique dates
+    dates = set()
+    for log in logs:
+        date_str = log['timestamp'].strftime('%Y-%m-%d')
+        dates.add(date_str)
+    
+    return jsonify({
+        'success': True,
+        'dates': list(dates)
+    })

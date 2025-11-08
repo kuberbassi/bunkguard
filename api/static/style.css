@@ -320,3 +320,18 @@ select option{background:var(--card-bg-solid,#121212);color:var(--text-primary,#
 .mobile-tabs-nav .tab-link i{font-size:1.5rem;transition:color 0.2s ease,transform 0.2s ease;}
 .mobile-tabs-nav .tab-link:hover,.mobile-tabs-nav .tab-link.active{color:var(--primary-accent);}
 .mobile-tabs-nav .tab-link.active i{transform:translateY(-2px);text-shadow:0 0 10px var(--primary-accent-glow);}
+/* Add to your style.css */
+.calendar-day {
+    position: relative;
+}
+
+.attendance-dot {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background-color: #10b981; /* Green */
+    border-radius: 50%;
+}
