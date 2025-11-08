@@ -12,23 +12,23 @@
   "routes": [
     {
       "src": "/favicon.ico",
-      "dest": "bunkguard/static/images/BunkGuard.png"
+      "dest": "/static/images/BunkGuard.png"
     },
     {
       "src": "/static/(.*)",
-      "dest": "bunkguard/static/$1"
+      "dest": "/static/$1"
     },
     {
       "src": "/sitemap.xml",
-      "dest": "bunkguard/static/sitemap.xml"
+      "dest": "/static/sitemap.xml"
     },
     {
       "src": "/robots.txt",
-      "dest": "bunkguard/static/robots.txt"
+      "dest": "/static/robots.txt"
     },
     {
       "src": "/google75750b6bbd7a51d3.html",
-      "dest": "bunkguard/static/google75750b6bbd7a51d3.html"
+      "dest": "/static/google75750b6bbd7a51d3.html"
     },
     {
       "src": "/(.*)",
