@@ -1,4 +1,4 @@
-# api/__init__.py
+# api/__init__.py (simpler version)
 
 import os
 from flask import Flask
@@ -6,49 +6,42 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from .auth import oauth
 
-# Load environment variables
 load_dotenv()
 
-# Database connection
 try:
     client = MongoClient(os.getenv('MONGO_URI'))
     db = client.get_database('attendanceDB')
-    print("✅ MongoDB connected successfully")
 except Exception as e:
-    print(f"❌ MongoDB connection failed: {e}")
+    print(f"MongoDB failed: {e}")
     db = None
 
 def create_app():
-    """Create and configure the Flask application."""
+    # Get the directory containing this file
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # __file__ is at: bunkguard/api/__init__.py
-    # We need to go up ONE level to: bunkguard/
-    basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    # Go up one level to project root
+    project_root = os.path.dirname(current_dir)
     
-    # Now point to public/templates and public/static
-    template_folder = os.path.join(basedir, 'public', 'templates')
-    static_folder = os.path.join(basedir, 'public', 'static')
+    # Set template and static paths
+    template_folder = os.path.join(project_root, 'public', 'templates')
+    static_folder = os.path.join(project_root, 'public', 'static')
     
-    # Debug output
-    print(f"\n📁 Base directory: {basedir}")
-    print(f"📄 Template folder: {template_folder}")
-    print(f"🎨 Static folder: {static_folder}")
-    print(f"✅ Templates exist: {os.path.exists(template_folder)}")
-    print(f"✅ Static exists: {os.path.exists(static_folder)}")
+    # Fallback: try absolute path resolution
+    if not os.path.exists(template_folder):
+        # Alternative path for Vercel
+        template_folder = os.path.abspath('public/templates')
+        static_folder = os.path.abspath('public/static')
     
-    if os.path.exists(template_folder):
-        files = os.listdir(template_folder)
-        print(f"📋 Template files: {files}\n")
+    print(f"Templates at: {template_folder}")
+    print(f"Templates exist: {os.path.exists(template_folder)}")
     
     app = Flask(__name__,
                 template_folder=template_folder,
                 static_folder=static_folder,
                 static_url_path='/static')
     
-    # Set secret key
-    app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
+    app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-me-in-production")
     
-    # Initialize OAuth
     oauth.init_app(app)
     
     try:
@@ -59,21 +52,13 @@ def create_app():
             server_metadata_url=f'https://{os.getenv("AUTH0_DOMAIN")}/.well-known/openid-configuration',
             client_kwargs={'scope': 'openid profile email'},
         )
-        print("✅ OAuth configured successfully")
     except Exception as e:
-        print(f"⚠️ OAuth registration failed: {e}")
+        print(f"OAuth warning: {e}")
     
-    # Register blueprints
-    try:
-        from . import views, auth, api as api_module
-        
-        app.register_blueprint(views.views_bp)
-        app.register_blueprint(auth.auth_bp)
-        app.register_blueprint(api_module.api_bp)
-        
-        print("✅ All blueprints registered successfully\n")
-    except Exception as e:
-        print(f"❌ Blueprint registration failed: {e}")
-        raise
+    from . import views, auth, api as api_module
+    
+    app.register_blueprint(views.views_bp)
+    app.register_blueprint(auth.auth_bp)
+    app.register_blueprint(api_module.api_bp)
     
     return app

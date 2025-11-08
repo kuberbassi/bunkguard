@@ -3,5 +3,8 @@ __pycache__/
 .env.local
 .DS_Store
 venv/
+.venv/
 .git/
-README.md
+*.log
+check_structure.py
+dev.py
