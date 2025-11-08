@@ -14,7 +14,9 @@ def create_app():
     """Create and configure an instance of the Flask application."""
     load_dotenv()
     
-    app = Flask(__name__)
+    # 💥 PERMANENT FIX: Explicitly define the static folder
+    app = Flask(__name__, static_folder='static', static_url_path='/static') 
+    
     # bunkguard/__init__.py
     app.secret_key = os.getenv("FLASK_SECRET_KEY")
 
