@@ -1,4 +1,5 @@
-# bunkguard/api.py
+# api/api.py
+
 import calendar
 import math
 import traceback
@@ -6,8 +7,7 @@ from datetime import datetime, timedelta
 from bson import json_util, ObjectId
 from flask import Blueprint, jsonify, request, session, Response
 from itertools import groupby
-
-from ..bunkguard import db # Import the shared db instance
+from . import db  # ✅ FIXED - Import db from the same package
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 

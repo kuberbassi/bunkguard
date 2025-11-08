@@ -5,34 +5,34 @@
       "src": "run.py",
       "use": "@vercel/python",
       "config": {
-        "maxLambdaSize": "15mb"
+        "maxLambdaSize": "50mb"
       }
     }
   ],
   "routes": [
     {
-      "src": "^/static/(.*)$",
-      "dest": "/static/$1"
+      "src": "/static/(.*)",
+      "dest": "/public/static/$1"
     },
     {
-      "src": "^/favicon.ico$",
-      "dest": "/static/images/BunkGuard.png"
+      "src": "/favicon.ico",
+      "dest": "/public/static/images/BunkGuard.png"
     },
     {
-      "src": "^/sitemap.xml$",
-      "dest": "/static/sitemap.xml"
+      "src": "/sitemap.xml",
+      "dest": "/public/static/sitemap.xml"
     },
     {
-      "src": "^/robots.txt$",
-      "dest": "/static/robots.txt"
+      "src": "/robots.txt",
+      "dest": "/public/static/robots.txt"
     },
     {
-      "src": "^/google75750b6bbd7a51d3.html$",
-      "dest": "/static/google75750b6bbd7a51d3.html"
+      "src": "/google75750b6bbd7a51d3.html",
+      "dest": "/public/static/google75750b6bbd7a51d3.html"
     },
     {
-      "src": "^/(.*)$",
-      "dest": "/run.py"
+      "src": "/(.*)",
+      "dest": "run.py"
     }
   ],
   "env": {

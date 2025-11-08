@@ -1,9 +1,9 @@
-# api/views.py (or bunkguard/views.py depending on your folder name)
+# api/views.py
 
 from flask import render_template, session, redirect, url_for, send_from_directory
 from flask import Blueprint
 from datetime import datetime
-from . import db  # ✅ CORRECT - import db from the same package
+from . import db  # ✅ CORRECT - Import db from the same package
 
 views_bp = Blueprint('views', __name__)
 

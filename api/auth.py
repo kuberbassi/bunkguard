@@ -1,4 +1,5 @@
-# bunkguard/auth.py
+# api/auth.py
+
 import os
 from flask import Blueprint, redirect, url_for, session
 from authlib.integrations.flask_client import OAuth
