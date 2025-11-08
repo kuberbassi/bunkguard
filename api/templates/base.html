@@ -4,40 +4,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}BunkGuard{% endblock %}</title>
+
     <!-- Primary Meta Tags -->
-    <title>{% block title %}BunkGuard - Smart Attendance Tracker for Students{% endblock %}</title>
+    <title>BunkGuard - Smart Attendance Tracker</title>
     <meta name="description"
-        content="BunkGuard is a smart attendance tracking app for college students. Track your class attendance, calculate safe bunks, manage schedules, and maintain your attendance percentage effortlessly.">
+        content="Track your class attendance, calculate safe bunks, and manage your college schedule with BunkGuard. Smart attendance tracking for students.">
     <meta name="keywords"
-        content="attendance tracker, student attendance, class tracker, bunk calculator, attendance management, college attendance, student app, class schedule">
+        content="attendance tracker, student attendance, class tracker, bunk calculator, college attendance">
     <meta name="author" content="BunkGuard">
 
-    <!-- Open Graph / Facebook Meta Tags -->
+    <!-- Open Graph Tags -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://bunkguard.vercel.app/">
-    <meta property="og:title" content="BunkGuard - Smart Attendance Tracker for Students">
+    <meta property="og:title" content="BunkGuard - Smart Attendance Tracker">
     <meta property="og:description"
-        content="Track your class attendance, calculate safe bunks, and manage your college schedule with BunkGuard. Never miss your attendance targets again.">
-    <meta property="og:image" content="{{ url_for('static', filename='images/BunkGuard.png', _external=True) }}">
+        content="Track your class attendance and manage your college schedule with BunkGuard.">
 
-    <!-- Twitter Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://bunkguard.vercel.app/">
-    <meta name="twitter:title" content="BunkGuard - Smart Attendance Tracker for Students">
-    <meta name="twitter:description"
-        content="Track your class attendance, calculate safe bunks, and manage your college schedule with BunkGuard.">
-    <meta name="twitter:image" content="{{ url_for('static', filename='images/BunkGuard.png', _external=True) }}">
+    <!-- Twitter Tags -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="BunkGuard - Smart Attendance Tracker">
+    <meta name="twitter:description" content="Track your class attendance and manage your college schedule.">
 
-    <!-- Additional SEO Meta Tags -->
+    <!-- SEO Meta Tags -->
     <meta name="robots" content="index, follow">
-    <meta name="language" content="English">
-    <meta name="revisit-after" content="7 days">
     <meta name="theme-color" content="#4F46E5">
+
+    <!-- Your existing CSS link (keep exactly as it was) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/BunkGuard.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     {% block head_scripts %}{% endblock %}
 </head>
