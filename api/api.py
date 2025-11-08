@@ -7,7 +7,7 @@ from bson import json_util, ObjectId
 from flask import Blueprint, jsonify, request, session, Response
 from itertools import groupby
 
-from . import db # Import the shared db instance
+from ..bunkguard import db # Import the shared db instance
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 

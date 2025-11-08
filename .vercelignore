@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env.local
+.DS_Store
+venv/
+.git/
+README.md
