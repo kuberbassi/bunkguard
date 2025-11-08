@@ -8,6 +8,10 @@
   ],
   "routes": [
     {
+      "src": "/favicon.ico",
+      "dest": "bunkguard/static/images/BunkGuard.png"
+    },
+    {
       "src": "/static/(.*)",
       "dest": "bunkguard/static/$1"
     },
