@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /callback
+
+Sitemap: https://bunkguard.vercel.app/sitemap.xml
