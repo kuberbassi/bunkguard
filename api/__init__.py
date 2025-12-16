@@ -2,6 +2,7 @@
 
 import os
 from flask import Flask
+from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from .auth import oauth
@@ -29,6 +30,16 @@ def create_app():
     
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-in-production")
     
+    # Enable CORS for React frontend
+    CORS(app, 
+         resources={r"/*": {
+             "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+             "supports_credentials": True,
+             "allow_headers": ["Content-Type", "Authorization", "Accept"],
+             "expose_headers": ["Content-Type", "Authorization"],
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+         }})
+    
     oauth.init_app(app)
     
     try:
@@ -42,10 +53,12 @@ def create_app():
     except Exception as e:
         print(f"OAuth warning: {e}")
     
-    from . import views, auth, api as api_module
-    
-    app.register_blueprint(views.views_bp)
-    app.register_blueprint(auth.auth_bp)
-    app.register_blueprint(api_module.api_bp)
+    from .api import api_bp
+    from .auth import auth_bp
+    from .classroom import classroom_bp
+
+    app.register_blueprint(api_bp)
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(classroom_bp)
     
     return app

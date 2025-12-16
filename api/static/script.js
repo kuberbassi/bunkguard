@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         monthYear: document.getElementById('monthYear'),
         prevMonthBtn: document.getElementById('prevMonthBtn'),
         nextMonthBtn: document.getElementById('nextMonthBtn'),
-        
+
         // Modal for Marking Attendance from Calendar
         markDateModal: document.getElementById('markDateModal'),
         closeMarkDateModalBtn: document.getElementById('closeMarkDateModalBtn'),
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusClass = log.status.includes('present') || log.status.includes('approved') ? 'status-present' : 'status-absent';
                 const subjectName = log.subject_info ? log.subject_info.name : 'Unknown Subject';
                 const noteHtml = log.notes ? `<span class="activity-note">Note: ${log.notes}</span>` : '';
-                return `<div class="activity-item"><i class='bx ${icon} ${statusClass}'></i><div class="activity-text"><p>Marked <strong>${subjectName}</strong> as ${log.status.replace('_',' ')}</p><span>${new Date(log.timestamp.$date).toLocaleString()}</span>${noteHtml}</div></div>`;
+                return `<div class="activity-item"><i class='bx ${icon} ${statusClass}'></i><div class="activity-text"><p>Marked <strong>${subjectName}</strong> as ${log.status.replace('_', ' ')}</p><span>${new Date(log.timestamp.$date).toLocaleString()}</span>${noteHtml}</div></div>`;
             }).join('');
         },
         semesterStats: (stats) => {
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const firstDayOfMonth = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const attendanceData = await (await fetch(`/api/calendar_data?month=${month + 1}&year=${year}`)).json();
-            
+
             const startingDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
 
             let html = '';
@@ -164,13 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch('/api/deadlines'),
                 fetch('/api/achievements')
             ]);
-            
+
             const dashData = await dashRes.json();
             const summaryData = await summaryRes.json();
             const recentLogsData = await logsRes.json();
             const deadlines = await deadlinesRes.json();
             const achievements = await achievementsRes.json();
-            
+
             if (dom.systemStatus) dom.systemStatus.textContent = `SYSTEM STATUS: ONLINE | ${new Date().toLocaleDateString()}`;
             render.overallAttendance(dashData.overall_attendance);
             render.bunkMeter(dashData.subjects_overview);
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!dom.markDateModal) return;
         dom.markDateModal.classList.remove('hidden');
         dom.markDateModalContent.innerHTML = '<div class="skeleton bunk-item-skeleton" style="height: 150px;"></div>';
-        
+
         const dateObj = new Date(dateStr + 'T12:00:00Z');
         const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
         dom.markDateModalTitle.textContent = `Mark Attendance for ${formattedDate}`;
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sub.marked_status !== 'pending') {
                 actionsHtml = `<div class="marked-status ${sub.marked_status}">${sub.marked_status.replace('_', ' ')}</div>`;
             } else {
-                 actionsHtml = `
+                actionsHtml = `
                     <div class="attendance-actions-new">
                         <div class="button-group">
                             <button class="action-btn-new present" data-status="present">Present</button>
@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dom.addNewBtn) dom.addNewBtn.addEventListener('click', () => dom.addModal.classList.remove('hidden'));
         if (dom.closeModalBtn) dom.closeModalBtn.addEventListener('click', () => dom.addModal.classList.add('hidden'));
         if (dom.addModal) dom.addModal.addEventListener('click', (e) => e.target === dom.addModal && dom.addModal.classList.add('hidden'));
-        
+
         if (dom.addSubjectForm) dom.addSubjectForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             await fetch('/api/add_subject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject_name: e.target.subjectName.value, semester: e.target.subjectSemester.value }) });
@@ -286,14 +286,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dom.addDeadlineBtn) dom.addDeadlineBtn.addEventListener('click', () => dom.deadlineModal.classList.remove('hidden'));
         if (dom.closeDeadlineModalBtn) dom.closeDeadlineModalBtn.addEventListener('click', () => dom.deadlineModal.classList.add('hidden'));
         if (dom.deadlineModal) dom.deadlineModal.addEventListener('click', (e) => e.target === dom.deadlineModal && dom.deadlineModal.classList.add('hidden'));
-        
+
         if (dom.addDeadlineForm) dom.addDeadlineForm.addEventListener('submit', async e => {
             e.preventDefault();
             await fetch('/api/add_deadline', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: e.target.deadlineTitle.value, due_date: e.target.deadlineDate.value }) });
             dom.deadlineModal.classList.add('hidden'); e.target.reset();
             loadDashboard();
         });
-        
+
         if (dom.deadlineList) dom.deadlineList.addEventListener('click', async e => {
             const btn = e.target.closest('.complete-btn');
             if (btn) {
@@ -325,9 +325,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (await markSingleAttendanceForDate(subjectId, status, date)) {
                     // Visually update the card instead of a full reload
                     const actionsContainer = card.querySelector('.card-actions-container');
-                    if(actionsContainer) actionsContainer.innerHTML = `<div class="marked-status ${status}">${status.replace('_', ' ')}</div>`;
+                    if (actionsContainer) actionsContainer.innerHTML = `<div class="marked-status ${status}">${status.replace('_', ' ')}</div>`;
                     const statusText = card.querySelector('.status-text');
-                    if(statusText) statusText.textContent = status;
+                    if (statusText) statusText.textContent = status;
                     render.calendar(); // Refresh calendar dot after marking
                 }
             }
@@ -342,6 +342,30 @@ document.addEventListener('DOMContentLoaded', () => {
             render.calendar();
         });
     };
+
+
+    // Call this on month load/change:
+    function loadDots(year, month) {
+        fetch(`/api/attendance_calendar?year=${year}&month=${month}`)
+            .then(res => res.json())
+            .then(data => {
+                document.querySelectorAll('.calendar-day').forEach(cell => {
+                    const date = cell.dataset.date; // "YYYY-MM-DD"
+                    cell.querySelectorAll('.attendance-dot').forEach(dot => dot.remove());
+                    if (data.dates && data.dates[date]) {
+                        const dot = document.createElement('div');
+                        dot.className = 'attendance-dot';
+                        dot.style.background = (
+                            data.dates[date] === 'present' ? '#10b981' :
+                                data.dates[date] === 'absent' ? '#ef4444' : '#f59e0b'
+                        );
+                        cell.appendChild(dot);
+                    }
+                });
+            });
+    }
+    // Ensure each .calendar-day for October 21st etc. has data-date="2025-10-21" etc.
+
 
     // --- INITIALIZE ---
     loadDashboard();

@@ -8,7 +8,7 @@ from bson import json_util, ObjectId
 from flask import Blueprint, jsonify, request, session, Response
 from itertools import groupby
 from . import db  # ✅ FIXED - Import db from the same package
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -98,6 +98,11 @@ def calculate_streak(user_email):
 
 # === CORE API ROUTES ===
 
+@api_bp.route('/current_user')
+def get_current_user():
+    if 'user' not in session: return jsonify(None), 200 # Return null if not logged in instead of 401 for this check
+    return jsonify(session['user'])
+
 @api_bp.route('/dashboard_data')
 def get_dashboard_data():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -106,15 +111,32 @@ def get_dashboard_data():
         user_prefs_doc = timetable_collection.find_one({'owner_email': user_email}, {'preferences': 1})
         required_percent = user_prefs_doc.get('preferences', {}).get('threshold', 75) if user_prefs_doc else 75
 
-        current_semester = int(request.args.get('semester', 1))
-        query = {"owner_email": user_email, "semester": current_semester}
+        current_semester = int(request.args.get('semester', 1)) 
+        # TEMPORARY FIX: Fetch ALL subjects for user to ensure data visibility
+        # If we need semester filtering, we should ensure the frontend passes the correct one.
+        # But for now, let's just show everything.
+        query = {"owner_email": user_email} # Removed "semester": current_semester
+        print(f"🔍 DEBUG: Querying subjects with: {query}")
+        print(f"🔍 DEBUG: User email from session: {user_email}")
         subjects = list(subjects_collection.find(query))
+        print(f"🔍 DEBUG: Found {len(subjects)} subjects")
+        if subjects:
+            print(f"🔍 DEBUG: First subject sample: {subjects[0]}")
+        else:
+            print(f"🔍 DEBUG: NO SUBJECTS FOUND! Checking if ANY subjects exist...")
+            all_subjects_count = subjects_collection.count_documents({})
+            print(f"🔍 DEBUG: Total subjects in database: {all_subjects_count}")
+            if all_subjects_count > 0:
+                sample = subjects_collection.find_one({})
+                print(f"🔍 DEBUG: Sample subject from DB: {sample}")
+        
         total_attended = sum(s.get('attended', 0) for s in subjects)
         total_classes = sum(s.get('total', 0) for s in subjects)
         overall_percent = calculate_percent(total_attended, total_classes)
-        subjects_overview = [{"name": s.get('name', 'N/A'), **calculate_bunk_guard(s.get('attended', 0), s.get('total', 0), required_percent)} for s in subjects]
+        subjects_overview = [{"id": str(s['_id']), "name": s.get('name', 'N/A'), **calculate_bunk_guard(s.get('attended', 0), s.get('total', 0), required_percent)} for s in subjects]
         
         response_data = {"current_date": datetime.now().strftime("%B %d, %Y"), "overall_attendance": overall_percent, "subjects_overview": subjects_overview}
+        print(f"🔍 DEBUG: Sending response with {len(subjects_overview)} subjects")
         return Response(json_util.dumps(response_data), mimetype='application/json')
     except Exception as e:
         print(f"---! ERROR IN /api/dashboard_data: {e} !---")
@@ -423,6 +445,49 @@ def get_full_subjects_data():
     subjects = list(subjects_collection.find(query))
     return Response(json_util.dumps(subjects), mimetype='application/json')
 
+@api_bp.route('/batch_update_subjects', methods=['POST'])
+def batch_update_subjects():
+    """Batch update attendance counts for multiple subjects at once."""
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    updates = data.get('updates', [])  # List of {subject_id, attended, total}
+    user_email = session['user']['email']
+    
+    if not updates:
+        return jsonify({"error": "No updates provided"}), 400
+    
+    updated_count = 0
+    errors = []
+    
+    for update in updates:
+        try:
+            subject_id = ObjectId(update.get('subject_id'))
+            attended = int(update.get('attended', 0))
+            total = int(update.get('total', 0))
+            
+            if attended > total:
+                errors.append(f"Subject {update.get('subject_id')}: attended cannot exceed total")
+                continue
+                
+            result = subjects_collection.update_one(
+                {'_id': subject_id, 'owner_email': user_email},
+                {'$set': {'attended': attended, 'total': total}}
+            )
+            
+            if result.matched_count > 0:
+                updated_count += 1
+        except Exception as e:
+            errors.append(f"Subject {update.get('subject_id')}: {str(e)}")
+    
+    create_system_log(user_email, "Batch Update", f"Updated {updated_count} subjects in bulk.")
+    
+    return jsonify({
+        "success": True,
+        "updated_count": updated_count,
+        "errors": errors if errors else None
+    })
+
 @api_bp.route('/pending_leaves')
 def get_pending_leaves():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -618,17 +683,24 @@ def calendar_data():
         year = int(request.args.get('year'))
         start_date = datetime(year, month, 1)
         end_date = datetime(year, month, calendar.monthrange(year, month)[1], 23, 59, 59)
-        pipeline = [{'$match': {'owner_email': user_email, 'timestamp': {'$gte': start_date, '$lte': end_date}}}, {'$group': {'_id': '$date', 'statuses': {'$addToSet': '$status'}}}]
-        logs = list(attendance_log_collection.aggregate(pipeline))
-        date_statuses = {}
+        
+        logs = list(attendance_log_collection.find({
+            'owner_email': user_email, 
+            'timestamp': {'$gte': start_date, '$lte': end_date}
+        }))
+        
+        date_data = {}
         for log in logs:
-            date_str = log['_id']
-            statuses = set(log['statuses'])
-            if 'absent' in statuses or 'pending_medical' in statuses:
-                date_statuses[date_str] = 'any_absent'
-            elif 'present' in statuses or 'approved_medical' in statuses:
-                date_statuses[date_str] = 'all_present'
-        return jsonify(date_statuses)
+            date_str = log['date']
+            if date_str not in date_data:
+                date_data[date_str] = []
+            date_data[date_str].append({
+                'status': log['status'],
+                'subject_id': str(log['subject_id']),
+                'log_id': str(log['_id'])
+            })
+            
+        return jsonify(date_data)
     except Exception as e:
         print(f"---! ERROR IN /api/calendar_data: {e} !---")
         traceback.print_exc()
@@ -703,13 +775,22 @@ def analytics_day_of_week():
                     day_data[day['_id']]['present'] += status_count['count']
                 if status_count['status'] in ['present', 'absent', 'pending_medical', 'approved_medical']:
                     day_data[day['_id']]['total'] += status_count['count']
-        analytics = {"labels": [], "percentages": []}
+        analytics = {"days": []}
         # Order from Monday to Sunday
-        for i in range(2, 8):
-            analytics['labels'].append(day_map[i])
-            analytics['percentages'].append(calculate_percent(day_data.get(i, {}).get('present', 0), day_data.get(i, {}).get('total', 0)))
-        analytics['labels'].append(day_map[1])
-        analytics['percentages'].append(calculate_percent(day_data.get(1, {}).get('present', 0), day_data.get(1, {}).get('total', 0)))
+        # Monday=2 ... Saturday=7, Sunday=1
+        day_indices = [2, 3, 4, 5, 6, 7, 1]
+        
+        for i in day_indices:
+            total = day_data.get(i, {}).get('total', 0)
+            present = day_data.get(i, {}).get('present', 0)
+            percentage = calculate_percent(present, total)
+            
+            analytics['days'].append({
+                "day": day_map[i],
+                "present": present,
+                "total": total,
+                "percentage": percentage
+            })
         
         return Response(json_util.dumps(analytics), mimetype='application/json')
     except Exception as e:
@@ -922,85 +1003,220 @@ def get_attendance_history():
 
 @api_bp.route('/attendance_calendar', methods=['GET'])
 def get_attendance_calendar():
-    """Get attendance status for calendar dots"""
     if 'user' not in session:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
-    
-    user_email = session['user']['userinfo']['email']
-    
-    # Get year and month from query parameters
-    year = request.args.get('year', type=int)
-    month = request.args.get('month', type=int)
-    
-    if not year or not month:
-        return jsonify({'success': False, 'error': 'Year and month required'}), 400
-    
+        return jsonify({'success': False}), 401
+    email = session['user']['userinfo']['email']
+    year = int(request.args['year'])
+    month = int(request.args['month'])
+
     from datetime import datetime
     import calendar
-    
-    # Get first and last day of the month
-    first_day = datetime(year, month, 1)
-    last_day_num = calendar.monthrange(year, month)[1]
-    last_day = datetime(year, month, last_day_num, 23, 59, 59)
-    
-    # Fetch all attendance logs for this month
+    start = datetime(year, month, 1)
+    last_day = calendar.monthrange(year, month)[1]
+    end = datetime(year, month, last_day, 23, 59, 59)
+    # Assumes each log has: timestamp, status ('present'/'absent')
     logs = list(attendance_log_collection.find({
-        'owner_email': user_email,
-        'date': {
-            '$gte': first_day.strftime('%Y-%m-%d'),
-            '$lte': last_day.strftime('%Y-%m-%d')
-        }
+        'owner_email': email,
+        'timestamp': {'$gte': start, '$lte': end}
     }))
-    
-    # Organize by date
-    date_status = {}
+    # Map dates to an array of statuses
+    daily = {}
     for log in logs:
-        date_key = log['date']  # Format: "2025-10-21"
-        
-        if date_key not in date_status:
-            date_status[date_key] = {
-                'has_attendance': True,
-                'all_present': True,
-                'all_absent': True,
-                'mixed': False
-            }
-        
-        # Check status
-        if log['status'] == 'present':
-            date_status[date_key]['all_absent'] = False
-        elif log['status'] == 'absent':
-            date_status[date_key]['all_present'] = False
-    
-    # Determine final status for each date
-    for date_key in date_status:
-        status = date_status[date_key]
-        if not status['all_present'] and not status['all_absent']:
-            status['mixed'] = True
-            status['all_present'] = False
-            status['all_absent'] = False
-    
-    return jsonify({
-        'success': True,
-        'dates': date_status
-    })
+        key = log['timestamp'].strftime('%Y-%m-%d')
+        if key not in daily: daily[key] = []
+        daily[key].append(log['status'])
+    result = {}
+    for k, vals in daily.items():
+        if all(v == 'present' for v in vals):
+            result[k] = 'present'
+        elif all(v == 'absent' for v in vals):
+            result[k] = 'absent'
+        else:
+            result[k] = 'mixed'
+    return jsonify({'success': True, 'dates': result})
+
 
 def create_system_log_safe(user_email, action, description):
-    """Create system log with duplicate prevention"""
-    
-    # Check for duplicate in last 5 seconds
     five_seconds_ago = datetime.utcnow() - timedelta(seconds=5)
-    
-    existing = system_logs_collection.find_one({
+    exists = system_logs_collection.find_one({
         'owner_email': user_email,
         'action': action,
         'description': description,
         'timestamp': {'$gte': five_seconds_ago}
     })
-    
-    if not existing:
+    if not exists:
         system_logs_collection.insert_one({
             'owner_email': user_email,
             'action': action,
             'description': description,
             'timestamp': datetime.utcnow()
         })
+
+
+# --- User Preferences ---
+preferences_collection = db.get_collection('user_preferences')
+
+@api_bp.route('/preferences', methods=['GET'])
+def get_preferences():
+    """Get user preferences"""
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    user_email = session['user']['email']
+    prefs = preferences_collection.find_one({'owner_email': user_email})
+    
+    # Default preferences
+    default_prefs = {
+        'attendance_threshold': 75,
+        'warning_threshold': 76,
+        'counting_mode': 'percentage',
+        'notifications_enabled': False,
+        'accent_color': '#6750A4'
+    }
+    
+    if prefs:
+        # Merge with defaults (in case new fields are added)
+        default_prefs.update(prefs.get('preferences', {}))
+        return jsonify(default_prefs)
+    
+    return jsonify(default_prefs)
+
+@api_bp.route('/preferences', methods=['POST'])
+def update_preferences():
+    """Update user preferences"""
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    user_email = session['user']['email']
+    new_prefs = request.json
+    
+    preferences_collection.update_one(
+        {'owner_email': user_email},
+        {'$set': {
+            'owner_email': user_email,
+            'preferences': new_prefs,
+            'updated_at': datetime.utcnow()
+        }},
+        upsert=True
+    )
+    
+    return jsonify({'success': True, 'preferences': new_prefs})
+
+
+# --- Timetable CRUD ---
+
+@api_bp.route('/timetable/slot', methods=['GET'])
+def get_timetable_slots_legacy():
+     # Temporary redirect for legacy calls, though we use /timetable usually
+     return get_timetable()
+
+@api_bp.route('/timetable/slot', methods=['POST'])
+def add_timetable_slot():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    data = request.json
+    
+    required = ['day', 'start_time', 'end_time', 'subject_id']
+    if not all(k in data for k in required):
+        return jsonify({"error": "Missing required fields"}), 400
+        
+    new_slot = {
+        "owner_email": user_email,
+        "day": data['day'],
+        "start_time": data['start_time'],
+        "end_time": data['end_time'],
+        "subject_id": ObjectId(data['subject_id']),
+        "created_at": datetime.utcnow()
+    }
+    
+    result = timetable_collection.insert_one(new_slot)
+    return jsonify({"message": "Slot added", "id": str(result.inserted_id)}), 201
+
+@api_bp.route('/timetable/slot/<slot_id>', methods=['PUT'])
+def update_timetable_slot(slot_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    data = request.json
+    
+    update_data = {}
+    if 'day' in data: update_data['day'] = data['day']
+    if 'start_time' in data: update_data['start_time'] = data['start_time']
+    if 'end_time' in data: update_data['end_time'] = data['end_time']
+    if 'subject_id' in data: update_data['subject_id'] = ObjectId(data['subject_id'])
+    
+    if not update_data:
+        return jsonify({"error": "No data to update"}), 400
+        
+    result = timetable_collection.update_one(
+        {'_id': ObjectId(slot_id), 'owner_email': user_email},
+        {'$set': update_data}
+    )
+    
+    if result.matched_count == 0:
+        return jsonify({"error": "Slot not found or unauthorized"}), 404
+        
+    return jsonify({"message": "Slot updated"}), 200
+
+@api_bp.route('/timetable/slot/<slot_id>', methods=['DELETE'])
+def delete_timetable_slot(slot_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    
+    result = timetable_collection.delete_one(
+        {'_id': ObjectId(slot_id), 'owner_email': user_email}
+    )
+    
+    if result.deleted_count == 0:
+        return jsonify({"error": "Slot not found or unauthorized"}), 404
+        
+    return jsonify({"message": "Slot deleted"}), 200
+
+@api_bp.route('/analytics/monthly_trend')
+def analytics_monthly_trend():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    try:
+        user_email = session['user']['email']
+        year = int(request.args.get('year', datetime.now().year))
+        
+        pipeline = [
+            {'$match': {
+                'owner_email': user_email,
+                'timestamp': {'$gte': datetime(year, 1, 1), '$lte': datetime(year, 12, 31, 23, 59, 59)}
+            }},
+            {'$project': {'month': {'$month': '$timestamp'}, 'status': '$status'}},
+            {'$group': {'_id': {'month': '$month', 'status': '$status'}, 'count': {'$sum': 1}}},
+            {'$group': {'_id': '$_id.month', 'counts': {'$push': {'status': '$_id.status', 'count': '$count'}}}},
+            {'$sort': {'_id': 1}}
+        ]
+        
+        data = list(attendance_log_collection.aggregate(pipeline))
+        month_map = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        monthly_data = []
+        
+        # Initialize all months with 0
+        data_dict = {d['_id']: d for d in data}
+        
+        for i in range(1, 13):
+            total = 0
+            present = 0
+            
+            if i in data_dict:
+                for status_count in data_dict[i]['counts']:
+                    if status_count['status'] in ['present', 'approved_medical']:
+                        present += status_count['count']
+                    if status_count['status'] in ['present', 'absent', 'pending_medical', 'approved_medical']:
+                        total += status_count['count']
+            
+            percentage = calculate_percent(present, total)
+            monthly_data.append({
+                "month": month_map[i],
+                "present": present,
+                "total": total,
+                "percentage": percentage
+            })
+            
+        return Response(json_util.dumps({"monthly_trend": monthly_data}), mimetype='application/json')
+    except Exception as e:
+        print(f"---! ERROR IN /api/analytics/monthly_trend: {e} !---")
+        traceback.print_exc()
+        return jsonify({"error": "Could not fetch monthly analytics."}), 500

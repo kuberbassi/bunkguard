@@ -401,3 +401,17 @@ nav, .navbar, header {
     bottom: 3px;
 }
 
+.log-modal-content {
+    max-height: 65vh; /* or custom depending on modal size */
+    overflow-y: auto;
+}
+nav, .navbar, header { z-index: 10 !important; }
+.modal, .modal-overlay { z-index: 100 !important; }
+.modal-content { z-index: 101 !important; position: relative; }
+
+.log-modal-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+nav, .navbar { z-index: 100; }
+.modal, .modal-overlay, .modal-content { z-index: 1000; }

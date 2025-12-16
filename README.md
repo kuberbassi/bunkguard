@@ -49,7 +49,7 @@ Make sure you have **Python 3.x** and `pip` installed.
 3.  **Run the application:**
 
     ```bash
-    python app.py
+    python run.py
     ```
 
 The application should now be running at `http://127.0.0.1:5000` or a similar address.

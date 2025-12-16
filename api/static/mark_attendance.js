@@ -31,38 +31,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Update calendar dots based on attendance status
-    function updateCalendarDots() {
-        const calendarDays = document.querySelectorAll('.calendar-day');
+    function updateCalendarDots(year, month) {
+        fetch(`/api/attendance_calendar?year=${year}&month=${month}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) return;
+                document.querySelectorAll('.calendar-day').forEach(cell => {
+                    const date = cell.dataset.date;
+                    cell.querySelectorAll('.attendance-dot').forEach(dot => dot.remove());
 
-        calendarDays.forEach(day => {
-            const dateStr = day.dataset.date; // Format: "2025-10-21"
-
-            // Remove existing dots
-            const existingDot = day.querySelector('.attendance-dot');
-            if (existingDot) {
-                existingDot.remove();
-            }
-
-            // Check if this date has attendance
-            if (calendarAttendanceData[dateStr]) {
-                const status = calendarAttendanceData[dateStr];
-                const dot = document.createElement('div');
-                dot.className = 'attendance-dot';
-
-                // Set color based on status
-                if (status.all_present) {
-                    dot.style.backgroundColor = '#10b981'; // Green - all present
-                } else if (status.all_absent) {
-                    dot.style.backgroundColor = '#ef4444'; // Red - all absent
-                } else if (status.mixed) {
-                    dot.style.backgroundColor = '#f59e0b'; // Orange - mixed
-                }
-
-                day.appendChild(dot);
-            }
-        });
+                    const status = data.dates[date];
+                    if (status) {
+                        const dot = document.createElement('div');
+                        dot.className = 'attendance-dot';
+                        if (status === 'present') dot.style.background = '#10b981'; // green
+                        else if (status === 'absent') dot.style.background = '#ef4444'; // red
+                        else if (status === 'mixed') dot.style.background = '#f59e0b'; // orange
+                        cell.appendChild(dot);
+                    }
+                });
+            });
     }
+
 
     // When calendar month changes
     function onCalendarMonthChange(year, month) {
@@ -105,34 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create date string in format "YYYY-MM-DD"
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         return attendanceDates.has(dateStr);
-    }
-
-    // Function to update calendar visual dots
-    function updateCalendarDots() {
-        // Get all calendar day cells
-        const dayCells = document.querySelectorAll('.calendar-day');
-
-        dayCells.forEach(cell => {
-            const day = cell.dataset.day;
-            const month = cell.dataset.month;
-            const year = cell.dataset.year;
-
-            // Check if this date has attendance
-            if (hasAttendance(year, month, day)) {
-                // Add green dot indicator
-                if (!cell.querySelector('.attendance-dot')) {
-                    const dot = document.createElement('div');
-                    dot.className = 'attendance-dot';
-                    cell.appendChild(dot);
-                }
-            } else {
-                // Remove dot if it exists
-                const existingDot = cell.querySelector('.attendance-dot');
-                if (existingDot) {
-                    existingDot.remove();
-                }
-            }
-        });
     }
 
     // When calendar month changes, reload attendance dates
