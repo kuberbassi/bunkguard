@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { attendanceService } from '@/services/attendance.service';
+import { useSemester } from '@/contexts/SemesterContext';
 import { useToast } from '@/components/ui/Toast';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -14,6 +15,7 @@ import type { TimetableSlot } from '@/types';
 
 const TimeTable: React.FC = () => {
     const { showToast } = useToast();
+    const { currentSemester } = useSemester();
     const [loading, setLoading] = useState(true);
     const [timetable, setTimetable] = useState<Record<string, TimetableSlot[]>>({});
     const [subjects, setSubjects] = useState<any[]>([]);
@@ -30,14 +32,14 @@ const TimeTable: React.FC = () => {
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [currentSemester]);
 
     const loadData = async () => {
         try {
             setLoading(true);
             const [ttData, dashData] = await Promise.all([
                 attendanceService.getTimetable(),
-                attendanceService.getDashboardData()
+                attendanceService.getDashboardData(currentSemester)
             ]);
 
             // Normalize data: ensure array for each day

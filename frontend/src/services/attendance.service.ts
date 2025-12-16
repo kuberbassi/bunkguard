@@ -7,6 +7,8 @@ import type {
     Preferences,
     Deadline,
     Holiday,
+    SystemLog,
+    AcademicRecord
 } from '@/types';
 
 export const attendanceService = {
@@ -38,13 +40,15 @@ export const attendanceService = {
         subjectId: string,
         status: string,
         date?: string,
-        notes?: string
+        notes?: string,
+        substitutedById?: string // New param
     ): Promise<void> => {
         await api.post('/api/mark_attendance', {
             subject_id: subjectId,
             status,
             date,
             notes,
+            substituted_by_id: substitutedById, // Send to backend
         });
     },
 
@@ -65,10 +69,11 @@ export const attendanceService = {
         return response.data;
     },
 
-    editAttendance: async (logId: string, status: string, notes?: string): Promise<void> => {
+    editAttendance: async (logId: string, status: string, notes?: string, date?: string): Promise<void> => {
         await api.post(`/api/edit_attendance/${logId}`, {
             status,
             notes,
+            date
         });
     },
 
@@ -94,11 +99,20 @@ export const attendanceService = {
         return response.data;
     },
 
+    getSubjectDetails: async (subjectId: string): Promise<Subject> => {
+        const response = await api.get(`/api/subject_details/${subjectId}`);
+        return response.data;
+    },
+
     addSubject: async (subjectName: string, semester: number): Promise<void> => {
         await api.post('/api/add_subject', {
             subject_name: subjectName,
             semester,
         });
+    },
+
+    deleteSubject: async (subjectId: string): Promise<void> => {
+        await api.delete(`/api/delete_subject/${subjectId}`);
     },
 
     updateSubjectDetails: async (
@@ -110,6 +124,16 @@ export const attendanceService = {
             subject_id: subjectId,
             professor,
             classroom,
+        });
+    },
+
+    updateSubjectFullDetails: async (
+        subjectId: string,
+        data: Partial<Subject>
+    ): Promise<void> => {
+        await api.post('/api/update_subject_full_details', {
+            subject_id: subjectId,
+            ...data
         });
     },
 
@@ -155,13 +179,13 @@ export const attendanceService = {
     },
 
     // Analytics
-    getDayOfWeekAnalytics: async () => {
-        const response = await api.get('/api/analytics/day_of_week');
+    getDayOfWeekAnalytics: async (semester: number = 1) => {
+        const response = await api.get(`/api/analytics/day_of_week?semester=${semester}`);
         return response.data;
     },
 
-    getMonthlyAnalytics: async (year?: number) => {
-        const response = await api.get(`/api/analytics/monthly_trend?year=${year || new Date().getFullYear()}`);
+    getMonthlyAnalytics: async (semester: number = 1, year?: number) => {
+        const response = await api.get(`/api/analytics/monthly_trend?year=${year || new Date().getFullYear()}&semester=${semester}`);
         return response.data;
     },
 
@@ -195,6 +219,17 @@ export const attendanceService = {
 
     toggleDeadline: async (deadlineId: string): Promise<void> => {
         await api.post(`/api/toggle_deadline/${deadlineId}`);
+    },
+
+    deleteDeadline: async (deadlineId: string): Promise<void> => {
+        await api.delete(`/api/deadlines/${deadlineId}`);
+    },
+
+    updateDeadline: async (deadlineId: string, title: string, dueDate: string): Promise<void> => {
+        await api.put(`/api/deadlines/${deadlineId}`, {
+            title,
+            due_date: dueDate,
+        });
     },
 
     // Holidays
@@ -257,8 +292,18 @@ export const attendanceService = {
     },
 
     // System logs
-    getSystemLogs: async () => {
+    getSystemLogs: async (): Promise<SystemLog[]> => {
         const response = await api.get('/api/system_logs');
         return response.data;
+    },
+
+    // Academic Records
+    getAcademicRecords: async (): Promise<AcademicRecord[]> => {
+        const response = await api.get('/api/academic_records');
+        return response.data;
+    },
+
+    updateAcademicRecord: async (data: AcademicRecord): Promise<void> => {
+        await api.post('/api/update_academic_record', data);
     }
 };

@@ -13,7 +13,25 @@ export interface Subject {
     total: number;
     professor?: string;
     classroom?: string;
+    code?: string;
+    syllabus?: string;
     created_at: string;
+}
+
+export interface SystemLog {
+    _id: string;
+    action: string;
+    description: string;
+    timestamp: { $date: number } | string;
+}
+
+export interface AcademicRecord {
+    _id?: string;
+    semester: number;
+    sgpa: number;
+    cgpa: number;
+    credits: number;
+    timestamp?: string;
 }
 
 export interface AttendanceLog {
@@ -21,11 +39,12 @@ export interface AttendanceLog {
     owner_email: string;
     subject_id: string;
     date: string;
-    status: 'present' | 'absent' | 'pending_medical' | 'approved_medical' | 'substituted' | 'substitution_resolved';
+    status: 'present' | 'absent' | 'pending_medical' | 'approved_medical' | 'substituted' | 'substitution_resolved' | 'cancelled';
     timestamp: string;
     semester: number;
     notes?: string;
     subject_info?: Subject;
+    substituted_by?: string;
 }
 
 export interface AcadHubStatus {
@@ -37,12 +56,20 @@ export interface AcadHubStatus {
 export interface SubjectOverview extends AcadHubStatus {
     id: string;
     name: string;
+    code?: string;
+    professor?: string;
+    classroom?: string;
+    attended: number;
+    total: number;
 }
 
 export interface DashboardData {
     current_date: string;
     overall_attendance: number;
     subjects_overview: SubjectOverview[];
+    subjects: Array<Subject & { attendance_percentage: number; status_message: string }>;
+    current_semester: number;
+    total_subjects: number;
 }
 
 export interface ReportsKPI {

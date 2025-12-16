@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Check, X, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import Modal from '@/components/ui/Modal';
+import AttendanceModal from '@/components/modals/AttendanceModal';
 import { attendanceService } from '@/services/attendance.service';
+import { useSemester } from '@/contexts/SemesterContext';
 import { useToast } from '@/components/ui/Toast';
-import { formatDate } from '@/utils/formatters';
 
 interface AttendanceRecord {
     date: string;
@@ -18,19 +18,18 @@ interface AttendanceRecord {
 
 const Calendar: React.FC = () => {
     const { showToast } = useToast();
+    const { currentSemester } = useSemester();
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     // attendanceData is now a map of date -> list of records
     const [attendanceData, setAttendanceData] = useState<Record<string, AttendanceRecord[]>>({});
-    const [subjects, setSubjects] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
     const [scheduledClasses, setScheduledClasses] = useState<any[]>([]);
-    const [modalLoading, setModalLoading] = useState(false);
 
     useEffect(() => {
         loadData();
-    }, [currentDate]);
+    }, [currentDate, currentSemester]);
 
     const loadData = async () => {
         try {
@@ -39,11 +38,7 @@ const Calendar: React.FC = () => {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1;
 
-            const [dashData, calendarData] = await Promise.all([
-                attendanceService.getDashboardData(),
-                attendanceService.getCalendarData(year, month) // Must ensure this method exists and calls /api/calendar_data
-            ]);
-            setSubjects(dashData.subjects_overview || []);
+            const calendarData = await attendanceService.getCalendarData(year, month);
             setAttendanceData(calendarData as Record<string, AttendanceRecord[]> || {});
         } catch (error) {
             console.error(error);
@@ -95,7 +90,6 @@ const Calendar: React.FC = () => {
 
         setSelectedDate(clickedDate);
         setIsMarkModalOpen(true);
-        setModalLoading(true);
         setScheduledClasses([]);
 
         try {
@@ -103,34 +97,10 @@ const Calendar: React.FC = () => {
             setScheduledClasses(classes);
         } catch (error) {
             console.error("Failed to fetch scheduled classes", error);
-        } finally {
-            setModalLoading(false);
         }
     };
 
-    const handleMarkAttendance = async (subjectId: string, status: 'present' | 'absent') => {
-        if (!selectedDate) return;
-        const year = selectedDate.getFullYear();
-        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(selectedDate.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
 
-        try {
-            await attendanceService.markAttendance(
-                subjectId,
-                status,
-                dateStr
-            );
-            showToast('success', `Marked ${status}`);
-            // Refresh local data
-            loadData();
-            // Refresh scheduled classes status
-            const classes = await attendanceService.getClassesForDate(dateStr);
-            setScheduledClasses(classes);
-        } catch (error) {
-            showToast('error', 'Failed to mark attendance');
-        }
-    };
 
     const handleBulkMark = async (status: 'present' | 'absent') => {
         if (!selectedDate || scheduledClasses.length === 0) return;
@@ -285,102 +255,17 @@ const Calendar: React.FC = () => {
             </GlassCard>
 
             {/* Mark Attendance Modal */}
-            <Modal
+            <AttendanceModal
                 isOpen={isMarkModalOpen}
                 onClose={() => setIsMarkModalOpen(false)}
-                title={`Mark Attendance - ${selectedDate ? formatDate(selectedDate) : ''}`}
-            >
-                <div className="space-y-4">
-                    {modalLoading ? (
-                        <div className="py-8 flex justify-center">
-                            <LoadingSpinner />
-                        </div>
-                    ) : (
-                        <>
-                            {scheduledClasses.length > 0 ? (
-                                <div className="space-y-4">
-                                    <div className="flex gap-3 mb-4">
-                                        <Button variant="filled" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleBulkMark('present')}>Mark All Present</Button>
-                                        <Button variant="filled" className="flex-1 bg-red-600 hover:bg-red-700" onClick={() => handleBulkMark('absent')}>Mark All Absent</Button>
-                                    </div>
-                                    <p className="text-sm text-on-surface-variant font-medium">Scheduled Classes</p>
-                                    <div className="space-y-3">
-                                        {scheduledClasses.map((subject) => {
-                                            const status = subject.marked_status || 'pending';
-                                            return (
-                                                <div key={subject._id} className="flex items-center justify-between p-4 rounded-xl bg-surface-container border border-outline-variant/20 hover:border-primary/30 transition-colors">
-                                                    <span className="font-bold text-on-surface">{subject.name}</span>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            variant={status === 'present' ? 'filled' : 'outlined'}
-                                                            size="sm"
-                                                            icon={<Check size={16} />}
-                                                            onClick={() => handleMarkAttendance(subject._id, 'present')}
-                                                            className={`!px-4 !rounded-lg ${status === 'present' ? 'bg-green-600 hover:bg-green-700' : 'text-green-600 border-green-600/30 hover:bg-green-50'}`}
-                                                        >
-                                                            Present
-                                                        </Button>
-                                                        <Button
-                                                            variant={status === 'absent' ? 'filled' : 'outlined'}
-                                                            size="sm"
-                                                            icon={<X size={16} />}
-                                                            onClick={() => handleMarkAttendance(subject._id, 'absent')}
-                                                            className={`!px-4 !rounded-lg ${status === 'absent' ? 'bg-red-600 hover:bg-red-700' : 'text-red-600 border-red-600/30 hover:bg-red-50'}`}
-                                                        >
-                                                            Absent
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="text-center py-6 text-on-surface-variant bg-surface-container-low rounded-xl">
-                                    No classes scheduled for this day.
-                                </div>
-                            )}
-
-                            {/* Separator if needed, or just list all subjects below if user wants to mark extra classes */}
-                            <div className="pt-4 border-t border-outline-variant/10">
-                                <p className="text-sm text-on-surface-variant mb-3">Other Subjects (Manual Mark)</p>
-                                <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
-                                    {subjects.filter(s => !scheduledClasses.some(sc => sc._id === s.id)).map((subject) => {
-                                        // Need to check if this subject has a log for this day manually since it's not in scheduledClasses which has "marked_status"
-                                        const existingRecord = selectedDate
-                                            ? getAttendanceForDate(selectedDate).find(r => r.subject_id === subject.id)
-                                            : null;
-
-                                        return (
-                                            <div key={subject.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-dim/50 border border-transparent hover:border-outline-variant/20 transition-colors">
-                                                <span className="text-on-surface text-sm">{subject.name}</span>
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        variant={existingRecord?.status === 'present' ? 'filled' : 'ghost'}
-                                                        size="sm"
-                                                        onClick={() => handleMarkAttendance(subject.id, 'present')}
-                                                        className={`h-8 px-3 ${existingRecord?.status === 'present' ? 'bg-green-600/80' : 'text-green-600'}`}
-                                                    >
-                                                        P
-                                                    </Button>
-                                                    <Button
-                                                        variant={existingRecord?.status === 'absent' ? 'filled' : 'ghost'}
-                                                        size="sm"
-                                                        onClick={() => handleMarkAttendance(subject.id, 'absent')}
-                                                        className={`h-8 px-3 ${existingRecord?.status === 'absent' ? 'bg-red-600/80' : 'text-red-600'}`}
-                                                    >
-                                                        A
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </Modal>
+                defaultDate={selectedDate || new Date()}
+                onSuccess={() => {
+                    // Refresh data
+                    loadData();
+                    setIsMarkModalOpen(false); // Optional: keep open if we want rapid marking? usually auto-close or manual.
+                    // The Modal component handles internal state reset on close.
+                }}
+            />
         </div>
     );
 };

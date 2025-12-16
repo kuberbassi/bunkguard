@@ -18,13 +18,13 @@ const GlassCard: React.FC<GlassCardProps> = ({
         <motion.div
             className={`
                 relative overflow-hidden
-                bg-white/80 dark:bg-dark-surface-elevated/80
-                backdrop-blur-md
-                border border-white/20 dark:border-white/5
+                bg-surface dark:bg-surface-container 
+                border border-outline-variant/60 
                 rounded-2xl
-                shadow-lg
-                transition-all duration-300 ease-smooth
-                ${hover ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1' : ''}
+                shadow-sm
+                transition-all duration-300
+                backdrop-blur-sm
+                ${hover ? 'hover:shadow-md hover:border-outline-variant hover:-translate-y-1 cursor-pointer' : ''}
                 ${className}
             `}
             whileTap={hover ? { scale: 0.98 } : undefined}

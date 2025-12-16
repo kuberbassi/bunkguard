@@ -4,6 +4,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { SemesterProvider } from './contexts/SemesterContext';
 import { ToastProvider } from './components/ui/Toast';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
@@ -146,13 +147,15 @@ const App: React.FC = () => {
       <BrowserRouter>
         <ThemeProvider>
           <AuthProvider>
-            <ToastProvider>
-              <ErrorBoundary>
-                <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
-                  <AppRoutes />
-                </div>
-              </ErrorBoundary>
-            </ToastProvider>
+            <SemesterProvider>
+              <ToastProvider>
+                <ErrorBoundary>
+                  <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
+                    <AppRoutes />
+                  </div>
+                </ErrorBoundary>
+              </ToastProvider>
+            </SemesterProvider>
           </AuthProvider>
         </ThemeProvider>
       </BrowserRouter>

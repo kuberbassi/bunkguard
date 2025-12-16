@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     User, Palette, Settings as SettingsIcon, Download, Upload,
-    Sun, Moon, Percent, Calculator, AlertTriangle, LogOut, Trash2
+    Sun, Moon, Percent, Calculator, AlertTriangle, LogOut, Trash2,
+    Activity, GraduationCap, Clock, FileText
 } from 'lucide-react';
+import type { SystemLog, AcademicRecord } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
+import Modal from '@/components/ui/Modal';
 
 interface UserPreferences {
     attendance_threshold: number;
@@ -28,10 +31,210 @@ const ACCENT_COLORS = [
     { name: 'Teal', value: '#14B8A6', class: 'bg-teal-500' },
 ];
 
+// --- Sub-Components ---
+
+const SystemLogsSection: React.FC = () => {
+    const [logs, setLogs] = useState<SystemLog[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadLogs();
+    }, []);
+
+    const loadLogs = async () => {
+        try {
+            const data = await attendanceService.getSystemLogs();
+            setLogs(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) return <div>Loading logs...</div>;
+
+    return (
+        <Card variant="outlined" className="max-h-96 overflow-y-auto pr-2">
+            <div className="space-y-4">
+                {logs.length === 0 ? (
+                    <p className="text-center text-on-surface-variant py-4">No activity recorded yet.</p>
+                ) : (
+                    logs.map((log) => (
+                        <div key={log._id} className="flex gap-4 items-start pb-4 border-b border-outline-variant/30 last:border-0 last:pb-0">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                                <Activity size={14} className="text-primary" />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-sm text-on-surface">{log.action}</h4>
+                                <p className="text-sm text-on-surface-variant">{log.description}</p>
+                                <div className="flex items-center gap-1 mt-1 text-xs text-on-surface-variant/70">
+                                    <Clock size={10} />
+                                    <span>
+                                        {typeof log.timestamp === 'string'
+                                            ? new Date(log.timestamp).toLocaleString()
+                                            : new Date((log.timestamp as any).$date).toLocaleString()
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </Card>
+    );
+};
+
+const AcademicRecordsSection: React.FC = () => {
+    const { showToast } = useToast();
+    const [records, setRecords] = useState<AcademicRecord[]>([]);
+    const [isEditing, setIsEditing] = useState(false);
+
+    // New Record Form
+    const [formData, setFormData] = useState<Partial<AcademicRecord>>({
+        semester: 1,
+        sgpa: 0,
+        cgpa: 0,
+        credits: 0
+    });
+
+    useEffect(() => {
+        loadRecords();
+    }, []);
+
+    const loadRecords = async () => {
+        try {
+            const data = await attendanceService.getAcademicRecords();
+            setRecords(data);
+            if (data.length > 0) {
+                const last = data[data.length - 1];
+                setFormData({ semester: last.semester + 1, sgpa: 0, cgpa: 0, credits: 0 });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!formData.semester || formData.semester < 1) {
+            showToast('error', 'Invalid Semester');
+            return;
+        }
+        try {
+            await attendanceService.updateAcademicRecord(formData as AcademicRecord);
+            showToast('success', 'Record updated');
+            setIsEditing(false);
+            loadRecords(); // Refresh
+        } catch (error) {
+            showToast('error', 'Failed to save record');
+        }
+    };
+
+    return (
+        <Card variant="outlined">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h3 className="font-bold text-on-surface">Semester Results</h3>
+                    <p className="text-sm text-on-surface-variant">Track your IPU academic performance</p>
+                </div>
+                <Button variant="filled" icon={<GraduationCap size={16} />} onClick={() => setIsEditing(true)}>
+                    Add / Update
+                </Button>
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                    <thead className="border-b border-outline-variant/30 text-on-surface-variant uppercase text-xs font-semibold">
+                        <tr>
+                            <th className="px-4 py-3">Semester</th>
+                            <th className="px-4 py-3">SGPA</th>
+                            <th className="px-4 py-3">CGPA</th>
+                            <th className="px-4 py-3">Credits</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                        {records.length === 0 ? (
+                            <tr>
+                                <td colSpan={4} className="px-4 py-8 text-center text-on-surface-variant">
+                                    No records found. Add your first semester result.
+                                </td>
+                            </tr>
+                        ) : (
+                            records.map((rec) => (
+                                <tr key={rec._id || rec.semester} className="hover:bg-surface-container/30 transition-colors">
+                                    <td className="px-4 py-3 font-medium">Sem {rec.semester}</td>
+                                    <td className="px-4 py-3 font-bold text-primary">{rec.sgpa}</td>
+                                    <td className="px-4 py-3 text-on-surface">{rec.cgpa}</td>
+                                    <td className="px-4 py-3 text-on-surface-variant">{rec.credits}</td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Edit Modal */}
+            <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Update Academic Record">
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Semester</label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="8"
+                            value={formData.semester}
+                            onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value) })}
+                            className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">SGPA</label>
+                            <input
+                                type="number" step="0.01"
+                                value={formData.sgpa}
+                                onChange={e => setFormData({ ...formData, sgpa: parseFloat(e.target.value) })}
+                                className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">CGPA</label>
+                            <input
+                                type="number" step="0.01"
+                                value={formData.cgpa}
+                                onChange={e => setFormData({ ...formData, cgpa: parseFloat(e.target.value) })}
+                                className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Credits Secured</label>
+                        <input
+                            type="number"
+                            value={formData.credits}
+                            onChange={e => setFormData({ ...formData, credits: parseInt(e.target.value) })}
+                            className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
+                        />
+                    </div>
+                    <div className="pt-4 flex justify-end gap-2">
+                        <Button variant="text" onClick={() => setIsEditing(false)}>Cancel</Button>
+                        <Button onClick={handleSave}>Save Record</Button>
+                    </div>
+                </div>
+            </Modal>
+        </Card>
+    );
+};
+
+// --- Main Settings Component ---
+
 const Settings: React.FC = () => {
     const { user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { showToast } = useToast();
+
+    const [activeTab, setActiveTab] = useState<'profile' | 'academics'>('profile');
 
     const [preferences, setPreferences] = useState<UserPreferences>({
         attendance_threshold: 75,
@@ -112,8 +315,13 @@ const Settings: React.FC = () => {
         if (!confirm('⚠️ Last chance! Really delete everything?')) return;
 
         try {
-            // TODO: Implement backend endpoint
-            showToast('error', 'Feature coming soon');
+            const res: any = await attendanceService.deleteAllData();
+            if (res && res.success) {
+                showToast('success', 'All data deleted.');
+                window.location.reload();
+            } else {
+                showToast('error', 'Failed to delete data');
+            }
         } catch (error) {
             showToast('error', 'Failed to delete data');
         }
@@ -130,183 +338,223 @@ const Settings: React.FC = () => {
                 <p className="text-on-surface-variant">Customize your BunkGuard experience</p>
             </motion.div>
 
+            {/* Tabs for Mobile/Desktop */}
+            <div className="flex gap-2 mb-6 border-b border-outline-variant/30 pb-1">
+                <button
+                    onClick={() => setActiveTab('profile')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'profile' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+                >
+                    Profile & Preferences
+                </button>
+                <button
+                    onClick={() => setActiveTab('academics')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'academics' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+                >
+                    Academic Record
+                </button>
+            </div>
+
             <div className="space-y-6">
-                {/* Profile Section */}
-                <section>
-                    <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                        <User className="w-5 h-5 text-primary" />
-                        Profile
-                    </h2>
-                    <Card variant="elevated">
-                        <div className="flex flex-col md:flex-row gap-6 items-start">
-                            <div className="w-20 h-20 rounded-full bg-primary-container text-primary text-3xl flex items-center justify-center font-bold">
-                                {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                            </div>
-                            <div className="flex-1 w-full space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-on-surface mb-2">Display Name</label>
-                                    <input
-                                        type="text"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        disabled={!isEditingProfile}
-                                        className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface disabled:opacity-60"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-on-surface mb-2">Email</label>
-                                    <input
-                                        type="email"
-                                        value={user?.email || ''}
-                                        disabled
-                                        className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface opacity-60"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-6 flex justify-end gap-2">
-                            {isEditingProfile ? (
-                                <>
-                                    <Button variant="text" onClick={() => setIsEditingProfile(false)}>Cancel</Button>
-                                    <Button onClick={() => { setIsEditingProfile(false); showToast('info', 'Profile update coming soon'); }}>
-                                        Save Changes
-                                    </Button>
-                                </>
-                            ) : (
-                                <Button variant="outlined" onClick={() => setIsEditingProfile(true)}>Edit Profile</Button>
-                            )}
-                        </div>
-                    </Card>
-                </section>
-
-                {/* Appearance */}
-                <section>
-                    <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                        <Palette className="w-5 h-5 text-primary" />
-                        Appearance
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Card variant="outlined" className="cursor-pointer hover:bg-surface-container-low transition-colors" onClick={toggleTheme}>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-secondary-container text-secondary flex items-center justify-center">
-                                        {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                {activeTab === 'profile' ? (
+                    <>
+                        {/* Profile Section */}
+                        <section>
+                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+                                <User className="w-5 h-5 text-primary" />
+                                Profile
+                            </h2>
+                            <Card variant="elevated">
+                                <div className="flex flex-col md:flex-row gap-6 items-start">
+                                    <div className="w-20 h-20 rounded-full bg-primary-container text-primary text-3xl flex items-center justify-center font-bold">
+                                        {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                                     </div>
+                                    <div className="flex-1 w-full space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-on-surface mb-2">Display Name</label>
+                                            <input
+                                                type="text"
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                disabled={!isEditingProfile}
+                                                className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface disabled:opacity-60"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-on-surface mb-2">Email</label>
+                                            <input
+                                                type="email"
+                                                value={user?.email || ''}
+                                                disabled
+                                                className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface opacity-60"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-6 flex justify-end gap-2">
+                                    {isEditingProfile ? (
+                                        <>
+                                            <Button variant="text" onClick={() => setIsEditingProfile(false)}>Cancel</Button>
+                                            <Button onClick={() => { setIsEditingProfile(false); showToast('info', 'Profile update coming soon'); }}>
+                                                Save Changes
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <Button variant="outlined" onClick={() => setIsEditingProfile(true)}>Edit Profile</Button>
+                                    )}
+                                </div>
+                            </Card>
+                        </section>
+
+                        {/* Appearance */}
+                        <section>
+                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+                                <Palette className="w-5 h-5 text-primary" />
+                                Appearance
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Card variant="outlined" className="cursor-pointer hover:bg-surface-container-low transition-colors" onClick={toggleTheme}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-secondary-container text-secondary flex items-center justify-center">
+                                                {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-medium text-on-surface">Theme</h3>
+                                                <p className="text-sm text-on-surface-variant">{theme === 'dark' ? 'Dark' : 'Light'} Mode</p>
+                                            </div>
+                                        </div>
+                                        <div className={`w-12 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-outline-variant'}`}>
+                                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${theme === 'dark' ? 'translate-x-6' : ''}`} />
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                <Card variant="outlined">
+                                    <h3 className="font-medium text-on-surface mb-3">Accent Color</h3>
+                                    <div className="grid grid-cols-6 gap-2">
+                                        {ACCENT_COLORS.map((color) => (
+                                            <button
+                                                key={color.value}
+                                                onClick={() => savePreferences({ accent_color: color.value })}
+                                                className={`w-10 h-10 rounded-full ${color.class} ${preferences.accent_color === color.value ? 'ring-4 ring-primary/30 scale-110' : ''} transition-all hover:scale-105`}
+                                                title={color.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </Card>
+                            </div>
+                        </section>
+
+                        {/* Attendance Preferences */}
+                        <section>
+                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+                                <SettingsIcon className="w-5 h-5 text-primary" />
+                                Attendance Preferences
+                            </h2>
+                            <Card variant="outlined">
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-on-surface mb-2">
+                                                Minimum Attendance Threshold
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="range"
+                                                    min="60"
+                                                    max="100"
+                                                    value={preferences.attendance_threshold}
+                                                    onChange={(e) => savePreferences({ attendance_threshold: parseInt(e.target.value) })}
+                                                    className="flex-1"
+                                                />
+                                                <div className="w-16 text-center font-bold text-primary bg-primary-container px-3 py-1 rounded-lg">
+                                                    {preferences.attendance_threshold}%
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-on-surface-variant mt-2">
+                                                Below this value, subjects will be marked as "at risk"
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-on-surface mb-2">
+                                                Warning Threshold
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="range"
+                                                    min={preferences.attendance_threshold}
+                                                    max="100"
+                                                    value={preferences.warning_threshold}
+                                                    onChange={(e) => savePreferences({ warning_threshold: parseInt(e.target.value) })}
+                                                    className="flex-1"
+                                                />
+                                                <div className="w-16 text-center font-bold text-orange-600 bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-lg">
+                                                    {preferences.warning_threshold}%
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-on-surface-variant mt-2">
+                                                You'll be warned when attendance drops below this
+                                            </p>
+                                        </div>
+                                    </div>
+
                                     <div>
-                                        <h3 className="font-medium text-on-surface">Theme</h3>
-                                        <p className="text-sm text-on-surface-variant">{theme === 'dark' ? 'Dark' : 'Light'} Mode</p>
-                                    </div>
-                                </div>
-                                <div className={`w-12 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-outline-variant'}`}>
-                                    <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${theme === 'dark' ? 'translate-x-6' : ''}`} />
-                                </div>
-                            </div>
-                        </Card>
-
-                        <Card variant="outlined">
-                            <h3 className="font-medium text-on-surface mb-3">Accent Color</h3>
-                            <div className="grid grid-cols-6 gap-2">
-                                {ACCENT_COLORS.map((color) => (
-                                    <button
-                                        key={color.value}
-                                        onClick={() => savePreferences({ accent_color: color.value })}
-                                        className={`w-10 h-10 rounded-full ${color.class} ${preferences.accent_color === color.value ? 'ring-4 ring-primary/30 scale-110' : ''} transition-all hover:scale-105`}
-                                        title={color.name}
-                                    />
-                                ))}
-                            </div>
-                        </Card>
-                    </div>
-                </section>
-
-                {/* Attendance Preferences */}
-                <section>
-                    <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                        <SettingsIcon className="w-5 h-5 text-primary" />
-                        Attendance Preferences
-                    </h2>
-                    <Card variant="outlined">
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-on-surface mb-2">
-                                        Minimum Attendance Threshold
-                                    </label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="range"
-                                            min="60"
-                                            max="100"
-                                            value={preferences.attendance_threshold}
-                                            onChange={(e) => savePreferences({ attendance_threshold: parseInt(e.target.value) })}
-                                            className="flex-1"
-                                        />
-                                        <div className="w-16 text-center font-bold text-primary bg-primary-container px-3 py-1 rounded-lg">
-                                            {preferences.attendance_threshold}%
+                                        <label className="block text-sm font-medium text-on-surface mb-3">
+                                            Counting Mode
+                                        </label>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => savePreferences({ counting_mode: 'percentage' })}
+                                                className={`flex-1 p-4 rounded-lg border-2 transition-all ${preferences.counting_mode === 'percentage'
+                                                    ? 'border-primary bg-primary/10'
+                                                    : 'border-outline hover:bg-surface-container'
+                                                    }`}
+                                            >
+                                                <Percent className="w-6 h-6 mx-auto mb-2 text-primary" />
+                                                <p className="font-medium text-on-surface">Percentage</p>
+                                                <p className="text-xs text-on-surface-variant mt-1">Display as percentages</p>
+                                            </button>
+                                            <button
+                                                onClick={() => savePreferences({ counting_mode: 'classes' })}
+                                                className={`flex-1 p-4 rounded-lg border-2 transition-all ${preferences.counting_mode === 'classes'
+                                                    ? 'border-primary bg-primary/10'
+                                                    : 'border-outline hover:bg-surface-container'
+                                                    }`}
+                                            >
+                                                <Calculator className="w-6 h-6 mx-auto mb-2 text-primary" />
+                                                <p className="font-medium text-on-surface">Class Count</p>
+                                                <p className="text-xs text-on-surface-variant mt-1">Display as X/Y classes</p>
+                                            </button>
                                         </div>
                                     </div>
-                                    <p className="text-xs text-on-surface-variant mt-2">
-                                        Below this value, subjects will be marked as "at risk"
-                                    </p>
                                 </div>
+                            </Card>
+                        </section>
+                    </>
+                ) : (
+                    <>
+                        {/* Academic Records */}
+                        <section>
+                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+                                <GraduationCap className="w-5 h-5 text-primary" />
+                                Academic Records
+                            </h2>
+                            <AcademicRecordsSection />
+                        </section>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-on-surface mb-2">
-                                        Warning Threshold
-                                    </label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="range"
-                                            min={preferences.attendance_threshold}
-                                            max="100"
-                                            value={preferences.warning_threshold}
-                                            onChange={(e) => savePreferences({ warning_threshold: parseInt(e.target.value) })}
-                                            className="flex-1"
-                                        />
-                                        <div className="w-16 text-center font-bold text-orange-600 bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-lg">
-                                            {preferences.warning_threshold}%
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-on-surface-variant mt-2">
-                                        You'll be warned when attendance drops below this
-                                    </p>
-                                </div>
-                            </div>
+                        {/* System Logs */}
+                        <section>
+                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-primary" />
+                                Activity Log
+                            </h2>
+                            <SystemLogsSection />
+                        </section>
+                    </>
+                )}
 
-                            <div>
-                                <label className="block text-sm font-medium text-on-surface mb-3">
-                                    Counting Mode
-                                </label>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => savePreferences({ counting_mode: 'percentage' })}
-                                        className={`flex-1 p-4 rounded-lg border-2 transition-all ${preferences.counting_mode === 'percentage'
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-outline hover:bg-surface-container'
-                                            }`}
-                                    >
-                                        <Percent className="w-6 h-6 mx-auto mb-2 text-primary" />
-                                        <p className="font-medium text-on-surface">Percentage</p>
-                                        <p className="text-xs text-on-surface-variant mt-1">Display as percentages</p>
-                                    </button>
-                                    <button
-                                        onClick={() => savePreferences({ counting_mode: 'classes' })}
-                                        className={`flex-1 p-4 rounded-lg border-2 transition-all ${preferences.counting_mode === 'classes'
-                                            ? 'border-primary bg-primary/10'
-                                            : 'border-outline hover:bg-surface-container'
-                                            }`}
-                                    >
-                                        <Calculator className="w-6 h-6 mx-auto mb-2 text-primary" />
-                                        <p className="font-medium text-on-surface">Class Count</p>
-                                        <p className="text-xs text-on-surface-variant mt-1">Display as X/Y classes</p>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-                </section>
-
-                {/* Data Management */}
+                {/* Data Management & Danger Zone (Always Visible at bottom) */}
                 <section>
                     <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
                         <Download className="w-5 h-5 text-primary" />
@@ -334,7 +582,6 @@ const Settings: React.FC = () => {
                     </Card>
                 </section>
 
-                {/* Danger Zone */}
                 <section>
                     <h2 className="text-xl font-bold text-error mb-4 flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5" />

@@ -17,11 +17,11 @@ const Card: React.FC<CardProps> = ({
     onClick,
 }) => {
     const variantClasses = {
-        elevated: 'm3-card m3-card-elevated',
-        filled: 'm3-card m3-card-filled',
-        outlined: 'm3-card m3-card-outlined',
-        glass: 'm3-card m3-card-filled bg-opacity-50 backdrop-blur-md', // Keeping glass for now but mapping to filled
-        default: 'm3-card m3-card-elevated'
+        elevated: 'bg-surface-container shadow-md',
+        filled: 'bg-surface-variant text-on-surface-variant',
+        outlined: 'bg-surface border border-outline',
+        glass: 'bg-surface-container/80 backdrop-blur-md border border-outline/20', // Legacy support
+        default: 'bg-surface-container shadow-sm'
     };
 
     return (

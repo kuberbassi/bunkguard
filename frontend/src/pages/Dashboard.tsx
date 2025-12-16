@@ -1,37 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import {
-    TrendingUp, Plus, Check, X, Calendar,
-    BookOpen, Target, ArrowRight
+    Plus, Check, X, Calendar, Edit2, Trash2,
+    Target, TrendingUp, AlertCircle, BookOpen
 } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
-import HeroMetric from '@/components/ui/HeroMetric';
 import Button from '@/components/ui/Button';
 
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
+import EditSubjectModal from '@/components/modals/EditSubjectModal';
+import AttendanceModal from '@/components/modals/AttendanceModal';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
-import type { DashboardData } from '@/types';
+import type { DashboardData, Subject, SubjectOverview } from '@/types';
+import { useSemester } from '@/contexts/SemesterContext';
 import Skeleton from '@/components/ui/Skeleton';
 
-const STATUS_CONFIG: Record<string, { gradient: string; bg: string; text: string; border: string }> = {
+const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string }> = {
     safe: {
-        gradient: 'from-success to-success-dark',
-        bg: 'bg-success/10',
-        text: 'text-success-dark',
-        border: 'border-success/20'
+        bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        border: 'border-emerald-200 dark:border-emerald-800'
     },
     danger: {
-        gradient: 'from-error to-error-dark',
-        bg: 'bg-error/10',
-        text: 'text-error-dark',
-        border: 'border-error/20'
+        bg: 'bg-rose-100 dark:bg-rose-900/30',
+        text: 'text-rose-700 dark:text-rose-300',
+        border: 'border-rose-200 dark:border-rose-800'
     },
     neutral: {
-        gradient: 'from-warning to-warning-dark',
-        bg: 'bg-warning/10',
-        text: 'text-warning-dark',
-        border: 'border-warning/20'
+        bg: 'bg-amber-100 dark:bg-amber-900/30',
+        text: 'text-amber-700 dark:text-amber-300',
+        border: 'border-amber-200 dark:border-amber-800'
     }
 };
 
@@ -40,19 +39,38 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingSubject, setEditingSubject] = useState<Subject | SubjectOverview | null>(null);
+    const [markingSubjectId, setMarkingSubjectId] = useState<string | null>(null);
+    const { currentSemester, setCurrentSemester } = useSemester();
+
+    const [availableSemesters, setAvailableSemesters] = useState<number[]>([]);
 
     useEffect(() => {
         loadDashboard();
-    }, []);
+    }, [currentSemester]);
 
     const loadDashboard = async () => {
         try {
             setLoading(true);
-            const data = await attendanceService.getDashboardData(1);
+            const data = await attendanceService.getDashboardData(currentSemester);
             setDashboardData(data);
+
+            if (!data.subjects || data.subjects.length === 0) {
+                try {
+                    const overview = await attendanceService.getAllSemestersOverview();
+                    // overview is array of {semester: number, ...}
+                    const sems = overview.map((o: any) => o.semester).filter((s: number) => s !== currentSemester);
+                    setAvailableSemesters(sems);
+                } catch (e) {
+                    console.error("Failed to check other semesters", e);
+                }
+            } else {
+                setAvailableSemesters([]);
+            }
+
         } catch (error) {
+            console.error('Error in loadDashboard:', error);
             showToast('error', 'Failed to load dashboard');
-            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -68,298 +86,268 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    const handleDeleteSubject = async (subjectId: string, subjectName: string) => {
+        if (!confirm(`Are you sure you want to delete "${subjectName}"? This will remove all attendance records for this subject.`)) {
+            return;
+        }
+        try {
+            await attendanceService.deleteSubject(subjectId);
+            showToast('success', `Deleted ${subjectName}`);
+            loadDashboard();
+        } catch (error) {
+            showToast('error', 'Failed to delete subject');
+        }
+    };
+
     if (loading) {
         return (
-            <div className="min-h-screen pb-32">
-                <div className="mb-12">
-                    <Skeleton className="h-10 w-64 mb-2" />
-                    <Skeleton className="h-6 w-48" />
+            <div className="space-y-8 pb-32">
+                <div className="flex flex-col gap-4">
+                    <Skeleton className="h-12 w-3/4 max-w-lg rounded-full" />
+                    <Skeleton className="h-6 w-1/3 rounded-full" />
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-                    <div className="lg:col-span-2">
-                        <GlassCard className="h-full min-h-[200px] p-8 flex flex-col justify-between">
-                            <div className="space-y-4">
-                                <Skeleton className="h-4 w-32" />
-                                <Skeleton className="h-16 w-48" />
-                                <Skeleton className="h-8 w-24 rounded-full" />
-                            </div>
-                        </GlassCard>
-                    </div>
-                    <div className="space-y-6">
-                        <GlassCard className="p-4 md:p-6 h-32 flex items-center">
-                            <div className="flex gap-4 w-full">
-                                <Skeleton className="w-12 h-12 rounded-xl" />
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-4 w-20" />
-                                    <Skeleton className="h-8 w-16" />
-                                </div>
-                            </div>
-                        </GlassCard>
-                        <GlassCard className="p-4 md:p-6 h-32 flex items-center">
-                            <div className="flex gap-4 w-full">
-                                <Skeleton className="w-12 h-12 rounded-xl" />
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-4 w-20" />
-                                    <Skeleton className="h-8 w-16" />
-                                </div>
-                            </div>
-                        </GlassCard>
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Skeleton className="h-64 lg:col-span-2 rounded-3xl" />
+                    <Skeleton className="h-64 rounded-3xl" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {[1, 2, 3].map(i => (
-                        <GlassCard key={i} className="p-4 md:p-6 h-[400px] flex flex-col">
-                            <Skeleton className="h-1.5 w-full rounded-full mb-6" />
-                            <Skeleton className="h-8 w-3/4 mb-4" />
-                            <Skeleton className="h-16 w-32 mb-6" />
-                            <Skeleton className="h-8 w-24 rounded-full mb-6" />
-                            <div className="flex gap-3 mt-auto">
-                                <Skeleton className="h-12 flex-1 rounded-xl" />
-                                <Skeleton className="h-12 flex-1 rounded-xl" />
-                            </div>
-                        </GlassCard>
-                    ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 rounded-3xl" />)}
                 </div>
             </div>
         );
     }
 
-    if (!dashboardData) return null;
-
-    const overall_percentage = dashboardData.overall_attendance || 0;
-    const subjects = dashboardData.subjects_overview || [];
-    const total_subjects = subjects.length;
+    const overallAttendance = dashboardData?.overall_attendance || 0;
+    const isAtRisk = overallAttendance < 75;
 
     return (
-        <div className="min-h-screen pb-32">
-            {/* Greeting Section */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="mb-12"
-            >
-                <h1 className="text-display-lg text-on-surface dark:text-dark-surface-on mb-2">
-                    Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}! 👋
-                </h1>
-                <p className="text-lg text-on-surface-variant dark:text-dark-surface-variant">
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                </p>
-            </motion.div>
-
-            {/* Hero Stats Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-                {/* Hero Attendance Metric */}
-                <div className="lg:col-span-2">
-                    <HeroMetric
-                        value={`${overall_percentage.toFixed(1)}%`}
-                        label="Overall Attendance"
-                        icon={<TrendingUp size={28} strokeWidth={2.5} />}
-                        trend={overall_percentage >= 75 ? 'up' : overall_percentage >= 60 ? 'neutral' : 'down'}
-                        trendValue={overall_percentage >= 75 ? 'Safe Zone' : overall_percentage >= 60 ? 'Warning' : 'At Risk'}
-                    />
+        <div className="pb-32 space-y-10">
+            {/* Header Section */}
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-4xl md:text-5xl font-bold font-display text-on-surface mb-2 tracking-tight">
+                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}!
+                        <span className="ml-3 inline-block animate-bounce">👋</span>
+                    </h1>
+                    <p className="text-lg text-on-surface-variant font-medium">
+                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="space-y-6">
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 }}
-                    >
-                        <GlassCard className="p-4 md:p-6" hover>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                                        <BookOpen className="w-6 h-6 text-primary" strokeWidth={2.5} />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-on-surface-variant dark:text-dark-surface-variant uppercase tracking-wide">
-                                            Subjects
-                                        </p>
-                                        <p className="text-4xl font-bold text-on-surface dark:text-dark-surface-on">
-                                            {total_subjects}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </GlassCard>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <GlassCard className="p-6" hover>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-tertiary/10 flex items-center justify-center">
-                                        <Calendar className="w-6 h-6 text-tertiary" strokeWidth={2.5} />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-on-surface-variant dark:text-dark-surface-variant uppercase tracking-wide">
-                                            Semester
-                                        </p>
-                                        <p className="text-4xl font-bold text-on-surface dark:text-dark-surface-on">
-                                            1
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </GlassCard>
-                    </motion.div>
+                {/* Semester Selector Chips */}
+                <div className="flex bg-surface-container-high/50 p-1.5 rounded-full border border-outline-variant/50 overflow-x-auto no-scrollbar max-w-full">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                        <button
+                            key={sem}
+                            onClick={() => setCurrentSemester(sem)}
+                            className={`
+                                whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200
+                                ${currentSemester === sem
+                                    ? 'bg-primary text-on-primary shadow-sm'
+                                    : 'text-on-surface-variant hover:bg-on-surface/5 hover:text-on-surface'
+                                }
+                            `}
+                        >
+                            Sem {sem}
+                        </button>
+                    ))}
                 </div>
-            </div>
+            </header>
 
-            {/* Subjects Section */}
-            <div className="flex items-center justify-between mb-8">
-                <h2 className="text-display text-on-surface dark:text-dark-surface-on">
-                    Your Subjects
-                </h2>
-                <Button
-                    icon={<Plus size={20} strokeWidth={2.5} />}
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="shadow-lg hover:shadow-xl transition-shadow"
-                >
-                    Add Subject
-                </Button>
-            </div>
+            {/* Hero Stats */}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Metric Card */}
+                <div className="lg:col-span-2 relative overflow-hidden rounded-[32px] bg-gradient-to-br from-primary to-tertiary p-8 text-on-primary shadow-lg group">
+                    <div className="absolute top-0 right-0 p-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700" />
 
-            {/* Subject Cards Grid */}
-            {subjects.length > 0 ? (
-                <div className="flex flex-col gap-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="relative z-10 flex flex-col justify-between h-full min-h-[220px]">
+                        <div className="flex justify-between items-start">
+                            <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl inline-flex">
+                                <TrendingUp className="w-6 h-6 text-white" />
+                            </div>
+                            {isAtRisk && (
+                                <div className="px-4 py-1.5 bg-error/90 text-on-error rounded-full text-xs font-bold shadow-sm backdrop-blur-md border border-white/10 flex items-center gap-2">
+                                    <AlertCircle size={14} /> At Risk
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-7xl font-bold font-display tracking-tighter">
+                                    {overallAttendance.toFixed(1)}
+                                </span>
+                                <span className="text-3xl opacity-80 font-display">%</span>
+                            </div>
+                            <p className="opacity-90 font-medium text-lg mt-1">Overall Attendance</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Secondary Metrics */}
+                <div className="flex flex-col gap-6">
+                    <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                <BookOpen className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Subjects</p>
+                                <p className="text-3xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
+                            </div>
+                        </div>
+                    </GlassCard>
+
+                    <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+                                <Target className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Target</p>
+                                <p className="text-3xl font-bold font-display text-on-surface">75%</p>
+                            </div>
+                        </div>
+                    </GlassCard>
+                </div>
+            </section>
+
+            {/* Subject List */}
+            <section>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold font-display text-on-surface">Your Subjects</h2>
+                    <Button onClick={() => setIsAddModalOpen(true)} icon={<Plus size={18} />}>
+                        Add Subject
+                    </Button>
+                </div>
+
+                {(!dashboardData?.subjects || dashboardData.subjects.length === 0) ? (
+                    <div className="flex flex-col items-center justify-center py-20 bg-surface-container-low rounded-[32px] border border-dashed border-outline-variant">
+                        <div className="w-20 h-20 bg-surface-container-high rounded-full flex items-center justify-center mb-6 text-on-surface-variant/50">
+                            <BookOpen size={40} />
+                        </div>
+                        <h3 className="text-xl font-bold text-on-surface mb-2">No Subjects Added</h3>
+                        {availableSemesters.length > 0 ? (
+                            <div className="flex flex-col items-center gap-3 mb-6 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                                <p className="text-on-surface-variant text-center max-w-sm">
+                                    We found active subjects in <strong>Semester {availableSemesters.join(', ')}</strong>.
+                                </p>
+                                <Button onClick={() => setCurrentSemester(availableSemesters[0])}>
+                                    Switch to Semester {availableSemesters[0]}
+                                </Button>
+                            </div>
+                        ) : (
+                            <p className="text-on-surface-variant mb-6 text-center max-w-sm">
+                                Add subjects to this semester to start tracking your attendance.
+                            </p>
+                        )}
+                        <Button variant="tonal" onClick={() => setIsAddModalOpen(true)}>
+                            Add First Subject
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         <AnimatePresence>
-                            {subjects.slice(0, isAddModalOpen ? 20 : 20).map((subject, index) => { // Using constant for now, can be state driven
-                                const config = STATUS_CONFIG[subject.status];
+                            {dashboardData?.subjects?.map((subject) => {
+                                const percentage = subject.attendance_percentage;
+                                const status = percentage >= 75 ? 'safe' : 'danger';
+                                const config = STATUS_CONFIG[status];
 
                                 return (
-                                    <motion.div
-                                        key={subject.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{
-                                            delay: index * 0.05,
-                                            duration: 0.3,
-                                            ease: 'easeInOut'
-                                        }}
-                                    >
-                                        <GlassCard hover className="p-4 md:p-6 group h-full flex flex-col">
-                                            {/* Status Indicator */}
-                                            <div className={`h-1.5 w-full bg-gradient-to-r ${config.gradient} rounded-full mb-6`} />
-
-                                            {/* Subject Name */}
-                                            <h3 className="text-2xl font-semibold text-on-surface dark:text-dark-surface-on mb-4 tracking-tight">
-                                                {subject.name}
-                                            </h3>
-
-                                            {/* Attendance Percentage */}
-                                            <div className="flex items-end gap-3 mb-6">
-                                                <span className="text-6xl font-bold text-on-surface dark:text-dark-surface-on tracking-tighter">
-                                                    {subject.percentage}
-                                                </span>
-                                                <span className="text-3xl font-bold text-on-surface-variant dark:text-dark-surface-variant mb-1">
-                                                    %
-                                                </span>
-                                            </div>
-
-                                            {/* Status Badge */}
-                                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${config.bg} border ${config.border} mb-6`}>
-                                                <div className={`w-2 h-2 rounded-full ${config.gradient} bg-gradient-to-r`} />
-                                                <span className={`text-sm font-medium ${config.text}`}>
-                                                    {subject.status_message}
-                                                </span>
-                                            </div>
-
-                                            {/* Quick Actions */}
-                                            <div className="flex gap-3 mt-auto opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+                                    <GlassCard key={subject._id} hover className="flex flex-col justify-between min-h-[280px] p-0 !rounded-[24px] border-outline-variant/40">
+                                        <div className="p-6 pb-2">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-on-surface line-clamp-1">{subject.name}</h3>
+                                                    {subject.professor && (
+                                                        <p className="text-sm text-on-surface-variant flex items-center gap-1 mt-1">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/50" />
+                                                            {subject.professor}
+                                                        </p>
+                                                    )}
+                                                </div>
                                                 <button
-                                                    onClick={() => handleQuickLog(subject.id, 'present')}
-                                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-success/10 hover:bg-success/20 text-success-dark rounded-xl transition-all duration-200 font-medium border border-success/20 hover:border-success/30"
+                                                    onClick={() => handleDeleteSubject(subject._id, subject.name)}
+                                                    className="p-2 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-full transition-colors"
                                                 >
-                                                    <Check size={18} strokeWidth={2.5} />
-                                                    Present
-                                                </button>
-                                                <button
-                                                    onClick={() => handleQuickLog(subject.id, 'absent')}
-                                                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-error/10 hover:bg-error/20 text-error-dark rounded-xl transition-all duration-200 font-medium border border-error/20 hover:border-error/30"
-                                                >
-                                                    <X size={18} strokeWidth={2.5} />
-                                                    Absent
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
 
-                                            {/* View Details Link */}
-                                            <button className="w-full mt-4 flex items-center justify-center gap-2 text-primary hover:gap-3 transition-all duration-200 font-medium py-2">
-                                                <span>View Details</span>
-                                                <ArrowRight size={18} strokeWidth={2.5} />
-                                            </button>
-                                        </GlassCard>
-                                    </motion.div>
+                                            <div className="flex items-end gap-2 mb-6">
+                                                <span className={`text-5xl font-bold font-display tracking-tight ${config.text.split(' ')[0]}`}>
+                                                    {percentage.toFixed(1)}
+                                                </span>
+                                                <span className="text-xl text-on-surface-variant/70 font-medium mb-1">%</span>
+                                            </div>
+
+                                            <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold border ${config.bg} ${config.text} ${config.border}`}>
+                                                {subject.status_message}
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 bg-surface-container-low/50 border-t border-outline-variant/10">
+                                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                                <button
+                                                    onClick={() => handleQuickLog(subject._id, 'present')}
+                                                    className="flex items-center justify-center gap-2 h-10 rounded-xl bg-surface hover:bg-success/10 hover:text-success-dark border border-outline-variant/50 transition-colors font-semibold text-sm shadow-sm"
+                                                >
+                                                    <Check size={16} /> Present
+                                                </button>
+                                                <button
+                                                    onClick={() => handleQuickLog(subject._id, 'absent')}
+                                                    className="flex items-center justify-center gap-2 h-10 rounded-xl bg-surface hover:bg-error/10 hover:text-error-dark border border-outline-variant/50 transition-colors font-semibold text-sm shadow-sm"
+                                                >
+                                                    <X size={16} /> Absent
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => setEditingSubject(subject)}
+                                                    className="flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+                                                >
+                                                    <Edit2 size={14} /> Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => setMarkingSubjectId(subject._id)}
+                                                    className="flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+                                                >
+                                                    <Calendar size={14} /> Advanced
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </GlassCard>
                                 );
                             })}
                         </AnimatePresence>
                     </div>
-                    {subjects.length > 20 && (
-                        <div className="flex justify-center">
-                            <p className="text-sm text-on-surface-variant">Showing top 20 of {subjects.length} subjects</p>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-20"
-                >
-                    <GlassCard className="p-16 max-w-lg mx-auto">
-                        <motion.div
-                            animate={{ y: [0, -10, 0] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                        >
-                            <Target className="w-20 h-20 text-primary/30 mx-auto mb-6" strokeWidth={1.5} />
-                        </motion.div>
-                        <h3 className="text-2xl font-semibold text-on-surface dark:text-dark-surface-on mb-3">
-                            No Subjects Yet
-                        </h3>
-                        <p className="text-on-surface-variant dark:text-dark-surface-variant mb-8 text-lg">
-                            Add your first subject to start tracking attendance
-                        </p>
-                        <Button
-                            icon={<Plus size={20} strokeWidth={2.5} />}
-                            onClick={() => setIsAddModalOpen(true)}
-                            size="lg"
-                        >
-                            Add Your First Subject
-                        </Button>
-                    </GlassCard>
-                </motion.div>
-            )}
+                )}
+            </section>
 
-            {/* Floating Action Button - Mobile */}
-            <motion.button
-                className="md:hidden fixed bottom-24 right-6 w-16 h-16 bg-gradient-to-br from-primary to-primary-600 text-white rounded-2xl shadow-2xl shadow-primary/40 flex items-center justify-center z-40"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsAddModalOpen(true)}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.5, type: 'spring', stiffness: 300 }}
-            >
-                <Plus size={28} strokeWidth={2.5} />
-            </motion.button>
-
-            {/* Modal */}
+            {/* Modals */}
             <AddSubjectModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                onSuccess={() => {
-                    setIsAddModalOpen(false);
-                    loadDashboard();
-                }}
+                onSuccess={loadDashboard}
             />
+
+            {editingSubject && (
+                <EditSubjectModal
+                    isOpen={!!editingSubject}
+                    onClose={() => setEditingSubject(null)}
+                    subject={editingSubject}
+                    onSuccess={loadDashboard}
+                />
+            )}
+
+            {markingSubjectId && (
+                <AttendanceModal
+                    isOpen={!!markingSubjectId}
+                    onClose={() => setMarkingSubjectId(null)}
+                    onSuccess={loadDashboard}
+                />
+            )}
         </div>
     );
 };

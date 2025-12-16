@@ -5,7 +5,9 @@ import {
     Calendar as CalendarIcon,
     CheckCircle,
     Circle,
-    ExternalLink
+    ExternalLink,
+    Trash2,
+    Edit2
 } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
@@ -37,6 +39,7 @@ const Planner: React.FC = () => {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTask, setNewTask] = useState({ title: '', date: '' });
+    const [editingTask, setEditingTask] = useState<PlannerItem | null>(null);
 
     useEffect(() => {
         loadPlannerData();
@@ -58,7 +61,7 @@ const Planner: React.FC = () => {
 
             // 3. Merge & Normalize
             const manualItems: PlannerItem[] = manualDeadlines.map((d: any) => ({
-                id: d._id.$oid,
+                id: d._id?.$oid || d._id,
                 title: d.title,
                 dueDate: d.due_date ? new Date(d.due_date) : undefined,
                 courseName: 'Manual Task',
@@ -88,6 +91,8 @@ const Planner: React.FC = () => {
             });
 
             const allTasks = [...manualItems, ...classItems].sort((a, b) => {
+                // Sort by Completed (false first), then Date
+                if (a.completed !== b.completed) return a.completed ? 1 : -1;
                 if (!a.dueDate) return 1;
                 if (!b.dueDate) return -1;
                 return a.dueDate.getTime() - b.dueDate.getTime();
@@ -106,10 +111,24 @@ const Planner: React.FC = () => {
     const handleToggleManual = async (id: string) => {
         try {
             await attendanceService.toggleDeadline(id);
-            setTasks(prev => prev.filter(t => t.id !== id));
-            showToast('success', 'Task completed!');
+            setTasks(prev => prev.map(t =>
+                t.id === id ? { ...t, completed: !t.completed } : t
+            ));
+            showToast('success', 'Task status updated');
         } catch (error) {
             showToast('error', 'Failed to update task');
+        }
+    };
+
+    const handleDeleteTask = async (id: string) => {
+        if (!confirm('Delete this task?')) return;
+        try {
+            await attendanceService.deleteDeadline(id);
+            setTasks(prev => prev.filter(t => t.id !== id));
+            showToast('success', 'Task deleted');
+        } catch (error) {
+            console.error(error);
+            showToast('error', 'Failed to delete task');
         }
     };
 
@@ -124,6 +143,36 @@ const Planner: React.FC = () => {
         } catch (error) {
             console.error(error);
             showToast('error', 'Failed to add task');
+        }
+    };
+
+    const handleEditTask = (task: PlannerItem) => {
+        if (task.source !== 'manual') {
+            showToast('info', 'Classroom tasks can only be edited in Google Classroom');
+            return;
+        }
+        setEditingTask(task);
+        setNewTask({
+            title: task.title,
+            date: task.dueDate ? task.dueDate.toISOString().split('T')[0] : ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleUpdateTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingTask) return;
+
+        try {
+            await attendanceService.updateDeadline(editingTask.id, newTask.title, newTask.date);
+            showToast('success', 'Task updated successfully');
+            setIsModalOpen(false);
+            setEditingTask(null);
+            setNewTask({ title: '', date: '' });
+            loadPlannerData();
+        } catch (error) {
+            console.error(error);
+            showToast('error', 'Failed to update task');
         }
     };
 
@@ -191,7 +240,7 @@ const Planner: React.FC = () => {
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     layout
                                 >
-                                    <GlassCard hover className={`relative overflow-hidden group h-full flex flex-col p-5 ${task.completed ? 'opacity-60 grayscale' : ''}`}>
+                                    <GlassCard hover className={`relative overflow-hidden group h-full flex flex-col p-5 transition-all ${task.completed ? 'opacity-60 grayscale bg-surface-container/50' : ''}`}>
                                         <div className="flex justify-between items-start mb-3">
                                             <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${task.source === 'classroom' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'}`}>
                                                 {task.source === 'classroom' ? 'Classroom' : 'Manual'}
@@ -201,11 +250,23 @@ const Planner: React.FC = () => {
                                                     {priority.label}
                                                 </div>
                                             )}
+                                            {task.completed && task.source === 'manual' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteTask(task.id);
+                                                    }}
+                                                    className="text-error hover:bg-error/10 p-1 rounded transition-colors"
+                                                    title="Delete Task"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="mb-4">
                                             <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">{task.courseName}</p>
-                                            <h3 className="text-lg font-bold text-on-surface leading-tight line-clamp-2" title={task.title}>{task.title}</h3>
+                                            <h3 className={`text-lg font-bold text-on-surface leading-tight line-clamp-2 ${task.completed ? 'line-through text-on-surface-variant' : ''}`} title={task.title}>{task.title}</h3>
                                         </div>
 
                                         <div className="mt-auto pt-4 border-t border-outline-variant/10 flex items-center justify-between">
@@ -228,13 +289,22 @@ const Planner: React.FC = () => {
                                                     <ExternalLink size={18} />
                                                 </a>
                                             ) : (
-                                                <button
-                                                    onClick={() => handleToggleManual(task.id)}
-                                                    className="p-2 rounded-full hover:bg-surface-container-high text-primary transition-colors"
-                                                    title="Mark Complete"
-                                                >
-                                                    {task.completed ? <CheckCircle size={18} /> : <Circle size={18} />}
-                                                </button>
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        onClick={() => handleEditTask(task)}
+                                                        className="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors"
+                                                        title="Edit Task"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleToggleManual(task.id)}
+                                                        className={`p-2 rounded-full transition-colors ${task.completed ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'hover:bg-surface-container-high text-on-surface-variant hover:text-primary'}`}
+                                                        title={task.completed ? "Mark Incomplete" : "Mark Complete"}
+                                                    >
+                                                        {task.completed ? <CheckCircle size={18} /> : <Circle size={18} />}
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </GlassCard>
@@ -245,13 +315,17 @@ const Planner: React.FC = () => {
                 </div>
             )}
 
-            {/* Add Task Modal */}
+            {/* Add/Edit Task Modal */}
             <Modal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Add New Task"
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingTask(null);
+                    setNewTask({ title: '', date: '' });
+                }}
+                title={editingTask ? "Edit Task" : "Add New Task"}
             >
-                <form onSubmit={handleAddTask} className="space-y-4">
+                <form onSubmit={editingTask ? handleUpdateTask : handleAddTask} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-on-surface mb-2">
                             Task Title *
@@ -278,11 +352,20 @@ const Planner: React.FC = () => {
                         />
                     </div>
                     <div className="flex gap-3 pt-4">
-                        <Button type="button" variant="outlined" onClick={() => setIsModalOpen(false)} className="flex-1">
+                        <Button
+                            type="button"
+                            variant="outlined"
+                            onClick={() => {
+                                setIsModalOpen(false);
+                                setEditingTask(null);
+                                setNewTask({ title: '', date: '' });
+                            }}
+                            className="flex-1"
+                        >
                             Cancel
                         </Button>
                         <Button type="submit" className="flex-1">
-                            Add Task
+                            {editingTask ? 'Update Task' : 'Add Task'}
                         </Button>
                     </div>
                 </form>

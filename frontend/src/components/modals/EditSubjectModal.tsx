@@ -1,0 +1,239 @@
+import React, { useState, useEffect } from 'react';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/ui/Button';
+import { useToast } from '@/components/ui/Toast';
+import { attendanceService } from '@/services/attendance.service';
+import { BookOpen, User, MapPin, Hash, FileText, Save } from 'lucide-react';
+import type { Subject } from '@/types';
+
+interface EditSubjectModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    subject: any; // Accommodate SubjectOverview (id) and Subject (_id)
+    onSuccess: () => void;
+}
+
+const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, subject, onSuccess }) => {
+    const { showToast } = useToast();
+    const [loading, setLoading] = useState(false);
+
+    // Form State
+    const [formData, setFormData] = useState({
+        name: '',
+        code: '',
+        professor: '',
+        classroom: '',
+        syllabus: '',
+        semester: 1,
+        attended: 0,
+        total: 0
+    });
+
+    useEffect(() => {
+        if (subject && isOpen) {
+            setFormData({
+                name: subject.name || '',
+                code: subject.code || '',
+                professor: subject.professor || '',
+                classroom: subject.classroom || '',
+                syllabus: subject.syllabus || '',
+                semester: subject.semester || 1,
+                attended: subject.attended || 0,
+                total: subject.total || 0
+            });
+
+            // Fetch latest details
+            const id = subject.id || subject._id;
+            if (id) fetchDetails(id);
+        }
+    }, [subject, isOpen]);
+
+    const fetchDetails = async (id: string) => {
+        try {
+            const details = await attendanceService.getSubjectDetails(id);
+            if (details) {
+                setFormData(prev => ({
+                    ...prev,
+                    code: details.code || prev.code,
+                    professor: details.professor || prev.professor,
+                    classroom: details.classroom || prev.classroom,
+                    syllabus: details.syllabus || prev.syllabus,
+                    semester: details.semester || prev.semester,
+                    attended: details.attended ?? prev.attended,
+                    total: details.total ?? prev.total
+                }));
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: name === 'attended' || name === 'total' ? parseInt(value) || 0 : value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!subject) return;
+
+        setLoading(true);
+        try {
+            const id = subject.id || subject._id;
+
+            // Update full details including attendance count
+            await attendanceService.updateSubjectFullDetails(id, formData);
+
+            // Also update attendance count if changed
+            if (formData.attended !== subject.attended || formData.total !== subject.total) {
+                await attendanceService.updateAttendanceCount(id, formData.attended, formData.total);
+            }
+
+            showToast('success', 'Subject details updated successfully');
+            onSuccess();
+            onClose();
+        } catch (error) {
+            console.error(error);
+            showToast('error', 'Failed to update subject details');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Edit Subject Details"
+            size="lg"
+        >
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Subject Name */}
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Subject Name</label>
+                    <div className="relative">
+                        <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/50" />
+                        <input
+                            type="text"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container border border-transparent focus:border-primary/50 focus:bg-surface-container-high focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/50"
+                            placeholder="e.g. Data Structures"
+                            required
+                        />
+                    </div>
+                </div>
+
+                {/* Subject Code */}
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Subject Code</label>
+                    <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/50" />
+                        <input
+                            type="text"
+                            name="code"
+                            value={formData.code}
+                            onChange={handleChange}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container border border-transparent focus:border-primary/50 focus:bg-surface-container-high focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/50"
+                            placeholder="e.g. CS-101"
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    {/* Professor */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Professor</label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/50" />
+                            <input
+                                type="text"
+                                name="professor"
+                                value={formData.professor}
+                                onChange={handleChange}
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container border border-transparent focus:border-primary/50 focus:bg-surface-container-high focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/50"
+                                placeholder="Prof. Name"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Classroom */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Classroom</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant/50" />
+                            <input
+                                type="text"
+                                name="classroom"
+                                value={formData.classroom}
+                                onChange={handleChange}
+                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container border border-transparent focus:border-primary/50 focus:bg-surface-container-high focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/50"
+                                placeholder="Room 301"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Syllabus */}
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Syllabus / Notes</label>
+                    <div className="relative">
+                        <FileText className="absolute left-3 top-3 w-5 h-5 text-on-surface-variant/50" />
+                        <textarea
+                            name="syllabus"
+                            value={formData.syllabus}
+                            onChange={handleChange}
+                            rows={3}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-container border border-transparent focus:border-primary/50 focus:bg-surface-container-high focus:outline-none transition-all text-on-surface placeholder:text-on-surface-variant/50 resize-none"
+                            placeholder="Enter syllabus topics or important notes..."
+                        />
+                    </div>
+                </div>
+
+                {/* Attendance Count Override */}
+                <div className="p-4 rounded-xl bg-warning/10 border border-warning/30">
+                    <label className="text-xs font-bold text-warning uppercase mb-2 block">⚠️ Manual Attendance Override</label>
+                    <p className="text-xs text-on-surface-variant mb-3">Use this to fix incorrect counts. Be careful!</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Classes Attended</label>
+                            <input
+                                type="number"
+                                name="attended"
+                                value={formData.attended}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full px-4 py-2.5 rounded-xl bg-surface-container border border-transparent focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Total Classes</label>
+                            <input
+                                type="number"
+                                name="total"
+                                value={formData.total}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full px-4 py-2.5 rounded-xl bg-surface-container border border-transparent focus:border-primary/50 focus:outline-none transition-all text-on-surface text-center font-bold text-lg"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-2">
+                    <Button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full"
+                        icon={!loading && <Save size={18} />}
+                    >
+                        {loading ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+export default EditSubjectModal;

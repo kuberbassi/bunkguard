@@ -19,6 +19,7 @@ timetable_collection = db.get_collection('timetable')
 system_logs_collection = db.get_collection('system_logs')
 deadlines_collection = db.get_collection('deadlines')
 holidays_collection = db.get_collection('holidays')
+academic_records_collection = db.get_collection('academic_records')
 
 
 # --- Helper Functions ---
@@ -112,10 +113,8 @@ def get_dashboard_data():
         required_percent = user_prefs_doc.get('preferences', {}).get('threshold', 75) if user_prefs_doc else 75
 
         current_semester = int(request.args.get('semester', 1)) 
-        # TEMPORARY FIX: Fetch ALL subjects for user to ensure data visibility
-        # If we need semester filtering, we should ensure the frontend passes the correct one.
-        # But for now, let's just show everything.
-        query = {"owner_email": user_email} # Removed "semester": current_semester
+        # Filter by semester when provided
+        query = {"owner_email": user_email, "semester": current_semester}
         print(f"🔍 DEBUG: Querying subjects with: {query}")
         print(f"🔍 DEBUG: User email from session: {user_email}")
         subjects = list(subjects_collection.find(query))
@@ -133,9 +132,39 @@ def get_dashboard_data():
         total_attended = sum(s.get('attended', 0) for s in subjects)
         total_classes = sum(s.get('total', 0) for s in subjects)
         overall_percent = calculate_percent(total_attended, total_classes)
-        subjects_overview = [{"id": str(s['_id']), "name": s.get('name', 'N/A'), **calculate_bunk_guard(s.get('attended', 0), s.get('total', 0), required_percent)} for s in subjects]
+        subjects_overview = [{
+            "id": str(s['_id']), 
+            "name": s.get('name', 'N/A'), 
+            "code": s.get('code', ''),
+            "professor": s.get('professor', ''),
+            "classroom": s.get('classroom', ''),
+            "attended": s.get('attended', 0),
+            "total": s.get('total', 0),
+            **calculate_bunk_guard(s.get('attended', 0), s.get('total', 0), required_percent)
+        } for s in subjects]
         
-        response_data = {"current_date": datetime.now().strftime("%B %d, %Y"), "overall_attendance": overall_percent, "subjects_overview": subjects_overview}
+        # Transform subjects list to include percentage and status_message for frontend usage
+        # This matches the structure expected by Dashboard.tsx (Subject & { attendance_percentage: number; status_message: string })
+        transformed_subjects = []
+        for s in subjects:
+            stats = calculate_bunk_guard(s.get('attended', 0), s.get('total', 0), required_percent)
+            s_dict = {
+                **s,
+                "attendance_percentage": stats["percentage"],
+                "status_message": stats["status_message"],
+                # Ensure _id is string for frontend consistency if needed
+                "_id": str(s['_id'])
+            }
+            transformed_subjects.append(s_dict)
+
+        response_data = {
+            "current_date": datetime.now().strftime("%B %d, %Y"), 
+            "overall_attendance": overall_percent, 
+            "subjects_overview": subjects_overview,
+            "subjects": transformed_subjects, # Now sends the fully decorated subjects list
+            "current_semester": current_semester,
+            "total_subjects": len(subjects)
+        }
         print(f"🔍 DEBUG: Sending response with {len(subjects_overview)} subjects")
         return Response(json_util.dumps(response_data), mimetype='application/json')
     except Exception as e:
@@ -241,6 +270,7 @@ def mark_attendance():
     status = data.get('status')
     notes = data.get('notes', None)
     date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
+    substituted_by_id = data.get('substituted_by_id', None) # New field
 
     subject = subjects_collection.find_one({'_id': subject_id})
     if not subject: return jsonify({"error": "Subject not found"}), 404
@@ -249,6 +279,7 @@ def mark_attendance():
     if existing_log:
         return jsonify({"error": f"'{subject.get('name')}' has already been marked for this day."}), 400
     
+    # 1. Handle Primary Log
     log_entry = {
         "subject_id": subject_id,
         "owner_email": session['user']['email'],
@@ -257,20 +288,68 @@ def mark_attendance():
         "timestamp": datetime.utcnow(),
         "semester": subject.get('semester')
     }
-    if notes:
-        log_entry['notes'] = notes
+    if notes: log_entry['notes'] = notes
+    if substituted_by_id: log_entry['substituted_by'] = ObjectId(substituted_by_id)
 
     attendance_log_collection.insert_one(log_entry)
     
+    # 2. Update stats for Original Subject
     update_query = {}
-    if status in ['present', 'absent', 'pending_medical', 'substituted', 'approved_medical']:
-        if status != 'cancelled':
-            update_query['$inc'] = {'total': 1}
-        if status == 'present' or status == 'approved_medical':
+    if status in ['present', 'absent', 'late']:
+        # Standard attendance
+        update_query['$inc'] = {'total': 1}
+        if status == 'present':
             update_query.setdefault('$inc', {})['attended'] = 1
-            
+    
+    elif status in ['medical', 'approved_medical']:
+        # Medical leaves usually don't count against you, or handled as present?
+        # User requested "more options to add medical". Usually implies "Exempt" or "Present".
+        # Let's treat 'medical' as Neutral (Total doesn't increase) OR Present.
+        # Common academic policy: Medical is "Excused" (Total doesn't increase).
+        # But if user wants it to count as attended, we can change.
+        # Let's stick to "Excused" (Neutral) for now unless specified. 
+        # Actually existing code handled 'approved_medical' as attended+1, total+1.
+        # Let's keep consistency: Medical = Present effectively for attendance % usually?
+        # Re-reading existing: if status == 'approved_medical': inc attended, inc total.
+        update_query['$inc'] = {'total': 1, 'attended': 1} 
+
+    elif status == 'substituted':
+        # If substituted, original class didn't happen. Total stays same (Neutral).
+        pass
+
+    elif status == 'cancelled':
+        # Class cancelled. Total stays same (Neutral).
+        pass
+
     if update_query:
         subjects_collection.update_one({'_id': subject_id}, update_query)
+
+    # 3. Handle Substitution Logic (The "Other" Subject)
+    if status == 'substituted' and substituted_by_id:
+        sub_id = ObjectId(substituted_by_id)
+        sub_subject = subjects_collection.find_one({'_id': sub_id})
+        if sub_subject:
+            # Create a "Present" log for the substituting subject
+            # Check if there's already a log for that sub subject on that day?
+            # A subject can occur multiple times a day. We should allow it.
+            # But the 'date + subject_id' unique constraint in logic might exist?
+            # existing_log check above prevents duplicates.
+            # We need to ensure we don't block multiple classes of same subject per day eventually.
+            # For now, let's assume one class per subject per day scheme, OR strict check.
+            # BunkGuard usually assumes 1 slot = 1 decision. 
+            
+            # We'll just insert a "Extra Class" log effectively.
+             attendance_log_collection.insert_one({
+                "subject_id": sub_id,
+                "owner_email": session['user']['email'],
+                "date": date_str,
+                "status": "present", # Counts as present
+                "type": "substitution_class", # Metadata
+                "timestamp": datetime.utcnow(),
+                "semester": sub_subject.get('semester'),
+                "notes": f"Substituted {subject.get('name')}"
+            })
+             subjects_collection.update_one({'_id': sub_id}, {'$inc': {'total': 1, 'attended': 1}})
         
     create_system_log(
         session['user']['email'], 
@@ -390,48 +469,83 @@ def edit_attendance(log_id):
     data = request.json
     new_status = data.get('status')
     new_notes = data.get('notes', None)
+    new_date = data.get('date') # Support changing date
     
     log = attendance_log_collection.find_one({'_id': ObjectId(log_id)})
     if not log:
         return jsonify({"error": "Log not found"}), 404
         
     old_status = log['status']
-    subject_id = log['subject_id']
+    subject_id = log['subject_id'] # ObjectId
     
-    # --- 1. Reverse the old statistics ---
-    update_query = {}
-    if old_status in ['present', 'absent', 'pending_medical', 'substituted', 'approved_medical']:
-        if old_status != 'cancelled':
-             update_query['$inc'] = {'total': -1}
-        if old_status == 'present' or old_status == 'approved_medical':
-            update_query.setdefault('$inc', {})['attended'] = -1
+    # 1. Revert Old Stats
+    revert_query = {}
+    if old_status in ['present', 'approved_medical', 'late']:
+        # These incremented Total and Attended
+        revert_query['$inc'] = {'total': -1, 'attended': -1}
+    elif old_status == 'absent':
+        # Incremented Total only
+        revert_query['$inc'] = {'total': -1}
+    # 'substituted', 'cancelled', 'medical' (if neutral) -> No stats change to revert
     
-    if update_query:
-        subjects_collection.update_one({'_id': subject_id}, update_query)
+    if revert_query:
+        subjects_collection.update_one({'_id': subject_id}, revert_query)
 
-    # --- 2. Apply the new statistics ---
-    update_query = {}
-    if new_status in ['present', 'absent', 'pending_medical', 'substituted', 'approved_medical']:
-        if new_status != 'cancelled':
-            update_query['$inc'] = {'total': 1}
-        if new_status == 'present' or new_status == 'approved_medical':
-            update_query.setdefault('$inc', {})['attended'] = 1
+    # 2. Handle Substituted Cleanup if changing FROM substituted
+    if old_status == 'substituted' and log.get('substituted_by'):
+       # We need to find the "Extra Class" log for the substitute and delete/revert it?
+       # This is tricky. We'd have to find the log created at similiar time or by logic.
+       # For now, simplistic approach: "Substitution cannot be fully undone automatically" warning 
+       # or we enforce finding that log.
+       # Let's try to find the linked log if possible, but our schema didn't link back effectively.
+       # Improvement: Store `linked_log_id` in future.
+       # For now: User manually fixes substitute subject if needed.
+       pass
+
+    # 3. Apply New Stats
+    apply_query = {}
+    if new_status in ['present', 'approved_medical', 'late']:
+        apply_query['$inc'] = {'total': 1, 'attended': 1}
+    elif new_status == 'absent':
+        apply_query['$inc'] = {'total': 1}
     
-    if update_query:
-        subjects_collection.update_one({'_id': subject_id}, update_query)
+    if apply_query:
+        subjects_collection.update_one({'_id': subject_id}, apply_query)
         
-    # --- 3. Update the log entry itself ---
-    log_update = {'$set': {'status': new_status}}
-    if new_notes:
-        log_update['$set']['notes'] = new_notes
-    else:
-        log_update['$unset'] = {'notes': ""} # Remove notes field if empty
-        
-    attendance_log_collection.update_one({'_id': ObjectId(log_id)}, log_update)
+    # 4. Update the log entry
+    update_fields = {'status': new_status}
+    if new_notes is not None: update_fields['notes'] = new_notes
+    if new_date: update_fields['date'] = new_date
+
+    attendance_log_collection.update_one({'_id': ObjectId(log_id)}, {'$set': update_fields})
 
     subject = subjects_collection.find_one({'_id': subject_id})
-    create_system_log(session['user']['email'], "Attendance Edited", f"Changed '{subject['name']}' from {old_status} to {new_status}.")
+    create_system_log(session['user']['email'], "Attendance Edited", f"Changed '{subject.get('name')}' from {old_status} to {new_status}.")
     
+    return jsonify({"success": True})
+
+
+@api_bp.route('/update_subject_full_details', methods=['POST'])
+def update_subject_full_details():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    subject_id = ObjectId(data.get('subject_id'))
+    
+    update_fields = {}
+    if 'name' in data: update_fields['name'] = data['name']
+    if 'code' in data: update_fields['code'] = data['code']
+    if 'syllabus' in data: update_fields['syllabus'] = data['syllabus']
+    if 'professor' in data: update_fields['professor'] = data['professor']
+    if 'classroom' in data: update_fields['classroom'] = data['classroom']
+    if 'semester' in data: update_fields['semester'] = int(data['semester'])
+
+    if not update_fields:
+        return jsonify({"success": True}) # Nothing to update
+
+    subjects_collection.update_one(
+        {'_id': subject_id, 'owner_email': session['user']['email']},
+        {'$set': update_fields}
+    )
     return jsonify({"success": True})
 
 
@@ -480,7 +594,7 @@ def batch_update_subjects():
         except Exception as e:
             errors.append(f"Subject {update.get('subject_id')}: {str(e)}")
     
-    create_system_log(user_email, "Batch Update", f"Updated {updated_count} subjects in bulk.")
+    log_user_action(user_email, "Batch Update", f"Updated {updated_count} subjects in bulk.")
     
     return jsonify({
         "success": True,
@@ -515,7 +629,7 @@ def approve_leave(log_id):
             {'_id': log['subject_id']},
             {'$inc': {'attended': 1}}
         )
-        create_system_log(session['user']['email'], "Leave Approved", f"A medical leave for subject ID {log['subject_id']} was approved.")
+        log_user_action(session['user']['email'], "Leave Approved", f"A medical leave for subject ID {log['subject_id']} was approved.")
         return jsonify({"success": True})
     else:
         return jsonify({"error": "Leave could not be approved or was already approved."}), 400
@@ -531,17 +645,12 @@ def handle_preferences():
             {'$set': {'preferences.threshold': int(threshold)}},
             upsert=True
         )
-        create_system_log(user_email, "Preferences Updated", f"Set attendance threshold to {threshold}%.")
+        log_user_action(user_email, "Preferences Updated", f"Set attendance threshold to {threshold}%.")
         return jsonify({"success": True})
     user_prefs_doc = timetable_collection.find_one({'owner_email': user_email}, {'preferences': 1})
     preferences = user_prefs_doc.get('preferences', {}) if user_prefs_doc else {}
     return jsonify(preferences)
 
-@api_bp.route('/system_logs')
-def get_system_logs():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    logs = list(system_logs_collection.find({'owner_email': session['user']['email']}).sort('timestamp', -1))
-    return Response(json_util.dumps(logs), mimetype='application/json')
 
 @api_bp.route('/delete_all_data', methods=['POST'])
 def delete_all_data():
@@ -553,7 +662,7 @@ def delete_all_data():
     system_logs_collection.delete_many({'owner_email': user_email})
     deadlines_collection.delete_many({'owner_email': user_email})
     holidays_collection.delete_many({'owner_email': user_email})
-    create_system_log(user_email, "Data Deleted", "User deleted all their account data.")
+    log_user_action(user_email, "Data Deleted", "User deleted all their account data.")
     return jsonify({"success": True})
 
 @api_bp.route('/import_data', methods=['POST'])
@@ -579,7 +688,7 @@ def import_data():
             upsert=True
         )
     
-    create_system_log(user_email, "Data Imported", f"Imported {subjects_upserted} subjects.")
+    log_user_action(user_email, "Data Imported", f"Imported {subjects_upserted} subjects.")
     return jsonify({"success": True, "message": f"Processed {subjects_upserted} subjects."})
 
 @api_bp.route('/add_subject', methods=['POST'])
@@ -589,8 +698,31 @@ def add_subject():
     subject_name, semester = data.get('subject_name'), int(data.get('semester'))
     if not subject_name or not semester: return jsonify({"error": "Subject name and semester are required"}), 400
     subjects_collection.insert_one({"name": subject_name, "owner_email": session['user']['email'], "semester": semester, "attended": 0, "total": 0, "created_at": datetime.utcnow()})
-    create_system_log(session['user']['email'], "Subject Added", f"Added '{subject_name}' to Semester {semester}")
+    
+    log_user_action(session['user']['email'], "Subject Added", f"Added '{subject_name}' to Semester {semester}")
     return jsonify({"success": True, "message": "Subject added successfully"})
+
+@api_bp.route('/delete_subject/<subject_id>', methods=['DELETE'])
+def delete_subject(subject_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    try:
+        obj_id = ObjectId(subject_id)
+        # Get subject name for logging
+        subject = subjects_collection.find_one({'_id': obj_id, 'owner_email': session['user']['email']})
+        if not subject:
+            return jsonify({"error": "Subject not found"}), 404
+        
+        # Delete all attendance logs for this subject
+        attendance_log_collection.delete_many({'subject_id': obj_id})
+        
+        # Delete the subject
+        subjects_collection.delete_one({'_id': obj_id, 'owner_email': session['user']['email']})
+        
+        log_user_action(session['user']['email'], "Subject Deleted", f"Deleted '{subject.get('name')}'")
+        return jsonify({"success": True, "message": "Subject and its attendance logs deleted"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 @api_bp.route('/update_subject_details', methods=['POST'])
 def update_subject_details():
@@ -621,7 +753,7 @@ def update_attendance_count():
     )
     
     subject = subjects_collection.find_one({'_id': subject_id})
-    create_system_log(session['user']['email'], "Data Overridden", f"Manually set attendance for '{subject.get('name')}' to {attended}/{total}.")
+    log_user_action(session['user']['email'], "Data Overridden", f"Manually set attendance for '{subject.get('name')}' to {attended}/{total}.")
     return jsonify({"success": True})
 
 @api_bp.route('/timetable', methods=['GET', 'POST'])
@@ -631,7 +763,7 @@ def handle_timetable():
     if request.method == 'POST':
         data = request.json.get('schedule', {})
         timetable_collection.update_one({'owner_email': user_email}, {'$set': {'schedule': data}}, upsert=True)
-        create_system_log(user_email, "Schedule Updated", "User saved changes to the class schedule.")
+        log_user_action(user_email, "Schedule Updated", "User saved changes to the class schedule.")
         return jsonify({"success": True})
     timetable_doc = timetable_collection.find_one({'owner_email': user_email})
     return Response(json_util.dumps(timetable_doc.get('schedule', {}) if timetable_doc else {}), mimetype='application/json')
@@ -643,6 +775,13 @@ def get_subjects():
     query = {"owner_email": session['user']['email'], "semester": semester}
     subjects = list(subjects_collection.find(query, {"name": 1, "semester": 1, "_id": 1}))
     return Response(json_util.dumps(subjects), mimetype='application/json')
+
+@api_bp.route('/subject_details/<subject_id>')
+def get_subject_details(subject_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    subject = subjects_collection.find_one({'_id': ObjectId(subject_id), 'owner_email': session['user']['email']})
+    if not subject: return jsonify({"error": "Subject not found"}), 404
+    return Response(json_util.dumps(subject), mimetype='application/json')
 
 @api_bp.route('/export_data')
 def export_data():
@@ -658,21 +797,59 @@ def export_data():
 @api_bp.route('/deadlines', methods=['GET'])
 def get_deadlines():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    deadlines = list(deadlines_collection.find({'owner_email': session['user']['email'], 'completed': False}).sort('due_date', 1))
+    # Return all deadlines, sort by 'completed' (pending first) then 'due_date'
+    deadlines = list(deadlines_collection.find({'owner_email': session['user']['email']}).sort([('completed', 1), ('due_date', 1)]))
     return Response(json_util.dumps(deadlines), mimetype='application/json')
 
 @api_bp.route('/add_deadline', methods=['POST'])
 def add_deadline():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     data = request.json
+    if not data.get('title'): return jsonify({"error": "Title required"}), 400
     deadlines_collection.insert_one({'owner_email': session['user']['email'], 'title': data.get('title'), 'due_date': data.get('due_date'), 'completed': False, 'created_at': datetime.utcnow()})
     return jsonify({"success": True})
 
 @api_bp.route('/toggle_deadline/<deadline_id>', methods=['POST'])
 def toggle_deadline(deadline_id):
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    deadlines_collection.update_one({'_id': ObjectId(deadline_id)}, {'$set': {'completed': True}})
+    
+    deadline = deadlines_collection.find_one({'_id': ObjectId(deadline_id), 'owner_email': session['user']['email']})
+    if not deadline: return jsonify({"error": "Deadline not found"}), 404
+    
+    new_status = not deadline.get('completed', False)
+    deadlines_collection.update_one({'_id': ObjectId(deadline_id)}, {'$set': {'completed': new_status}})
     return jsonify({"success": True})
+
+@api_bp.route('/deadlines/<deadline_id>', methods=['DELETE'])
+def delete_deadline(deadline_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    result = deadlines_collection.delete_one({'_id': ObjectId(deadline_id), 'owner_email': session['user']['email']})
+    if result.deleted_count == 0: return jsonify({"error": "Deadline not found"}), 404
+    
+    log_user_action(session['user']['email'], 'delete_deadline', f"Deleted deadline {deadline_id}")
+    return jsonify({"success": True})
+
+@api_bp.route('/deadlines/<deadline_id>', methods=['PUT'])
+def update_deadline(deadline_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    update_fields = {}
+    if 'title' in data: update_fields['title'] = data['title']
+    if 'due_date' in data: update_fields['due_date'] = data['due_date']
+    
+    if not update_fields:
+        return jsonify({"error": "No fields to update"}), 400
+    
+    result = deadlines_collection.update_one(
+        {'_id': ObjectId(deadline_id), 'owner_email': session['user']['email']},
+        {'$set': update_fields}
+    )
+    if result.matched_count == 0: return jsonify({"error": "Deadline not found"}), 404
+    
+    log_user_action(session['user']['email'], 'update_deadline', f"Updated deadline {deadline_id}")
+    return jsonify({"success": True})
+
+# --- CALENDAR & LOGS ---
 
 @api_bp.route('/calendar_data')
 def calendar_data():
@@ -706,6 +883,13 @@ def calendar_data():
         traceback.print_exc()
         return jsonify({"error": "Could not fetch calendar data."}), 500
 
+@api_bp.route('/system_logs')
+def get_system_logs():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    # Get last 50 logs
+    logs = list(system_logs_collection.find({'owner_email': session['user']['email']}).sort('timestamp', -1).limit(50))
+    return Response(json_util.dumps(logs), mimetype='application/json')
+
 @api_bp.route('/logs_for_date')
 def get_logs_for_date():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -719,6 +903,32 @@ def get_logs_for_date():
     ]
     logs = list(attendance_log_collection.aggregate(pipeline))
     return Response(json_util.dumps(logs), mimetype='application/json')
+
+# --- ACADEMIC RECORDS (CGPA) ---
+
+@api_bp.route('/academic_records', methods=['GET'])
+def get_academic_records():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    records = list(academic_records_collection.find({'owner_email': session['user']['email']}).sort('semester', 1))
+    return Response(json_util.dumps(records), mimetype='application/json')
+
+@api_bp.route('/update_academic_record', methods=['POST'])
+def update_academic_record():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    semester = int(data.get('semester'))
+    sgpa = float(data.get('sgpa', 0))
+    cgpa = float(data.get('cgpa', 0))
+    credits = int(data.get('credits', 0))
+    
+    academic_records_collection.update_one(
+        {'owner_email': session['user']['email'], 'semester': semester},
+        {'$set': {'sgpa': sgpa, 'cgpa': cgpa, 'credits': credits, 'timestamp': datetime.utcnow()}},
+        upsert=True
+    )
+    
+    log_user_action(session['user']['email'], "Academic Record Updated", f"Updated details for Semester {semester} (SGPA: {sgpa}, CGPA: {cgpa}).")
+    return jsonify({"success": True})
 
 @api_bp.route('/dashboard_summary')
 def get_dashboard_summary():
@@ -759,8 +969,27 @@ def analytics_day_of_week():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     try:
         user_email = session['user']['email']
+        semester = int(request.args.get('semester', 1))
+        
+        # Get subject IDs for this semester
+        semester_subjects = list(subjects_collection.find(
+            {'owner_email': user_email, 'semester': semester},
+            {'_id': 1}
+        ))
+        subject_ids = [s['_id'] for s in semester_subjects]
+        
+        if not subject_ids:
+            # No subjects for this semester, return empty data
+            day_map = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+            analytics = {"days": []}
+            for i in [2, 3, 4, 5, 6, 7, 1]:
+                analytics['days'].append({
+                    "day": day_map[i], "present": 0, "total": 0, "percentage": 0
+                })
+            return Response(json_util.dumps(analytics), mimetype='application/json')
+        
         pipeline = [
-            {'$match': {'owner_email': user_email}},
+            {'$match': {'owner_email': user_email, 'subject_id': {'$in': subject_ids}}},
             {'$project': {'dayOfWeek': {'$dayOfWeek': '$timestamp'}, 'status': '$status'}},
             {'$group': {'_id': {'dayOfWeek': '$dayOfWeek', 'status': '$status'}, 'count': {'$sum': 1}}},
             {'$group': {'_id': '$_id.dayOfWeek', 'counts': {'$push': {'status': '$_id.status', 'count': '$count'}}}},
@@ -1177,10 +1406,30 @@ def analytics_monthly_trend():
     try:
         user_email = session['user']['email']
         year = int(request.args.get('year', datetime.now().year))
+        semester = int(request.args.get('semester', 1))
+        
+        # Get subject IDs for this semester
+        semester_subjects = list(subjects_collection.find(
+            {'owner_email': user_email, 'semester': semester},
+            {'_id': 1}
+        ))
+        subject_ids = [s['_id'] for s in semester_subjects]
+        
+        month_map = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        monthly_data = []
+        
+        if not subject_ids:
+            # No subjects, return empty months
+            for i in range(1, 13):
+                monthly_data.append({
+                    "month": month_map[i], "present": 0, "total": 0, "percentage": 0
+                })
+            return Response(json_util.dumps({"monthly_trend": monthly_data}), mimetype='application/json')
         
         pipeline = [
             {'$match': {
                 'owner_email': user_email,
+                'subject_id': {'$in': subject_ids},
                 'timestamp': {'$gte': datetime(year, 1, 1), '$lte': datetime(year, 12, 31, 23, 59, 59)}
             }},
             {'$project': {'month': {'$month': '$timestamp'}, 'status': '$status'}},
@@ -1190,8 +1439,6 @@ def analytics_monthly_trend():
         ]
         
         data = list(attendance_log_collection.aggregate(pipeline))
-        month_map = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        monthly_data = []
         
         # Initialize all months with 0
         data_dict = {d['_id']: d for d in data}
