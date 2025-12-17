@@ -9,6 +9,7 @@ import type { SystemLog, AcademicRecord } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import Card from '@/components/ui/Card';
+import GlassCard from '@/components/ui/GlassCard'; // Added
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -61,7 +62,7 @@ const SystemLogsSection: React.FC = () => {
     );
 
     return (
-        <Card variant="outlined" className="max-h-96 overflow-y-auto pr-2">
+        <GlassCard className="max-h-96 overflow-y-auto pr-2">
             <div className="space-y-4">
                 {logs.length === 0 ? (
                     <p className="text-center text-on-surface-variant py-4">No activity recorded yet.</p>
@@ -88,7 +89,7 @@ const SystemLogsSection: React.FC = () => {
                     ))
                 )}
             </div>
-        </Card>
+        </GlassCard>
     );
 };
 
@@ -138,7 +139,7 @@ const AcademicRecordsSection: React.FC = () => {
     };
 
     return (
-        <Card variant="outlined">
+        <GlassCard className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h3 className="font-bold text-on-surface">Semester Results</h3>
@@ -217,7 +218,7 @@ const AcademicRecordsSection: React.FC = () => {
                     </div>
                 </div>
             </Modal>
-        </Card>
+        </GlassCard>
     );
 };
 
@@ -225,8 +226,10 @@ const AcademicRecordsSection: React.FC = () => {
 
 const Settings: React.FC = () => {
     const { user, logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
+    const { theme, toggleTheme, setAccentColor } = useTheme(); // Added setAccentColor
     const { showToast } = useToast();
+
+    // ... (rest of state)
 
     const [activeTab, setActiveTab] = useState<'profile' | 'academics'>('profile');
 
@@ -245,7 +248,8 @@ const Settings: React.FC = () => {
         branch: '',
         college: '',
         semester: 1,
-        batch: ''
+        batch: '',
+        picture: '' // Added picture
     });
 
     useEffect(() => {
@@ -254,7 +258,8 @@ const Settings: React.FC = () => {
                 branch: user.branch || '',
                 college: user.college || '',
                 semester: user.semester || 1,
-                batch: user.batch || ''
+                batch: user.batch || '',
+                picture: user.picture || ''
             });
             setName(user.name);
         }
@@ -292,13 +297,19 @@ const Settings: React.FC = () => {
                 }));
             }
         } catch (error) {
-
+            // Preferences might not exist yet
         }
     };
 
     const savePreferences = async (newPrefs: Partial<UserPreferences>) => {
         const updated = { ...preferences, ...newPrefs };
         setPreferences(updated);
+
+        // Instant Accent Update
+        if (newPrefs.accent_color) {
+            setAccentColor(newPrefs.accent_color);
+        }
+
         try {
             await attendanceService.updatePreferences(updated);
             showToast('success', 'Preferences saved');
@@ -362,7 +373,7 @@ const Settings: React.FC = () => {
                 className="mb-8"
             >
                 <h1 className="text-3xl font-display font-bold text-on-surface mb-2">Settings</h1>
-                <p className="text-on-surface-variant">Customize your BunkGuard experience</p>
+                <p className="text-on-surface-variant">Customize your AcadHub experience</p>
             </motion.div>
 
             {/* Tabs for Mobile/Desktop */}
@@ -390,12 +401,50 @@ const Settings: React.FC = () => {
                                 <User className="w-5 h-5 text-primary" />
                                 Profile
                             </h2>
-                            <Card variant="elevated">
+                            <GlassCard className="p-6">
                                 <div className="flex flex-col md:flex-row gap-6 items-start">
                                     <div className="w-20 h-20 rounded-full bg-primary-container text-primary text-3xl flex items-center justify-center font-bold">
                                         {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                                     </div>
                                     <div className="flex-1 w-full space-y-4">
+                                        {/* PFP File Upload */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-on-surface mb-2">Profile Picture</label>
+                                            <div className="flex items-center gap-4">
+                                                {isEditingProfile ? (
+                                                    <div className="relative">
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="hidden"
+                                                            id="pfp-upload"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (file) {
+                                                                    const formData = new FormData();
+                                                                    formData.append('file', file);
+                                                                    try {
+                                                                        const res = await attendanceService.uploadPfp(formData);
+                                                                        setProfileForm({ ...profileForm, picture: res.url });
+                                                                        showToast('success', 'Image uploaded');
+                                                                    } catch (err) {
+                                                                        showToast('error', 'Upload failed');
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                        <label
+                                                            htmlFor="pfp-upload"
+                                                            className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-primary/10 text-primary font-medium rounded-lg hover:bg-primary/20 transition-colors"
+                                                        >
+                                                            <Upload size={16} />
+                                                            Upload Photo
+                                                        </label>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        </div>
+
                                         <Input
                                             label="Display Name"
                                             value={name}
@@ -453,7 +502,7 @@ const Settings: React.FC = () => {
                                         <Button variant="outlined" onClick={() => setIsEditingProfile(true)}>Edit Profile</Button>
                                     )}
                                 </div>
-                            </Card>
+                            </GlassCard>
                         </section>
 
                         {/* Appearance */}
@@ -463,7 +512,7 @@ const Settings: React.FC = () => {
                                 Appearance
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <Card variant="outlined" className="cursor-pointer hover:bg-surface-container-low transition-colors" onClick={toggleTheme}>
+                                <GlassCard className="p-6 cursor-pointer hover:bg-surface-container-low transition-colors" onClick={toggleTheme}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 rounded-full bg-secondary-container text-secondary flex items-center justify-center">
@@ -478,9 +527,9 @@ const Settings: React.FC = () => {
                                             <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${theme === 'dark' ? 'translate-x-6' : ''}`} />
                                         </div>
                                     </div>
-                                </Card>
+                                </GlassCard>
 
-                                <Card variant="outlined">
+                                <GlassCard className="p-6">
                                     <h3 className="font-medium text-on-surface mb-3">Accent Color</h3>
                                     <div className="grid grid-cols-6 gap-2">
                                         {ACCENT_COLORS.map((color) => (
@@ -492,7 +541,7 @@ const Settings: React.FC = () => {
                                             />
                                         ))}
                                     </div>
-                                </Card>
+                                </GlassCard>
                             </div>
                         </section>
 
@@ -502,7 +551,7 @@ const Settings: React.FC = () => {
                                 <SettingsIcon className="w-5 h-5 text-primary" />
                                 Attendance Preferences
                             </h2>
-                            <Card variant="outlined">
+                            <GlassCard className="p-6">
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
@@ -580,7 +629,7 @@ const Settings: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                            </Card>
+                            </GlassCard>
                         </section>
                     </>
                 ) : (
@@ -611,7 +660,7 @@ const Settings: React.FC = () => {
                         <Download className="w-5 h-5 text-primary" />
                         Data Management
                     </h2>
-                    <Card variant="outlined">
+                    <GlassCard className="p-6">
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                             <div>
                                 <h3 className="font-medium text-on-surface mb-1">Export & Import</h3>
@@ -630,7 +679,7 @@ const Settings: React.FC = () => {
                                 </Button>
                             </div>
                         </div>
-                    </Card>
+                    </GlassCard>
                 </section>
 
                 <section>
@@ -639,7 +688,7 @@ const Settings: React.FC = () => {
                         Danger Zone
                     </h2>
                     <div className="space-y-3">
-                        <Card variant="outlined" className="border-error/30 bg-error-container/5">
+                        <GlassCard className="p-4 border-error/30 bg-error-container/5">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h3 className="font-medium text-on-surface">Sign Out</h3>
@@ -649,9 +698,9 @@ const Settings: React.FC = () => {
                                     Logout
                                 </Button>
                             </div>
-                        </Card>
+                        </GlassCard>
 
-                        <Card variant="outlined" className="border-error/50 bg-error-container/10">
+                        <GlassCard className="p-4 border-error/50 bg-error-container/10">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h3 className="font-medium text-error">Delete All Data</h3>
@@ -661,7 +710,7 @@ const Settings: React.FC = () => {
                                     Delete All
                                 </Button>
                             </div>
-                        </Card>
+                        </GlassCard>
                     </div>
                 </section>
             </div>

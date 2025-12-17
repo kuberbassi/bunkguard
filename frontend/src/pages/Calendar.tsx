@@ -27,6 +27,15 @@ const Calendar: React.FC = () => {
     const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
     const [scheduledClasses, setScheduledClasses] = useState<any[]>([]);
 
+    // View Toggle State: 'attendance' | 'events'
+    const [viewMode, setViewMode] = useState<'attendance' | 'events'>(() => {
+        return localStorage.getItem('calendar_view_mode') as 'attendance' | 'events' || 'attendance';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('calendar_view_mode', viewMode);
+    }, [viewMode]);
+
     const [googleEvents, setGoogleEvents] = useState<any[]>([]);
 
     useEffect(() => {
@@ -131,121 +140,137 @@ const Calendar: React.FC = () => {
 
     return (
         <div className="pb-32 space-y-8">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between"
-            >
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-display-md font-bold text-on-surface dark:text-dark-surface-on mb-1">
-                        Attendance History
-                    </h1>
-                    <p className="text-on-surface-variant text-lg">Track your attendance over time</p>
+                    <h1 className="text-display-md text-on-surface dark:text-dark-surface-on">Calendar</h1>
+                    <p className="text-on-surface-variant text-lg">Track your attendance history</p>
                 </div>
-            </motion.div>
 
-            <GlassCard className="p-8 min-h-[600px] flex flex-col">
-                {/* Month Navigation */}
-                <div className="flex items-center justify-between mb-8">
-                    <Button
-                        variant="ghost"
-                        onClick={handlePrevMonth}
-                        className="rounded-full w-12 h-12 !p-0"
+                {/* View Controller */}
+                <div className="flex items-center gap-4 bg-surface-container rounded-xl p-1 border border-outline-variant/20">
+                    <button
+                        onClick={() => setViewMode('attendance')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'attendance'
+                            ? 'bg-primary text-on-primary shadow-sm'
+                            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                            }`}
                     >
-                        <ChevronLeft size={24} />
-                    </Button>
-
-                    <h2 className="text-2xl font-display font-bold text-on-surface flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                            <CalendarIcon className="w-6 h-6" />
-                        </div>
-                        {monthName}
-                    </h2>
-
-                    <Button
-                        variant="ghost"
-                        onClick={handleNextMonth}
-                        className="rounded-full w-12 h-12 !p-0"
+                        Attendance
+                    </button>
+                    <button
+                        onClick={() => setViewMode('events')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'events'
+                            ? 'bg-primary text-on-primary shadow-sm'
+                            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                            }`}
                     >
-                        <ChevronRight size={24} />
+                        Events
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-3 bg-surface-container-low rounded-xl p-1 border border-outline-variant/20">
+                    <Button variant="ghost" onClick={handlePrevMonth} className="!p-2">
+                        <ChevronLeft size={20} />
+                    </Button>
+                    <span className="font-bold min-w-[140px] text-center text-lg text-on-surface">
+                        {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <Button variant="ghost" onClick={handleNextMonth} className="!p-2">
+                        <ChevronRight size={20} />
                     </Button>
                 </div>
+            </div>
 
-                {/* Weekday Headers */}
-                <div className="grid grid-cols-7 gap-4 mb-4">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="text-center text-sm font-bold text-on-surface-variant/70 uppercase tracking-wilder py-2">
-                            {day}
+            {viewMode === 'events' ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center bg-surface-container-low/50 rounded-2xl border border-dashed border-outline-variant">
+                    <div className="p-4 rounded-full bg-primary/10 mb-4 text-primary">
+                        <CalendarIcon size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-on-surface mb-2">Events & Holidays</h3>
+                    <p className="text-on-surface-variant max-w-md">
+                        This view will show academic holidays, exam schedules, and synced Google Calendar events.
+                        <br />🚧 <span className="text-sm font-bold opacity-80">Coming Soon</span>
+                    </p>
+                </div>
+            ) : (
+                <GlassCard className="p-6">
+                    {/* Weekday Headers */}
+                    <div className="grid grid-cols-7 gap-4 mb-4">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                            <div key={day} className="text-center text-sm font-bold text-on-surface-variant/70 uppercase tracking-wilder py-2">
+                                {day}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-4 flex-1">
+                        {days.map((day, index) => {
+                            if (typeof day !== 'number') return day;
+
+                            const date = new Date(year, month, day);
+                            const attendance = getAttendanceForDate(date);
+                            const isToday = new Date().toDateString() === date.toDateString();
+                            const presentCount = attendance.filter(a => a.status === 'present').length;
+                            const absentCount = attendance.filter(a => a.status === 'absent').length;
+                            const totalClasses = attendance.length;
+                            const googleEventsForDay = getGoogleEventsForDate(date);
+
+                            return (
+                                <motion.button
+                                    key={index}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => handleDayClick(day)}
+                                    className={`aspect-square rounded-2xl p-2 relative flex flex-col items-center justify-start transition-all border ${isToday
+                                        ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary),0.3)]'
+                                        : totalClasses > 0
+                                            ? 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'
+                                            : 'border-transparent hover:bg-surface-dim'
+                                        }`}
+                                >
+                                    <span className={`text-base font-medium mt-1 ${isToday ? 'text-primary font-bold' : 'text-on-surface'}`}>
+                                        {day}
+                                    </span>
+
+                                    <div className="mt-auto mb-2 flex gap-1 flex-wrap justify-center max-w-full">
+                                        {new Array(Math.min(presentCount, 4)).fill(0).map((_, i) => (
+                                            <div key={`p-${i}`} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
+                                        ))}
+                                        {new Array(Math.min(absentCount, 4)).fill(0).map((_, i) => (
+                                            <div key={`a-${i}`} className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
+                                        ))}
+                                        {googleEventsForDay.length > 0 && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" title={`${googleEventsForDay.length} Google Calendar Events`} />
+                                        )}
+                                    </div>
+                                </motion.button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-wrap justify-center gap-8 text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm" />
+                            <span className="text-on-surface-variant">Present</span>
                         </div>
-                    ))}
-                </div>
-
-                {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-4 flex-1">
-                    {days.map((day, index) => {
-                        if (typeof day !== 'number') return day;
-
-                        const date = new Date(year, month, day);
-                        const attendance = getAttendanceForDate(date);
-                        const isToday = new Date().toDateString() === date.toDateString();
-                        const presentCount = attendance.filter(a => a.status === 'present').length;
-                        const absentCount = attendance.filter(a => a.status === 'absent').length;
-                        const totalClasses = attendance.length;
-                        const googleEventsForDay = getGoogleEventsForDate(date);
-
-                        return (
-                            <motion.button
-                                key={index}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleDayClick(day)}
-                                className={`aspect-square rounded-2xl p-2 relative flex flex-col items-center justify-start transition-all border ${isToday
-                                    ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary),0.3)]'
-                                    : totalClasses > 0
-                                        ? 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'
-                                        : 'border-transparent hover:bg-surface-dim'
-                                    }`}
-                            >
-                                <span className={`text-base font-medium mt-1 ${isToday ? 'text-primary font-bold' : 'text-on-surface'}`}>
-                                    {day}
-                                </span>
-
-                                <div className="mt-auto mb-2 flex gap-1 flex-wrap justify-center max-w-full">
-                                    {new Array(Math.min(presentCount, 4)).fill(0).map((_, i) => (
-                                        <div key={`p-${i}`} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
-                                    ))}
-                                    {new Array(Math.min(absentCount, 4)).fill(0).map((_, i) => (
-                                        <div key={`a-${i}`} className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
-                                    ))}
-                                    {googleEventsForDay.length > 0 && (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" title={`${googleEventsForDay.length} Google Calendar Events`} />
-                                    )}
-                                </div>
-                            </motion.button>
-                        );
-                    })}
-                </div>
-
-                {/* Legend */}
-                <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-wrap justify-center gap-8 text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm" />
-                        <span className="text-on-surface-variant">Present</span>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm" />
+                            <span className="text-on-surface-variant">Absent</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm" />
+                            <span className="text-on-surface-variant">Google Event</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
+                            <span className="text-primary font-bold">Today</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm" />
-                        <span className="text-on-surface-variant">Absent</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm" />
-                        <span className="text-on-surface-variant">Google Event</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
-                        <span className="text-primary font-bold">Today</span>
-                    </div>
-                </div>
-            </GlassCard>
+                </GlassCard>
+            )}
 
             <AttendanceModal
                 isOpen={isMarkModalOpen}

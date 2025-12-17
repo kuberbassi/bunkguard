@@ -24,7 +24,7 @@ const Login: React.FC = () => {
             console.error('❌ Google Login Failed:', error);
             alert(`Google Login Error: ${JSON.stringify(error)}`);
         },
-        scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/calendar.events.readonly'
+        scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/tasks.readonly'
     });
 
     return (
@@ -48,8 +48,11 @@ const Login: React.FC = () => {
                     </div>
 
                     <h1 className="text-3xl font-display font-medium text-on-surface dark:text-dark-surface-on mb-2 tracking-tight">
-                        Welcome back
+                        AcadHub
                     </h1>
+                    <p className="text-on-surface-variant text-lg">
+                        Your ultimate student companion for attendance, timetables, and more.
+                    </p>
                     <p className="text-on-surface-variant dark:text-dark-surface-variant mb-8 text-base">
                         Sign in to AcadHub to continue
                     </p>

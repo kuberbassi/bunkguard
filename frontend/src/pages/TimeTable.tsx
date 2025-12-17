@@ -69,8 +69,10 @@ const TimeTable: React.FC = () => {
             ]);
 
             const schedule = ttData?.schedule || {};
+            if (ttData?.periods && ttData.periods.length > 0) {
+                setPeriods(ttData.periods);
+            }
             console.log('📅 Timetable loaded:', schedule);
-            console.log('📚 Subjects loaded:', dashData.subjects_overview);
             setTimetable(schedule);
             setSubjects(dashData.subjects_overview || []);
         } catch (error) {
@@ -194,116 +196,14 @@ const TimeTable: React.FC = () => {
                 </div>
 
                 {/* Settings / Structure Button */}
-                <div className="relative">
-                    <Button
-                        variant="secondary"
-                        onClick={() => setSettingsOpen(!isSettingsOpen)}
-                        className="!flex !flex-row !items-center !gap-2 !whitespace-nowrap min-w-fit px-4"
-                        icon={<Edit2 size={16} />}
-                    >
-                        Edit Structure
-                    </Button>
-
-                    {isSettingsOpen && (
-                        <div className="absolute right-0 top-full mt-2 p-4 rounded-xl bg-surface-container-high border border-outline-variant shadow-xl z-50 w-80 min-w-[300px]">
-                            <h4 className="font-bold text-on-surface mb-3 flex justify-between items-center">
-                                Grid Structure
-                                <button
-                                    onClick={() => setSettingsOpen(false)}
-                                    className="text-primary text-xs font-bold hover:underline"
-                                >
-                                    Done
-                                </button>
-                            </h4>
-                            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                {periods.map((p, idx) => (
-                                    <div key={p.id} className="flex gap-2 items-center bg-surface-container p-2 rounded-lg border border-outline/50">
-                                        <div className="flex-1 flex flex-col gap-1">
-                                            <input
-                                                value={p.name}
-                                                className="bg-transparent border-none p-0 text-sm font-bold text-on-surface focus:ring-0 w-full"
-                                                onChange={(e) => {
-                                                    const newPeriods = [...periods];
-                                                    newPeriods[idx].name = e.target.value;
-                                                    setPeriods(newPeriods);
-                                                }}
-                                                placeholder="Label"
-                                            />
-                                            <div className="flex gap-1 text-xs">
-                                                <input
-                                                    type="time"
-                                                    value={p.startTime}
-                                                    className="bg-transparent border-none p-0 w-16 text-on-surface-variant focus:ring-0"
-                                                    onChange={(e) => {
-                                                        const newPeriods = [...periods];
-                                                        newPeriods[idx].startTime = e.target.value;
-                                                        setPeriods(newPeriods);
-                                                    }}
-                                                />
-                                                <span>-</span>
-                                                <input
-                                                    type="time"
-                                                    value={p.endTime}
-                                                    className="bg-transparent border-none p-0 w-16 text-on-surface-variant focus:ring-0"
-                                                    onChange={(e) => {
-                                                        const newPeriods = [...periods];
-                                                        newPeriods[idx].endTime = e.target.value;
-                                                        setPeriods(newPeriods);
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className='flex flex-col gap-1'>
-                                            <button
-                                                onClick={() => {
-                                                    const newPeriods = [...periods];
-                                                    newPeriods[idx].type = newPeriods[idx].type === 'break' ? 'class' : 'break';
-                                                    setPeriods(newPeriods);
-                                                }}
-                                                className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase transition-colors
-                                                    ${p.type === 'break' ? 'bg-orange-500/20 text-orange-500' : 'bg-primary/20 text-primary'}`}
-                                            >
-                                                {p.type}
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const newPeriods = periods.filter((_, i) => i !== idx);
-                                                    setPeriods(newPeriods);
-                                                }}
-                                                className="text-error hover:bg-error/10 rounded p-1"
-                                                title="Remove"
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                                <Button
-                                    variant="outlined"
-                                    className="w-full text-sm mt-2 border-dashed flex flex-row items-center justify-center gap-2"
-                                    onClick={() => {
-                                        const lastPeriod = periods[periods.length - 1];
-                                        const newStart = lastPeriod ? lastPeriod.endTime : '09:00';
-                                        // Simple increment of 1 hour for new placeholder
-                                        const [h, m] = newStart.split(':').map(Number);
-                                        const nextH = (h + 1).toString().padStart(2, '0');
-                                        const newEnd = `${nextH}:${m.toString().padStart(2, '0')}`;
-
-                                        setPeriods([...periods, {
-                                            id: `p${Date.now()}`,
-                                            name: `${periods.length + 1}`,
-                                            startTime: newStart,
-                                            endTime: newEnd,
-                                            type: 'class'
-                                        }]);
-                                    }}
-                                >
-                                    <Plus size={14} className="mr-1" /> Add Period
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <Button
+                    variant="secondary"
+                    onClick={() => setSettingsOpen(true)}
+                    className="!flex !flex-row !items-center !gap-2 !whitespace-nowrap min-w-fit px-4"
+                    icon={<Edit2 size={16} />}
+                >
+                    Edit Structure
+                </Button>
             </motion.div>
 
             {/* Desktop Grid View */}
@@ -408,6 +308,125 @@ const TimeTable: React.FC = () => {
                     );
                 })}
             </div>
+
+            {/* Structure Editor Modal */}
+            <Modal
+                isOpen={isSettingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                title="Edit Grid Structure"
+            >
+                <div className="space-y-4">
+                    <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+                        {periods.map((p, idx) => (
+                            <div key={p.id} className="flex gap-3 items-start bg-surface-container-low p-3 rounded-xl border border-outline-variant/30">
+                                <div className="mt-2 text-xs font-bold text-on-surface-variant w-4 text-center">
+                                    {idx + 1}
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <div className="flex gap-2">
+                                        <input
+                                            value={p.name}
+                                            className="flex-1 bg-surface-container p-2 rounded-lg border-none text-sm font-bold text-on-surface focus:ring-1 focus:ring-primary"
+                                            onChange={(e) => {
+                                                const newPeriods = [...periods];
+                                                newPeriods[idx].name = e.target.value;
+                                                setPeriods(newPeriods);
+                                            }}
+                                            placeholder="Label (e.g. 1, Lunch)"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                const newPeriods = [...periods];
+                                                newPeriods[idx].type = newPeriods[idx].type === 'break' ? 'class' : 'break';
+                                                setPeriods(newPeriods);
+                                            }}
+                                            className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors
+                                                ${p.type === 'break'
+                                                    ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30'
+                                                    : 'bg-primary/10 text-primary border border-primary/20'}`}
+                                        >
+                                            {p.type}
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm bg-surface-container p-1.5 rounded-lg w-fit">
+                                        <Clock size={14} className="text-on-surface-variant ml-1" />
+                                        <input
+                                            type="time"
+                                            value={p.startTime}
+                                            className="bg-transparent border-none p-0 w-20 text-center font-medium text-on-surface focus:ring-0"
+                                            onChange={(e) => {
+                                                const newPeriods = [...periods];
+                                                newPeriods[idx].startTime = e.target.value;
+                                                setPeriods(newPeriods);
+                                            }}
+                                        />
+                                        <span className="text-on-surface-variant">-</span>
+                                        <input
+                                            type="time"
+                                            value={p.endTime}
+                                            className="bg-transparent border-none p-0 w-20 text-center font-medium text-on-surface focus:ring-0"
+                                            onChange={(e) => {
+                                                const newPeriods = [...periods];
+                                                newPeriods[idx].endTime = e.target.value;
+                                                setPeriods(newPeriods);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const newPeriods = periods.filter((_, i) => i !== idx);
+                                        setPeriods(newPeriods);
+                                    }}
+                                    className="mt-1 p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+                                    title="Remove Period"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="pt-2 border-t border-outline-variant/10 flex gap-3">
+                        <Button
+                            variant="outlined"
+                            className="whitespace-nowrap"
+                            onClick={() => {
+                                const last = periods.length > 0 ? periods[periods.length - 1] : null;
+                                // Default start time is end of last period or 09:00
+                                const startTime = last ? last.endTime : "09:00";
+                                const newId = `p-${Date.now()}`;
+
+                                setPeriods([...periods, {
+                                    id: newId,
+                                    name: `${periods.length + 1}`,
+                                    startTime: startTime,
+                                    endTime: startTime,
+                                    type: 'class'
+                                }]);
+                            }}
+                        >
+                            <Plus size={16} className="mr-2" />
+                            Add Period
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={async () => {
+                                try {
+                                    await attendanceService.saveTimetableStructure(periods);
+                                    showToast('success', 'Structure saved');
+                                    setSettingsOpen(false);
+                                } catch (e) {
+                                    showToast('error', 'Failed to save structure');
+                                }
+                            }}
+                            className="px-6"
+                        >
+                            Save & Close
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Add/Edit Modal */}
             <Modal

@@ -12,6 +12,16 @@ import type {
 } from '@/types';
 
 export const attendanceService = {
+    // Preferences & Profile
+    uploadPfp: async (formData: FormData): Promise<{ url: string }> => {
+        const response = await api.post('/api/upload_pfp', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
+
     // Dashboard
     getDashboardData: async (semester: number = 1): Promise<DashboardData> => {
         const response = await api.get(`/api/dashboard_data?semester=${semester}`);
@@ -175,13 +185,18 @@ export const attendanceService = {
     },
 
     // Timetable
-    getTimetable: async (): Promise<{ schedule: TimetableSchedule }> => {
+    // Timetable
+    getTimetable: async (): Promise<{ schedule: TimetableSchedule; periods?: any[] }> => {
         const response = await api.get('/api/timetable');
         return response.data;
     },
 
     saveTimetable: async (schedule: TimetableSchedule): Promise<void> => {
         await api.post('/api/timetable', { schedule });
+    },
+
+    saveTimetableStructure: async (periods: any[]): Promise<void> => {
+        await api.post('/api/timetable/structure', periods);
     },
 
     // New CRUD methods

@@ -8,7 +8,7 @@ classroom_bp = Blueprint('classroom', __name__, url_prefix='/api/classroom')
 def list_courses():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     token = session['user'].get('google_token')
-    if not token: return jsonify({"error": "No Google Token found. Please re-login."}), 401
+    if not token: return jsonify({"error": "No Google Token found. Please re-login."}), 403
 
     try:
         resp = requests.get(
@@ -32,7 +32,7 @@ def list_courses():
 def list_coursework(course_id):
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     token = session['user'].get('google_token')
-    if not token: return jsonify({"error": "No Google Token found"}), 401
+    if not token: return jsonify({"error": "No Google Token found"}), 403
 
     try:
         resp = requests.get(
@@ -55,7 +55,7 @@ def get_all_assignments():
     """Aggregates assignments from all active courses."""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     token = session['user'].get('google_token')
-    if not token: return jsonify({"error": "No Google Token found"}), 401
+    if not token: return jsonify({"error": "No Google Token found"}), 403
     
     try:
         # 1. Get Courses
@@ -100,7 +100,7 @@ def get_announcements():
     """Fetch announcements from all courses."""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     token = session['user'].get('google_token')
-    if not token: return jsonify({"error": "No Google Token found"}), 401
+    if not token: return jsonify({"error": "No Google Token found"}), 403
     
     try:
         # 1. Get Courses
@@ -140,7 +140,7 @@ def get_materials():
     """Fetch course materials."""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     token = session['user'].get('google_token')
-    if not token: return jsonify({"error": "No Google Token found"}), 401
+    if not token: return jsonify({"error": "No Google Token found"}), 403
     
     try:
         # Get courses

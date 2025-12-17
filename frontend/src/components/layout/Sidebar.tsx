@@ -15,7 +15,8 @@ import {
     GraduationCap,
     ChevronRight,
     ChevronLeft,
-    StickyNote
+    StickyNote,
+    Bell
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -33,6 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
     const location = useLocation();
 
     const navigation = [
+        { name: 'Notifications', href: '/notifications', icon: Bell },
         { name: 'Dashboard', href: '/', icon: LayoutDashboard },
         { name: 'Analytics', href: '/analytics', icon: PieChart },
         { name: 'Schedule', href: '/timetable', icon: CalendarClock },
@@ -55,11 +57,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="overflow-hidden whitespace-nowrap"
+                        className="flex flex-col"
                     >
-                        <h1 className="text-xl font-bold font-display tracking-tight text-on-surface">AcadHub</h1>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/80">Student Center</p>
+                        <span className="text-xl font-display font-bold text-on-surface tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark">
+                            AcadHub
+                        </span>
+                        <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+                            Student Center
+                        </span>
                     </motion.div>
                 )}
             </div>

@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 // import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/components/ui/Toast';
+import api from '@/services/api';
 
 interface Course {
     _id?: { $oid: string };
@@ -53,18 +54,29 @@ const Courses: React.FC = () => {
         loadCourses();
     }, []);
 
-    const loadCourses = () => {
-        // TODO: Implement API call
-        // For now, load from localStorage
-        const saved = localStorage.getItem('acadhub_courses');
-        if (saved) {
-            setCourses(JSON.parse(saved));
+    const loadCourses = async () => {
+        try {
+            // setLoading(true);
+            const response = await api.get('/api/courses/manual');
+            if (response.data) {
+                setCourses(response.data);
+            }
+        } catch (error) {
+            console.error('Failed to load courses', error);
+            showToast('error', 'Failed to load courses');
+            // Fallback to local? No, source of truth is backend now.
         }
     };
 
-    const saveCourses = (newCourses: Course[]) => {
-        localStorage.setItem('acadhub_courses', JSON.stringify(newCourses));
+    const saveCourses = async (newCourses: Course[]) => {
+        // Optimistic update
         setCourses(newCourses);
+        try {
+            await api.post('/api/courses/manual', newCourses);
+        } catch (error) {
+            console.error('Failed to save courses', error);
+            showToast('error', 'Failed to save changes');
+        }
     };
 
     const handleAddCourse = () => {

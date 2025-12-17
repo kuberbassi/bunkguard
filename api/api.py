@@ -10,8 +10,171 @@ from flask import Blueprint, jsonify, request, session, Response
 from itertools import groupby
 from . import db  # ✅ FIXED - Import db from the same package
 from datetime import timedelta, datetime
+# try:
+#     from pywebpush import webpush, WebPushException
+# except ImportError:
+#     print("pywebpush not installed")
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+
+# --- Preferences & Profile ---
+
+@api_bp.route('/update_preferences', methods=['POST'])
+def update_preferences():
+    """Update user preferences"""
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    new_prefs = request.json
+    
+    # Use preferences_collection (matching get_preferences)
+    preferences_collection.update_one(
+        {'owner_email': user_email},
+        {'$set': {
+            'owner_email': user_email,
+            'preferences': new_prefs,
+            'updated_at': datetime.utcnow()
+        }},
+        upsert=True
+    )
+    
+    return jsonify({"success": True, "preferences": new_prefs})
+
+@api_bp.route('/upload_pfp', methods=['POST'])
+def upload_pfp():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if file:
+        # Save to static/uploads
+        import os
+        from werkzeug.utils import secure_filename
+        
+        UPLOAD_FOLDER = 'frontend/public/uploads' # Serve from public in dev, or static
+        # In production, might need specific path
+        if not os.path.exists(UPLOAD_FOLDER):
+            os.makedirs(UPLOAD_FOLDER)
+            
+        filename = secure_filename(f"{session['user']['email']}_{file.filename}")
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        
+        # Return URL
+        url = f"/uploads/{filename}"
+        
+        # Update User Profile
+        users_collection.update_one(
+            {'email': session['user']['email']},
+            {'$set': {'picture': url}}
+        )
+        
+        # Update Session
+        session['user']['picture'] = url
+        session.modified = True
+        
+        return jsonify({"url": url})
+        
+    return jsonify({"error": "Upload failed"}), 500
+
+# --- Integrations ---
+
+@api_bp.route('/integrations/calendar', methods=['GET'])
+def get_google_calendar_events():
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = session['user'].get('google_token')
+    if not token:
+        return jsonify({"error": "Google token missing"}), 403
+
+    try:
+        # Fetch Events (Primary Calendar)
+        # timeMin=now, singleEvents=True, orderBy=startTime
+        from datetime import datetime
+        now = datetime.utcnow().isoformat() + 'Z'
+        
+        resp = requests.get(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+            headers={'Authorization': f'Bearer {token}'},
+            params={
+                'timeMin': now,
+                'maxResults': 50,
+                'singleEvents': True,
+                'orderBy': 'startTime'
+            }
+        )
+        
+        if resp.status_code != 200:
+            print(f"Calendar API Error: {resp.text}")
+            return jsonify([]), 200 # Return empty if fails to avoid crash
+            
+        events = resp.json().get('items', [])
+        
+        # Format for frontend
+        formatted = []
+        for e in events:
+            start = e.get('start', {}).get('dateTime') or e.get('start', {}).get('date')
+            end = e.get('end', {}).get('dateTime') or e.get('end', {}).get('date')
+            formatted.append({
+                'id': e['id'],
+                'title': e.get('summary', 'No Title'),
+                'start': start,
+                'end': end,
+                'type': 'google_event',
+                'link': e.get('htmlLink')
+            })
+            
+        return jsonify(formatted)
+        
+    except Exception as e:
+        print(f"Calendar Integ Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/integrations/tasks', methods=['GET'])
+def get_google_tasks():
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = session['user'].get('google_token')
+    if not token:
+        return jsonify({"error": "Google token missing"}), 403
+
+    try:
+        # Fetch Tasks from Default List
+        resp = requests.get(
+            'https://tasks.googleapis.com/tasks/v1/lists/@default/tasks',
+            headers={'Authorization': f'Bearer {token}'},
+            params={'showCompleted': False, 'maxResults': 20}
+        )
+        
+        if resp.status_code != 200:
+             # Tasks API might not be enabled or user didn't grant scope initially
+            print(f"Tasks API Error: {resp.text}")
+            return jsonify([]), 200
+
+        tasks = resp.json().get('items', [])
+        
+        formatted = []
+        for t in tasks:
+            formatted.append({
+                'id': t['id'],
+                'title': t['title'],
+                'due': t.get('due'),
+                'link': t.get('selfLink'), # Tasks API selfLink is API link, not UI. 
+                # UI link construction is complex for tasks, usually just open tasks.google.com
+                'status': t['status']
+            })
+            
+        return jsonify(formatted)
+
+    except Exception as e:
+        print(f"Tasks Integ Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # --- Collections ---
 subjects_collection = db.get_collection('subjects')
@@ -21,6 +184,9 @@ system_logs_collection = db.get_collection('system_logs')
 deadlines_collection = db.get_collection('deadlines')
 holidays_collection = db.get_collection('holidays')
 academic_records_collection = db.get_collection('academic_records')
+# New Collections for Persistence
+board_collection = db.get_collection('board_data')
+manual_courses_collection = db.get_collection('manual_courses')
 
 
 # --- Helper Functions ---
@@ -765,6 +931,65 @@ def get_full_subjects_data():
     subjects = list(subjects_collection.find(query))
     return Response(json_util.dumps(subjects), mimetype='application/json')
 
+# === PERSISTENCE ROUTES (NEW) ===
+
+# 1. Board Persistence
+@api_bp.route('/board', methods=['GET', 'POST'])
+def handle_board():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+
+    if request.method == 'GET':
+        doc = board_collection.find_one({"owner_email": user_email})
+        return jsonify(doc['snapshot'] if doc else {})
+
+    if request.method == 'POST':
+        snapshot = request.json
+        board_collection.update_one(
+            {"owner_email": user_email},
+            {"$set": {"snapshot": snapshot, "updated_at": datetime.utcnow()}},
+            upsert=True
+        )
+        return jsonify({"success": True})
+
+# 2. Manual Courses Persistence
+@api_bp.route('/courses/manual', methods=['GET', 'POST'])
+def handle_manual_courses():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+
+    if request.method == 'GET':
+        # Retrieve all manual courses for user
+        # We can store as a single array document or individual documents?
+        # User current logic is array in localStorage. Single doc is easier to sync full state.
+        doc = manual_courses_collection.find_one({"owner_email": user_email})
+        return jsonify(doc['courses'] if doc else [])
+
+    if request.method == 'POST':
+        # Full sync of courses list
+        courses = request.json # Expects array
+        manual_courses_collection.update_one(
+            {"owner_email": user_email},
+            {"$set": {"courses": courses, "updated_at": datetime.utcnow()}},
+            upsert=True
+        )
+        return jsonify({"success": True})
+
+# 3. Timetable Structure (Periods)
+@api_bp.route('/timetable/structure', methods=['POST'])
+def save_timetable_structure():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    periods = request.json # Array of period objects
+
+    timetable_collection.update_one(
+        {"owner_email": user_email},
+        {"$set": {"periods": periods}},
+        upsert=True
+    )
+    return jsonify({"success": True})
+
+
 @api_bp.route('/batch_update_subjects', methods=['POST'])
 def batch_update_subjects():
     """Batch update attendance counts for multiple subjects at once."""
@@ -983,6 +1208,8 @@ def handle_timetable():
         return jsonify({"success": True})
     timetable_doc = timetable_collection.find_one({'owner_email': user_email})
     schedule = timetable_doc.get('schedule', {}) if timetable_doc else {}
+    periods = timetable_doc.get('periods', []) if timetable_doc else [] # Retrieve periods
+    
     print(f"📅 GET /timetable for {user_email}:")
     print(f"   Document exists: {timetable_doc is not None}")
     print(f"   Schedule days: {list(schedule.keys()) if schedule else []}")
@@ -1001,7 +1228,10 @@ def handle_timetable():
     
     serialized_schedule = serialize_schedule(schedule)
     print(f"   ✅ Serialized successfully")
-    return jsonify({"schedule": serialized_schedule})
+    return jsonify({
+        "schedule": serialized_schedule,
+        "periods": periods
+    })
 
 
 # --- Timetable CRUD ---
@@ -1598,28 +1828,7 @@ def get_attendance_history():
 
 # --- BOARD API ---
 
-@api_bp.route('/board', methods=['GET', 'POST'])
-def handle_board():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    
-    # Use a separate collection for boards or just store in users/misc
-    # Let's use a 'boards' collection
-    boards_collection = db.get_collection('boards')
-    
-    if request.method == 'POST':
-        data = request.json
-        # Check if updating specific record or the main board
-        # Assuming one main board per user for now
-        boards_collection.update_one(
-            {'owner_email': user_email},
-            {'$set': {'data': data, 'updated_at': datetime.utcnow()}},
-            upsert=True
-        )
-        return jsonify({"success": True})
-    
-    board = boards_collection.find_one({'owner_email': user_email})
-    return jsonify(board['data'] if board and 'data' in board else {})
+
     
 
 
@@ -1703,28 +1912,29 @@ def get_preferences():
     
     return jsonify(default_prefs)
 
-@api_bp.route('/preferences', methods=['POST'])
-def update_preferences():
-    """Update user preferences"""
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
+
+
+
+
+
+@api_bp.route('/notifications/subscribe', methods=['POST'])
+def subscribe():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     
+    subscription = request.json
     user_email = session['user']['email']
-    new_prefs = request.json
     
-    preferences_collection.update_one(
-        {'owner_email': user_email},
-        {'$set': {
-            'owner_email': user_email,
-            'preferences': new_prefs,
-            'updated_at': datetime.utcnow()
-        }},
+    # Store subscription
+    users_collection.update_one(
+        {'email': user_email},
+        {'$set': {'push_subscription': subscription}},
         upsert=True
     )
-    
-    return jsonify({'success': True, 'preferences': new_prefs})
+    return jsonify({"success": True})
 
-
+@api_bp.route('/notifications/send', methods=['POST'])
+def send_notification():
+    return jsonify({"success": True, "message": "Notification Logic Placeholder (pywebpush missing)"})
 
 
 @api_bp.route('/analytics/monthly_trend')

@@ -19,12 +19,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check if user is stored in localStorage
-        const storedUser = authService.getStoredUser();
-        if (storedUser) {
-            setUser(storedUser);
-        }
-        setLoading(false);
+        const initAuth = async () => {
+            const storedUser = authService.getStoredUser();
+            if (storedUser) {
+                // Optimistically set user
+                setUser(storedUser);
+
+                // Verify session with backend to prevent "glitchy" redirect
+                try {
+                    const verifiedUser = await authService.getCurrentUser();
+                    if (!verifiedUser) {
+                        // Session invalid (e.g. server restart)
+                        console.warn('Session invalid, clearing user');
+                        setUser(null);
+                        authService.logout();
+                    }
+                } catch (error) {
+                    // 401 will be caught here or by interceptor
+                    setUser(null);
+                    authService.logout();
+                }
+            }
+            setLoading(false);
+        };
+
+        initAuth();
     }, []);
 
     const login = () => {

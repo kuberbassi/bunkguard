@@ -24,7 +24,7 @@ interface PlannerItem {
     title: string;
     dueDate?: Date;
     courseName?: string;
-    source: 'manual' | 'classroom';
+    source: 'manual' | 'classroom' | 'google';
     link?: string;
     completed: boolean;
     type?: string;
@@ -59,7 +59,15 @@ const Planner: React.FC = () => {
                 console.warn("Classroom fetch failed", err);
             }
 
-            // 3. Merge & Normalize
+            // 3. Fetch Google Tasks
+            let googleTasks: any[] = [];
+            try {
+                googleTasks = await attendanceService.getGoogleTasks();
+            } catch (err) {
+                console.warn("Google Tasks fetch failed", err);
+            }
+
+            // 4. Merge & Normalize
             const manualItems: PlannerItem[] = manualDeadlines.map((d: any) => ({
                 id: d._id?.$oid || d._id,
                 title: d.title,
@@ -68,6 +76,19 @@ const Planner: React.FC = () => {
                 source: 'manual',
                 completed: d.completed || false
             }));
+
+            const googleTaskItems: PlannerItem[] = googleTasks.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                dueDate: t.due ? new Date(t.due) : undefined,
+                courseName: 'Google Task',
+                source: 'classroom', // Re-using styling for now, or add 'google' source
+                completed: t.status === 'completed',
+                link: 'https://tasks.google.com' // Generic link
+            }));
+
+            // Make Google Tasks visually distinct if needed, for now 'Classroom' style (Yellow) is okay or we update PlannerItem type
+
 
             const classItems: PlannerItem[] = classroomWork.map((w: any) => {
                 let due = undefined;
@@ -90,7 +111,7 @@ const Planner: React.FC = () => {
                 };
             });
 
-            const allTasks = [...manualItems, ...classItems].sort((a, b) => {
+            const allTasks = [...manualItems, ...classItems, ...googleTaskItems].sort((a, b) => {
                 // Sort by Completed (false first), then Date
                 if (a.completed !== b.completed) return a.completed ? 1 : -1;
                 if (!a.dueDate) return 1;
@@ -248,8 +269,11 @@ const Planner: React.FC = () => {
                                 >
                                     <GlassCard hover className={`relative overflow-hidden group h-full flex flex-col p-5 transition-all ${task.completed ? 'opacity-60 grayscale bg-surface-container/50' : ''}`}>
                                         <div className="flex justify-between items-start mb-3">
-                                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${task.source === 'classroom' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'}`}>
-                                                {task.source === 'classroom' ? 'Classroom' : 'Manual'}
+                                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${task.source === 'classroom' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' :
+                                                    task.source === 'google' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' :
+                                                        'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200'
+                                                }`}>
+                                                {task.source === 'classroom' ? 'Classroom' : task.source === 'google' ? 'Google Task' : 'Manual'}
                                             </div>
                                             {!task.completed && (
                                                 <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${priority.color}`}>
