@@ -5,7 +5,7 @@ from flask import Flask
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
-from .auth import oauth
+
 
 load_dotenv()
 
@@ -15,6 +15,8 @@ try:
 except Exception as e:
     print(f"MongoDB failed: {e}")
     db = None
+
+from .auth import oauth
 
 def create_app():
     # Get current directory (api/)

@@ -195,16 +195,22 @@ const Planner: React.FC = () => {
                     <p className="text-on-surface-variant">Manage your assignments, exams, and deadlines.</p>
                 </div>
                 <div className="flex gap-2">
-                    <div className="bg-surface-container rounded-lg p-1 flex">
+                    <div className="bg-surface-container rounded-full p-1 flex">
                         <button
                             onClick={() => setFilter('pending')}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'pending' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-dim'}`}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${filter === 'pending' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-dim'}`}
                         >
                             Pending
                         </button>
                         <button
+                            onClick={() => setFilter('completed')}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${filter === 'completed' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-dim'}`}
+                        >
+                            Completed
+                        </button>
+                        <button
                             onClick={() => setFilter('all')}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${filter === 'all' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-dim'}`}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${filter === 'all' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-dim'}`}
                         >
                             All
                         </button>

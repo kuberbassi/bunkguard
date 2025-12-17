@@ -18,7 +18,6 @@ const Analytics: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [dayOfWeekData, setDayOfWeekData] = useState<any>(null);
     const [reportsData, setReportsData] = useState<any>(null);
-    const [semesterData, setSemesterData] = useState<any>(null);
 
     useEffect(() => {
         loadAnalytics();
@@ -27,14 +26,12 @@ const Analytics: React.FC = () => {
     const loadAnalytics = async () => {
         try {
             setLoading(true);
-            const [dayData, reports, semData] = await Promise.all([
+            const [dayData, reports] = await Promise.all([
                 attendanceService.getDayOfWeekAnalytics(currentSemester),
-                attendanceService.getReportsData(currentSemester),
-                attendanceService.getAllSemestersOverview()
+                attendanceService.getReportsData(currentSemester)
             ]);
             setDayOfWeekData(dayData);
             setReportsData(reports);
-            setSemesterData(semData);
         } catch (error) {
             console.error('Error loading analytics:', error);
             showToast('error', 'Failed to load analytics data');
@@ -104,7 +101,7 @@ const Analytics: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Weekly Trends */}
-                <GlassCard className="p-6 !bg-surface flex flex-col items-center justify-center">
+                <GlassCard className="p-6 !bg-surface flex flex-col">
                     <div className="w-full flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-lg text-primary">
@@ -113,9 +110,9 @@ const Analytics: React.FC = () => {
                             <h3 className="text-lg font-bold text-on-surface">Weekly Overview</h3>
                         </div>
                     </div>
-                    <div className="w-full h-[300px]">
+                    <div className="w-full h-[400px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={COLORS.grid} opacity={0.5} />
                                 <XAxis
                                     dataKey="day"
@@ -139,7 +136,7 @@ const Analytics: React.FC = () => {
                                         color: theme === 'dark' ? '#fff' : '#000'
                                     }}
                                 />
-                                <Bar dataKey="percentage" radius={[8, 8, 8, 8]} barSize={40}>
+                                <Bar dataKey="percentage" radius={[8, 8, 8, 8]} maxBarSize={60}>
                                     {weeklyData.map((entry: any, index: number) => (
                                         <Cell
                                             key={`cell-${index}`}
@@ -166,7 +163,7 @@ const Analytics: React.FC = () => {
                     </div>
 
                     {subjectPerformance.length > 0 ? (
-                        <div className="w-full h-[300px]">
+                        <div className="w-full h-[400px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart layout="vertical" data={subjectPerformance} margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={COLORS.grid} opacity={0.5} />
@@ -206,7 +203,7 @@ const Analytics: React.FC = () => {
                         </div>
                     )}
                 </GlassCard>
-            </div>
+            </div >
 
             <GlassCard className="p-6 !bg-surface flex flex-col md:flex-row gap-8 items-center">
                 <div className="flex-1 space-y-4">
@@ -229,7 +226,7 @@ const Analytics: React.FC = () => {
                     </div>
                 </div>
             </GlassCard>
-        </div>
+        </div >
     );
 };
 

@@ -288,17 +288,43 @@ const Courses: React.FC = () => {
                             const Icon = platform.icon;
 
                             return (
-                                <GlassCard key={course._id?.$oid} className="p-4 opacity-80 hover:opacity-100 transition-opacity">
-                                    <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${platform.color} text-white text-xs font-bold mb-2 w-fit`}>
-                                        <Icon className="w-3 h-3" />
-                                        {platform.label}
+                                <GlassCard key={course._id?.$oid} className="group p-4 opacity-80 hover:opacity-100 transition-opacity">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${platform.color} text-white text-xs font-bold w-fit`}>
+                                            <Icon className="w-3 h-3" />
+                                            {platform.label}
+                                        </div>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleEditCourse(course)}
+                                                className="p-1 rounded-md hover:bg-surface-container transition-colors"
+                                            >
+                                                <Edit2 className="w-3 h-3 text-on-surface-variant" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCourse(course._id!.$oid)}
+                                                className="p-1 rounded-md hover:bg-surface-container transition-colors"
+                                            >
+                                                <Trash2 className="w-3 h-3 text-error" />
+                                            </button>
+                                        </div>
                                     </div>
+
                                     <h4 className="font-bold text-on-surface text-sm line-clamp-2 mb-2">
                                         {course.title}
                                     </h4>
-                                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 font-medium">
-                                        <Award className="w-3.5 h-3.5" />
-                                        Completed
+
+                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-outline-variant/10">
+                                        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 font-medium">
+                                            <Award className="w-3.5 h-3.5" />
+                                            Completed
+                                        </div>
+                                        <button
+                                            onClick={() => window.open(course.url, '_blank')}
+                                            className="text-xs font-medium text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
+                                        >
+                                            Open <ExternalLink size={10} />
+                                        </button>
                                     </div>
                                 </GlassCard>
                             );

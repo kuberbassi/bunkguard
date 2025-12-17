@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
 import Modal from '@/components/ui/Modal';
@@ -52,7 +54,11 @@ const SystemLogsSection: React.FC = () => {
         }
     };
 
-    if (loading) return <div>Loading logs...</div>;
+    if (loading) return (
+        <Card variant="outlined" className="h-40 flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </Card>
+    );
 
     return (
         <Card variant="outlined" className="max-h-96 overflow-y-auto pr-2">
@@ -177,46 +183,34 @@ const AcademicRecordsSection: React.FC = () => {
             {/* Edit Modal */}
             <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Update Academic Record">
                 <div className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Semester</label>
-                        <input
-                            type="number"
-                            min="1"
-                            max="8"
-                            value={formData.semester}
-                            onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value) })}
-                            className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
-                        />
-                    </div>
+                    <Select
+                        label="Semester"
+                        value={formData.semester}
+                        onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value) })}
+                        options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({ value: s, label: `Semester ${s}` }))}
+                    />
+
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">SGPA</label>
-                            <input
-                                type="number" step="0.01"
-                                value={formData.sgpa}
-                                onChange={e => setFormData({ ...formData, sgpa: parseFloat(e.target.value) })}
-                                className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">CGPA</label>
-                            <input
-                                type="number" step="0.01"
-                                value={formData.cgpa}
-                                onChange={e => setFormData({ ...formData, cgpa: parseFloat(e.target.value) })}
-                                className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold uppercase text-on-surface-variant mb-1">Credits Secured</label>
-                        <input
-                            type="number"
-                            value={formData.credits}
-                            onChange={e => setFormData({ ...formData, credits: parseInt(e.target.value) })}
-                            className="w-full p-2 rounded-lg bg-surface-container border-transparent focus:border-primary border focus:outline-none"
+                        <Input
+                            label="SGPA"
+                            type="number" step="0.01" min="0" max="10"
+                            value={formData.sgpa}
+                            onChange={e => setFormData({ ...formData, sgpa: parseFloat(e.target.value) })}
+                        />
+                        <Input
+                            label="CGPA"
+                            type="number" step="0.01" min="0" max="10"
+                            value={formData.cgpa}
+                            onChange={e => setFormData({ ...formData, cgpa: parseFloat(e.target.value) })}
                         />
                     </div>
+                    <Input
+                        label="Credits Secured"
+                        type="number" min="0"
+                        value={formData.credits}
+                        onChange={e => setFormData({ ...formData, credits: parseInt(e.target.value) })}
+                    />
+
                     <div className="pt-4 flex justify-end gap-2">
                         <Button variant="text" onClick={() => setIsEditing(false)}>Cancel</Button>
                         <Button onClick={handleSave}>Save Record</Button>
@@ -246,6 +240,39 @@ const Settings: React.FC = () => {
 
     const [name, setName] = useState(user?.name || '');
     const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+    const [profileForm, setProfileForm] = useState({
+        branch: '',
+        college: '',
+        semester: 1,
+        batch: ''
+    });
+
+    useEffect(() => {
+        if (user) {
+            setProfileForm({
+                branch: user.branch || '',
+                college: user.college || '',
+                semester: user.semester || 1,
+                batch: user.batch || ''
+            });
+            setName(user.name);
+        }
+    }, [user]);
+
+    const handleProfileSave = async () => {
+        try {
+            await attendanceService.updateProfile({
+                name,
+                ...profileForm
+            });
+            showToast('success', 'Profile updated');
+            setIsEditingProfile(false);
+            window.location.reload();
+        } catch (error) {
+            showToast('error', 'Failed to update profile');
+        }
+    };
 
     useEffect(() => {
         loadPreferences();
@@ -369,32 +396,56 @@ const Settings: React.FC = () => {
                                         {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                                     </div>
                                     <div className="flex-1 w-full space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-on-surface mb-2">Display Name</label>
-                                            <input
-                                                type="text"
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
+                                        <Input
+                                            label="Display Name"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            disabled={!isEditingProfile}
+                                        />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Input
+                                                label="Course/Branch"
+                                                placeholder="e.g. B.Tech CSE"
+                                                value={isEditingProfile ? profileForm.branch : (user?.branch || '')}
                                                 disabled={!isEditingProfile}
-                                                className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface disabled:opacity-60"
+                                                onChange={(e) => setProfileForm({ ...profileForm, branch: e.target.value })}
+                                            />
+                                            <Input
+                                                label="College"
+                                                placeholder="e.g. USICT"
+                                                value={isEditingProfile ? profileForm.college : (user?.college || '')}
+                                                disabled={!isEditingProfile}
+                                                onChange={(e) => setProfileForm({ ...profileForm, college: e.target.value })}
                                             />
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-on-surface mb-2">Email</label>
-                                            <input
-                                                type="email"
-                                                value={user?.email || ''}
-                                                disabled
-                                                className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface opacity-60"
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Select
+                                                label="Semester"
+                                                value={isEditingProfile ? profileForm.semester : (user?.semester || 1)}
+                                                options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({ value: s, label: `Sem ${s}` }))}
+                                                disabled={!isEditingProfile}
+                                                onChange={(e) => setProfileForm({ ...profileForm, semester: parseInt(e.target.value) })}
+                                            />
+                                            <Input
+                                                label="Batch"
+                                                placeholder="e.g. 2023-27"
+                                                value={isEditingProfile ? profileForm.batch : (user?.batch || '')}
+                                                disabled={!isEditingProfile}
+                                                onChange={(e) => setProfileForm({ ...profileForm, batch: e.target.value })}
                                             />
                                         </div>
+                                        <Input
+                                            label="Email"
+                                            value={user?.email || ''}
+                                            disabled
+                                        />
                                     </div>
                                 </div>
                                 <div className="mt-6 flex justify-end gap-2">
                                     {isEditingProfile ? (
                                         <>
                                             <Button variant="text" onClick={() => setIsEditingProfile(false)}>Cancel</Button>
-                                            <Button onClick={() => { setIsEditingProfile(false); showToast('info', 'Profile update coming soon'); }}>
+                                            <Button onClick={handleProfileSave}>
                                                 Save Changes
                                             </Button>
                                         </>

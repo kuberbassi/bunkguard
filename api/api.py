@@ -1,6 +1,7 @@
 # api/api.py
 
 import calendar
+import requests
 import math
 import traceback
 from datetime import datetime, timedelta
@@ -399,12 +400,23 @@ def get_todays_classes():
 
     todays_subject_ids = []
     schedule = timetable_doc.get('schedule', {})
+    
+    # Support New Format: Day -> List of Slots
     if isinstance(schedule, dict):
-        for time_slot, days in schedule.items():
-            if isinstance(days, dict) and today_name in days:
-                slot_data = days[today_name]
-                if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
-                    todays_subject_ids.append(ObjectId(slot_data['subjectId']))
+        # Check if it's the new format (Day names as keys)
+        if any(d in schedule for d in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']):
+            day_slots = schedule.get(today_name, [])
+            if isinstance(day_slots, list):
+                for slot in day_slots:
+                    if slot.get('subject_id'):
+                        todays_subject_ids.append(ObjectId(slot['subject_id']))
+        else:
+            # Fallback to Old Format: Time -> Day -> Slot
+            for time_slot, days in schedule.items():
+                if isinstance(days, dict) and today_name in days:
+                    slot_data = days[today_name]
+                    if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
+                        todays_subject_ids.append(ObjectId(slot_data['subjectId']))
     
     if not todays_subject_ids:
         return Response(json_util.dumps([]), mimetype='application/json')
@@ -442,12 +454,22 @@ def get_classes_for_date():
 
     subject_ids = []
     schedule = timetable_doc.get('schedule', {})
+    schedule = timetable_doc.get('schedule', {})
     if isinstance(schedule, dict):
-        for days in schedule.values():
-            if isinstance(days, dict) and day_name in days:
-                slot_data = days[day_name]
-                if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
-                    subject_ids.append(ObjectId(slot_data['subjectId']))
+        # Support New Format: Day -> List of Slots
+        if any(d in schedule for d in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']):
+            day_slots = schedule.get(day_name, [])
+            if isinstance(day_slots, list):
+                for slot in day_slots:
+                    if slot.get('subject_id'):
+                        subject_ids.append(ObjectId(slot['subject_id']))
+        else:
+            # Fallback to Old Format
+            for days in schedule.values():
+                if isinstance(days, dict) and day_name in days:
+                    slot_data = days[day_name]
+                    if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
+                        subject_ids.append(ObjectId(slot_data['subjectId']))
     
     if not subject_ids:
         return Response(json_util.dumps([]), mimetype='application/json')
@@ -534,10 +556,15 @@ def update_subject_full_details():
     update_fields = {}
     if 'name' in data: update_fields['name'] = data['name']
     if 'code' in data: update_fields['code'] = data['code']
+    if 'categories' in data: update_fields['categories'] = data['categories']
     if 'syllabus' in data: update_fields['syllabus'] = data['syllabus']
     if 'professor' in data: update_fields['professor'] = data['professor']
     if 'classroom' in data: update_fields['classroom'] = data['classroom']
     if 'semester' in data: update_fields['semester'] = int(data['semester'])
+    
+    # Update totals if provided
+    if 'practical_total' in data: update_fields['practicals.total'] = int(data['practical_total'])
+    if 'assignment_total' in data: update_fields['assignments.total'] = int(data['assignment_total'])
 
     if not update_fields:
         return jsonify({"success": True}) # Nothing to update
@@ -546,8 +573,187 @@ def update_subject_full_details():
         {'_id': subject_id, 'owner_email': session['user']['email']},
         {'$set': update_fields}
     )
+
+    # Initialize sub-objects if categories were added and the fields don't exist OR are null
+    if 'categories' in update_fields:
+        try:
+            # Re-fetch to verify state
+            subject_doc = subjects_collection.find_one({'_id': subject_id})
+            if subject_doc:
+                cats = update_fields['categories']
+                
+                # Check Practical - Ensure it has default structure if missing key parts
+                if 'Practical' in cats:
+                    current_prac = subject_doc.get('practicals')
+                    # If not dict OR missing keys, ensure defaults.
+                    # We use $set with conditional?? No, just safe update.
+                    updates = {}
+                    if not isinstance(current_prac, dict): 
+                         updates['practicals'] = {'total': 10, 'completed': 0, 'hardcopy': False}
+                    else:
+                        if 'completed' not in current_prac: updates['practicals.completed'] = 0
+                        if 'hardcopy' not in current_prac: updates['practicals.hardcopy'] = False
+                        if 'total' not in current_prac: updates['practicals.total'] = 10
+                    
+                    if updates:
+                        subjects_collection.update_one({'_id': subject_id}, {'$set': updates})
+                
+                # Check Assignment
+                if 'Assignment' in cats:
+                    current_assign = subject_doc.get('assignments')
+                    updates = {}
+                    if not isinstance(current_assign, dict):
+                         updates['assignments'] = {'total': 4, 'completed': 0, 'hardcopy': False}
+                    else:
+                        if 'completed' not in current_assign: updates['assignments.completed'] = 0
+                        if 'hardcopy' not in current_assign: updates['assignments.hardcopy'] = False
+                        if 'total' not in current_assign: updates['assignments.total'] = 4
+
+                    if updates:
+                        subjects_collection.update_one({'_id': subject_id}, {'$set': updates})
+                        
+        except Exception as e:
+            print(f"ERROR initializing sub-objects: {e}")
+            traceback.print_exc()
+
     return jsonify({"success": True})
 
+
+@api_bp.route('/subject/<subject_id>/practicals', methods=['PUT'])
+def update_practicals(subject_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    update_fields = {}
+    
+    if 'total' in data: update_fields['practicals.total'] = int(data['total'])
+    if 'completed' in data: update_fields['practicals.completed'] = int(data['completed'])
+    if 'hardcopy' in data: update_fields['practicals.hardcopy'] = bool(data['hardcopy'])
+    
+    if not update_fields: return jsonify({"success": True})
+        
+    result = subjects_collection.update_one(
+        {'_id': ObjectId(subject_id), 'owner_email': session['user']['email']},
+        {'$set': update_fields}
+    )
+    
+    if result.matched_count == 0: return jsonify({"error": "Subject not found"}), 404
+    return jsonify({"success": True})
+
+@api_bp.route('/subject/<subject_id>/assignments', methods=['PUT'])
+def update_assignments(subject_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    update_fields = {}
+    
+    if 'total' in data: update_fields['assignments.total'] = int(data['total'])
+    if 'completed' in data: update_fields['assignments.completed'] = int(data['completed'])
+    if 'hardcopy' in data: update_fields['assignments.hardcopy'] = bool(data['hardcopy'])
+    
+    if not update_fields: return jsonify({"success": True})
+        
+    result = subjects_collection.update_one(
+        {'_id': ObjectId(subject_id), 'owner_email': session['user']['email']},
+        {'$set': update_fields}
+    )
+    
+    if result.matched_count == 0: return jsonify({"error": "Subject not found"}), 404
+    return jsonify({"success": True})
+
+
+@api_bp.route('/update_profile', methods=['POST'])
+def update_profile():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    user_email = session['user']['email']
+    
+    # Fields allowed to be updated
+    allowed_fields = ['name', 'branch', 'college', 'semester', 'batch']
+    update_data = {}
+    
+    for field in allowed_fields:
+        if field in data:
+            update_data[field] = data[field]
+            
+    if not update_data:
+        return jsonify({"success": True})
+
+    # Update DB
+    users_collection = db.get_collection('users')
+    users_collection.update_one(
+        {'email': user_email},
+        {'$set': update_data},
+        upsert=True
+    )
+    
+    # Update Session
+    session['user'].update(update_data)
+    session.modified = True
+    
+    return jsonify({"success": True, "user": session['user']})
+
+
+@api_bp.route('/delete_all_data', methods=['DELETE'])
+def delete_all_data():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    
+    try:
+        # Delete from all collections
+        attendance_log_collection.delete_many({'owner_email': user_email})
+        subjects_collection.delete_many({'owner_email': user_email})
+        timetable_collection.delete_many({'owner_email': user_email})
+        system_logs_collection.delete_many({'owner_email': user_email})
+        academic_records_collection.delete_many({'owner_email': user_email})
+        deadlines_collection.delete_many({'owner_email': user_email})
+        holidays_collection.delete_many({'owner_email': user_email})
+        
+        # Reset user profile stats if stored? (Optional, keeping profile is safer)
+        
+        create_system_log(user_email, "Data Reset", "User deleted all application data.")
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Delete All Data Error: {e}")
+        return jsonify({"error": "Failed to delete data"}), 500
+
+
+@api_bp.route('/notices')
+def get_notices():
+    try:
+        # Check cache (simple: check if we have notices scraped today)
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        
+        # We can store cached notices in a separate 'notices' collection
+        notices_collection = db.get_collection('notices')
+        
+        cached = notices_collection.find_one({"date_fetched": today_str})
+        if cached:
+            return jsonify(cached['data'])
+            
+        # Scrape
+        from .scraper import scrape_ipu_notices
+        notices = scrape_ipu_notices()
+        
+        if notices:
+            # Cache it
+            notices_collection.update_one(
+                {"date_fetched": today_str},
+                {"$set": {"data": notices, "date_fetched": today_str}},
+                upsert=True
+            )
+            return jsonify(notices)
+        else:
+            # If scrape fails, try to return latest cached even if old?
+            # For now return empty list or older cache
+            latest = notices_collection.find_one(sort=[('date_fetched', -1)])
+            return jsonify(latest['data'] if latest else [])
+
+    except Exception as e:
+        print(f"Notices Error: {e}")
+        return jsonify([])
 
 # === SETTINGS PAGE AND OTHER ROUTES ===
 
@@ -652,18 +858,7 @@ def handle_preferences():
     return jsonify(preferences)
 
 
-@api_bp.route('/delete_all_data', methods=['POST'])
-def delete_all_data():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    subjects_collection.delete_many({'owner_email': user_email})
-    attendance_log_collection.delete_many({'owner_email': user_email})
-    timetable_collection.delete_many({'owner_email': user_email})
-    system_logs_collection.delete_many({'owner_email': user_email})
-    deadlines_collection.delete_many({'owner_email': user_email})
-    holidays_collection.delete_many({'owner_email': user_email})
-    log_user_action(user_email, "Data Deleted", "User deleted all their account data.")
-    return jsonify({"success": True})
+
 
 @api_bp.route('/import_data', methods=['POST'])
 def import_data():
@@ -697,7 +892,23 @@ def add_subject():
     data = request.json
     subject_name, semester = data.get('subject_name'), int(data.get('semester'))
     if not subject_name or not semester: return jsonify({"error": "Subject name and semester are required"}), 400
-    subjects_collection.insert_one({"name": subject_name, "owner_email": session['user']['email'], "semester": semester, "attended": 0, "total": 0, "created_at": datetime.utcnow()})
+    
+    new_subject = {
+        "name": subject_name,
+        "owner_email": session['user']['email'],
+        "semester": semester,
+        "attended": 0,
+        "total": 0,
+        "created_at": datetime.utcnow(),
+        "categories": data.get('categories', ['Theory']), # Default to list with Theory
+        "code": data.get('code', ''),
+        "professor": data.get('professor', ''),
+        "classroom": data.get('classroom', ''),
+        "practicals": { "total": 10, "completed": 0, "hardcopy": False } if 'Practical' in data.get('categories', ['Theory']) else None,
+        "assignments": { "total": 4, "completed": 0 } if 'Assignment' in data.get('categories', ['Theory']) else None,
+    }
+    
+    subjects_collection.insert_one(new_subject)
     
     log_user_action(session['user']['email'], "Subject Added", f"Added '{subject_name}' to Semester {semester}")
     return jsonify({"success": True, "message": "Subject added successfully"})
@@ -731,8 +942,13 @@ def update_subject_details():
     subject_id = ObjectId(data.get('subject_id'))
     details = {
         'professor': data.get('professor'),
-        'classroom': data.get('classroom')
+        'classroom': data.get('classroom'),
+        'category': data.get('category'),
+        'code': data.get('code')
     }
+    # Remove None values to avoid overwriting with null if only partial update
+    details = {k: v for k, v in details.items() if v is not None}
+    
     subjects_collection.update_one(
         {'_id': subject_id, 'owner_email': session['user']['email']},
         {'$set': details}
@@ -766,7 +982,114 @@ def handle_timetable():
         log_user_action(user_email, "Schedule Updated", "User saved changes to the class schedule.")
         return jsonify({"success": True})
     timetable_doc = timetable_collection.find_one({'owner_email': user_email})
-    return Response(json_util.dumps(timetable_doc.get('schedule', {}) if timetable_doc else {}), mimetype='application/json')
+    schedule = timetable_doc.get('schedule', {}) if timetable_doc else {}
+    print(f"📅 GET /timetable for {user_email}:")
+    print(f"   Document exists: {timetable_doc is not None}")
+    print(f"   Schedule days: {list(schedule.keys()) if schedule else []}")
+    print(f"   Total slots: {sum(len(v) if isinstance(v, list) else 0 for v in schedule.values())}")
+    
+    # Helper to convert ObjectIds to strings recursively
+    def serialize_schedule(obj):
+        if isinstance(obj, dict):
+            return {k: serialize_schedule(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [serialize_schedule(item) for item in obj]
+        elif isinstance(obj, ObjectId):
+            return str(obj)
+        else:
+            return obj
+    
+    serialized_schedule = serialize_schedule(schedule)
+    print(f"   ✅ Serialized successfully")
+    return jsonify({"schedule": serialized_schedule})
+
+
+# --- Timetable CRUD ---
+
+@api_bp.route('/timetable/slot', methods=['POST'])
+def add_timetable_slot():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    data = request.json
+    
+    day = data.get('day')
+    if not day: return jsonify({"error": "Day is required"}), 400
+    
+    # Ensure _id for the slot
+    data['_id'] = str(ObjectId())
+    
+    print(f"➕ Adding timetable slot for {user_email}:")
+    print(f"   Day: {day}")
+    print(f"   Slot data: {data}")
+    
+    # Push to specific day array within the schedule object
+    result = timetable_collection.update_one(
+        {'owner_email': user_email},
+        {'$push': {f'schedule.{day}': data}},
+        upsert=True
+    )
+    
+    print(f"   Result: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}")
+    
+    return jsonify({"success": True, "slot": data})
+
+@api_bp.route('/timetable/slot/<slot_id>', methods=['PUT'])
+def update_timetable_slot(slot_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    data = request.json
+    
+    day = data.get('day')
+    if not day: return jsonify({"error": "Day is required"}), 400
+    
+    # But usually easier to Pull by ID and Push new data.
+    
+    # 1. Pull existing with this ID from ANY day (in case day changed or just to find it)
+    # Actually, we can just search the doc.
+    
+    timetable = timetable_collection.find_one({'owner_email': user_email})
+    schedule = timetable.get('schedule', {})
+    
+    # Find which day currently holds this slot
+    old_day = None
+    for d, slots in schedule.items():
+        if isinstance(slots, list):
+            for s in slots:
+                if s.get('_id') == slot_id:
+                    old_day = d
+                    break
+        if old_day: break
+    
+    if old_day:
+        timetable_collection.update_one(
+            {'owner_email': user_email},
+            {'$pull': {f'schedule.{old_day}': {'_id': slot_id}}}
+        )
+    
+    # Push new data to new day
+    data['_id'] = slot_id # Ensure ID is preserved
+    timetable_collection.update_one(
+        {'owner_email': user_email},
+        {'$push': {f'schedule.{day}': data}}
+    )
+    
+    return jsonify({"success": True})
+
+@api_bp.route('/timetable/slot/<slot_id>', methods=['DELETE'])
+def delete_timetable_slot(slot_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    
+    # Remove from any day where it exists
+    # We iterate known days to be safe
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    for day in days:
+        timetable_collection.update_one(
+            {'owner_email': user_email},
+            {'$pull': {f'schedule.{day}': {'_id': slot_id}}}
+        )
+        
+    return jsonify({"success": True})
 
 @api_bp.route('/subjects')
 def get_subjects():
@@ -882,6 +1205,43 @@ def calendar_data():
         print(f"---! ERROR IN /api/calendar_data: {e} !---")
         traceback.print_exc()
         return jsonify({"error": "Could not fetch calendar data."}), 500
+
+@api_bp.route('/integrations/calendar')
+def get_calendar_events():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    # We need to use the google_token from the session
+    token = session['user'].get('google_token')
+    if not token:
+        return jsonify({"error": "No Google token found"}), 401
+        
+    try:
+        # Use simple requests for now, or build a service object if complicated
+        # Calendar API: list events from primary calendar
+        # We need timeMin and timeMax to filter relevant events
+        
+        # Get query params or default to current month
+        now = datetime.utcnow().isoformat() + 'Z'  # 'Z' indicates UTC time
+        
+        url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
+        params = {
+            'timeMin': now,
+            'maxResults': 50,
+            'singleEvents': True,
+            'orderBy': 'startTime'
+        }
+        
+        response = requests.get(url, headers={'Authorization': f'Bearer {token}'}, params=params)
+        
+        if response.status_code == 401:
+            return jsonify({"error": "Token expired or invalid"}), 401
+            
+        return jsonify(response.json().get('items', []))
+        
+    except Exception as e:
+        print(f"Calendar API Error: {e}")
+        return jsonify({"error": "Failed to fetch calendar events"}), 500
+
 
 @api_bp.route('/system_logs')
 def get_system_logs():
@@ -1224,11 +1584,38 @@ def get_attendance_history():
     for log in logs:
         date_str = log['timestamp'].strftime('%Y-%m-%d')
         dates.add(date_str)
-    
+        
     return jsonify({
         'success': True,
         'dates': list(dates)
     })
+
+# --- BOARD API ---
+
+@api_bp.route('/board', methods=['GET', 'POST'])
+def handle_board():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    
+    # Use a separate collection for boards or just store in users/misc
+    # Let's use a 'boards' collection
+    boards_collection = db.get_collection('boards')
+    
+    if request.method == 'POST':
+        data = request.json
+        # Check if updating specific record or the main board
+        # Assuming one main board per user for now
+        boards_collection.update_one(
+            {'owner_email': user_email},
+            {'$set': {'data': data, 'updated_at': datetime.utcnow()}},
+            upsert=True
+        )
+        return jsonify({"success": True})
+    
+    board = boards_collection.find_one({'owner_email': user_email})
+    return jsonify(board['data'] if board and 'data' in board else {})
+    
+
 
 @api_bp.route('/attendance_calendar', methods=['GET'])
 def get_attendance_calendar():
@@ -1332,73 +1719,7 @@ def update_preferences():
     return jsonify({'success': True, 'preferences': new_prefs})
 
 
-# --- Timetable CRUD ---
 
-@api_bp.route('/timetable/slot', methods=['GET'])
-def get_timetable_slots_legacy():
-     # Temporary redirect for legacy calls, though we use /timetable usually
-     return get_timetable()
-
-@api_bp.route('/timetable/slot', methods=['POST'])
-def add_timetable_slot():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    data = request.json
-    
-    required = ['day', 'start_time', 'end_time', 'subject_id']
-    if not all(k in data for k in required):
-        return jsonify({"error": "Missing required fields"}), 400
-        
-    new_slot = {
-        "owner_email": user_email,
-        "day": data['day'],
-        "start_time": data['start_time'],
-        "end_time": data['end_time'],
-        "subject_id": ObjectId(data['subject_id']),
-        "created_at": datetime.utcnow()
-    }
-    
-    result = timetable_collection.insert_one(new_slot)
-    return jsonify({"message": "Slot added", "id": str(result.inserted_id)}), 201
-
-@api_bp.route('/timetable/slot/<slot_id>', methods=['PUT'])
-def update_timetable_slot(slot_id):
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    data = request.json
-    
-    update_data = {}
-    if 'day' in data: update_data['day'] = data['day']
-    if 'start_time' in data: update_data['start_time'] = data['start_time']
-    if 'end_time' in data: update_data['end_time'] = data['end_time']
-    if 'subject_id' in data: update_data['subject_id'] = ObjectId(data['subject_id'])
-    
-    if not update_data:
-        return jsonify({"error": "No data to update"}), 400
-        
-    result = timetable_collection.update_one(
-        {'_id': ObjectId(slot_id), 'owner_email': user_email},
-        {'$set': update_data}
-    )
-    
-    if result.matched_count == 0:
-        return jsonify({"error": "Slot not found or unauthorized"}), 404
-        
-    return jsonify({"message": "Slot updated"}), 200
-
-@api_bp.route('/timetable/slot/<slot_id>', methods=['DELETE'])
-def delete_timetable_slot(slot_id):
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    
-    result = timetable_collection.delete_one(
-        {'_id': ObjectId(slot_id), 'owner_email': user_email}
-    )
-    
-    if result.deleted_count == 0:
-        return jsonify({"error": "Slot not found or unauthorized"}), 404
-        
-    return jsonify({"message": "Slot deleted"}), 200
 
 @api_bp.route('/analytics/monthly_trend')
 def analytics_monthly_trend():

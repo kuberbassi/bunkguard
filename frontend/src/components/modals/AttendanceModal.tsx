@@ -199,11 +199,11 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                     .filter(s => !scheduledClasses.some(sc => sc._id === s.id))
                                     .map(subject => (
                                         <SubjectRow
-                                            key={subject.id}
-                                            subject={{ ...subject, _id: subject.id }}
+                                            key={subject._id || subject.id}
+                                            subject={{ ...subject, _id: subject._id || subject.id }}
                                             status='pending' // Can't easily know status of unscheduled w/o extra check, assume pending or use getLogsForDate
                                             // Improvement: Fetch logs_for_date separately to populate this status.
-                                            expanded={expandedSubjectId === subject.id}
+                                            expanded={expandedSubjectId === (subject._id || subject.id)}
                                             onSimpleMark={markSimple}
                                             onOpenDetails={openDetails}
                                             onCloseDetails={() => setExpandedSubjectId(null)}
@@ -257,8 +257,8 @@ const SubjectRow = ({
                                 key={opt.id}
                                 onClick={() => setDetailStatus(opt.id === 'medical' ? 'approved_medical' : opt.id)}
                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${(detailStatus === opt.id || (opt.id === 'medical' && detailStatus === 'approved_medical'))
-                                        ? `ring-2 ring-primary ${opt.color}`
-                                        : 'bg-surface-dim text-on-surface hover:bg-surface-container-high'
+                                    ? `ring-2 ring-primary ${opt.color}`
+                                    : 'bg-surface-dim text-on-surface hover:bg-surface-container-high'
                                     }`}
                             >
                                 {opt.label}

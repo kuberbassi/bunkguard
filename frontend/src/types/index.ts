@@ -2,6 +2,10 @@ export interface User {
     email: string;
     name: string;
     picture?: string;
+    branch?: string;
+    college?: string;
+    semester?: number;
+    batch?: string;
 }
 
 export interface Subject {
@@ -14,8 +18,20 @@ export interface Subject {
     professor?: string;
     classroom?: string;
     code?: string;
+    category?: string; // Legacy single category
+    categories?: string[]; // e.g. ['Theory', 'Practical', 'Assignment']
     syllabus?: string;
     created_at: string;
+    practicals?: {
+        total: number;
+        completed: number;
+        hardcopy: boolean;
+    };
+    assignments?: {
+        total: number;
+        completed: number;
+        hardcopy: boolean;
+    };
 }
 
 export interface SystemLog {
@@ -106,15 +122,22 @@ export interface Holiday {
 export interface TimetableSlot {
     _id?: string;
     day: string;
-    start_time: string;
-    end_time: string;
-    subject_id: string;
-    subject_name?: string;
-    type?: string;
-    label?: string;
+    start_time: string; // HH:MM
+    end_time: string;   // HH:MM
+    subject_id?: string;
+    type?: 'class' | 'break' | 'free';
+    label?: string;     // Optional override label
 }
 
 export type TimetableSchedule = Record<string, TimetableSlot[]>;
+
+export interface GridPeriod {
+    id: string;
+    name: string;      // "1", "2", "Lunch"
+    startTime: string; // "08:30"
+    endTime: string;   // "09:30"
+    type: 'class' | 'break';
+}
 
 export interface Preferences {
     attendance_threshold?: number;

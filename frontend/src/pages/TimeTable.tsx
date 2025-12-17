@@ -9,9 +9,23 @@ import { attendanceService } from '@/services/attendance.service';
 import { useSemester } from '@/contexts/SemesterContext';
 import { useToast } from '@/components/ui/Toast';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+import type { TimetableSlot, GridPeriod } from '@/types';
+import ScheduleGrid from '@/components/ScheduleGrid';
 
-import type { TimetableSlot } from '@/types';
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+// Default structure matching user request/screenshot
+const DEFAULT_PERIODS: GridPeriod[] = [
+    { id: 'p1', name: '1', startTime: '08:30', endTime: '09:30', type: 'class' },
+    { id: 'p2', name: '2', startTime: '09:30', endTime: '10:25', type: 'class' },
+    { id: 'p3', name: '3', startTime: '10:25', endTime: '10:55', type: 'break' }, // Short break
+    { id: 'p4', name: '4', startTime: '10:55', endTime: '11:50', type: 'class' },
+    { id: 'p5', name: '5', startTime: '11:50', endTime: '12:45', type: 'class' },
+    { id: 'p6', name: 'Lunch', startTime: '12:45', endTime: '13:40', type: 'break' },
+    { id: 'p7', name: '6', startTime: '13:40', endTime: '14:35', type: 'class' },
+    { id: 'p8', name: '7', startTime: '14:35', endTime: '15:30', type: 'class' },
+    { id: 'p9', name: '8', startTime: '15:30', endTime: '16:25', type: 'class' }
+];
 
 const TimeTable: React.FC = () => {
     const { showToast } = useToast();
@@ -20,8 +34,20 @@ const TimeTable: React.FC = () => {
     const [timetable, setTimetable] = useState<Record<string, TimetableSlot[]>>({});
     const [subjects, setSubjects] = useState<any[]>([]);
 
+    // Grid Configuration - Load from localStorage or use defaults
+    const [periods, setPeriods] = useState<GridPeriod[]>(() => {
+        const saved = localStorage.getItem('timetable_periods');
+        return saved ? JSON.parse(saved) : DEFAULT_PERIODS;
+    });
+    const [isSettingsOpen, setSettingsOpen] = useState(false);
+
+    // Save periods to localStorage whenever they change
+    useEffect(() => {
+        localStorage.setItem('timetable_periods', JSON.stringify(periods));
+    }, [periods]);
+
     // Modal State
-    const [isAppModalOpen, setAppModalOpen] = useState(false); // Changed name to avoid conflict if any
+    const [isAppModalOpen, setAppModalOpen] = useState(false);
     const [currentSlot, setCurrentSlot] = useState<Partial<TimetableSlot>>({
         day: DAYS[0],
         start_time: '09:00',
@@ -42,12 +68,10 @@ const TimeTable: React.FC = () => {
                 attendanceService.getDashboardData(currentSemester)
             ]);
 
-            // Normalize data: ensure array for each day
             const schedule = ttData?.schedule || {};
-            // Convert to internal format if needed (legacy API might return different structure)
-            // But our new API returns { "Monday": [slot, slot], ... } which matches state
+            console.log('📅 Timetable loaded:', schedule);
+            console.log('📚 Subjects loaded:', dashData.subjects_overview);
             setTimetable(schedule);
-
             setSubjects(dashData.subjects_overview || []);
         } catch (error) {
             console.error(error);
@@ -55,17 +79,6 @@ const TimeTable: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleOpenAddModal = () => {
-        setCurrentSlot({
-            day: DAYS[0],
-            start_time: '09:00',
-            end_time: '10:00',
-            subject_id: subjects.length > 0 ? subjects[0].id : ''
-        });
-        setIsEditing(false);
-        setAppModalOpen(true);
     };
 
     const handleOpenEditModal = (slot: TimetableSlot) => {
@@ -76,7 +89,6 @@ const TimeTable: React.FC = () => {
 
     const handleDeleteSlot = async (slotId: string) => {
         if (!confirm('Are you sure you want to delete this slot?')) return;
-
         try {
             await attendanceService.deleteTimetableSlot(slotId);
             showToast('success', 'Slot removed successfully');
@@ -87,41 +99,66 @@ const TimeTable: React.FC = () => {
         }
     };
 
-    const handleSaveSlot = async () => {
-        if (!currentSlot.subject_id || !currentSlot.day || !currentSlot.start_time || !currentSlot.end_time) {
-            showToast('error', 'Please fill all fields');
-            return;
-        }
-
+    const handleQuickSave = async (overrides: Partial<TimetableSlot>) => {
+        const payload = { ...currentSlot, ...overrides };
         try {
             setIsSaving(true);
-            if (isEditing && currentSlot._id) {
-                await attendanceService.updateTimetableSlot(currentSlot._id, currentSlot);
-                showToast('success', 'Slot updated successfully');
+            if (isEditing && payload._id) {
+                await attendanceService.updateTimetableSlot(payload._id, payload as TimetableSlot);
+                showToast('success', 'Updated');
             } else {
-                await attendanceService.addTimetableSlot(currentSlot);
-                showToast('success', 'Slot added successfully');
+                await attendanceService.addTimetableSlot(payload as TimetableSlot);
+                showToast('success', 'Added');
             }
             setAppModalOpen(false);
             loadData();
         } catch (error) {
             console.error(error);
-            showToast('error', isEditing ? 'Failed to update slot' : 'Failed to add slot');
+            showToast('error', 'Failed');
         } finally {
             setIsSaving(false);
         }
     };
 
+    const handleGridAdd = (day: string, period: GridPeriod) => {
+        // Use the period's exact time range
+        setCurrentSlot({
+            day,
+            start_time: period.startTime,
+            end_time: period.endTime,
+            type: 'class',
+            subject_id: ''
+        });
+        setIsEditing(false);
+        setAppModalOpen(true);
+    };
+
     const getSubjectName = (subjectId?: string) => {
         if (!subjectId) return '';
-        const subject = subjects.find(s => s.id === subjectId);
+        const subject = subjects.find(s => {
+            const id = (s.id || s._id) as any;
+            const strId = (typeof id === 'object' && id !== null) ? (id.$oid || id.toString()) : id;
+            return String(strId) === String(subjectId);
+        });
         return subject?.name || 'Unknown Subject';
     };
 
     if (loading) return <LoadingSpinner fullScreen />;
 
+    // Simplified Modal Title without time inputs (User Request)
+    const ModalTitle = (
+        <div className="flex flex-col gap-1 w-full pr-8">
+            <h2 className="text-xl font-bold text-white mb-1">{isEditing ? 'Edit Slot' : 'Add Slot'}</h2>
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+                <Clock size={14} />
+                <span>{currentSlot.start_time} - {currentSlot.end_time}</span>
+            </div>
+        </div>
+    );
+
     return (
         <div className="pb-32 space-y-8">
+            {/* Header */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -131,23 +168,142 @@ const TimeTable: React.FC = () => {
                     <h1 className="text-display-md text-on-surface dark:text-dark-surface-on">Weekly Schedule</h1>
                     <p className="text-on-surface-variant text-lg">Manage your classes and timing</p>
                 </div>
-                <Button
-                    onClick={handleOpenAddModal}
-                    className="flex items-center gap-2"
-                >
-                    <Plus size={20} />
-                    Add Class
-                </Button>
+
+                {/* Settings / Structure Button */}
+                <div className="relative">
+                    <Button
+                        variant="secondary"
+                        onClick={() => setSettingsOpen(!isSettingsOpen)}
+                        className="!flex !flex-row !items-center !gap-2 !whitespace-nowrap min-w-fit px-4"
+                        icon={<Edit2 size={16} />}
+                    >
+                        Edit Structure
+                    </Button>
+
+                    {isSettingsOpen && (
+                        <div className="absolute right-0 top-full mt-2 p-4 rounded-xl bg-surface-container-high border border-outline-variant shadow-xl z-50 w-80 min-w-[300px]">
+                            <h4 className="font-bold text-on-surface mb-3 flex justify-between items-center">
+                                Grid Structure
+                                <button
+                                    onClick={() => setSettingsOpen(false)}
+                                    className="text-primary text-xs font-bold hover:underline"
+                                >
+                                    Done
+                                </button>
+                            </h4>
+                            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                                {periods.map((p, idx) => (
+                                    <div key={p.id} className="flex gap-2 items-center bg-surface-container p-2 rounded-lg border border-outline/50">
+                                        <div className="flex-1 flex flex-col gap-1">
+                                            <input
+                                                value={p.name}
+                                                className="bg-transparent border-none p-0 text-sm font-bold text-on-surface focus:ring-0 w-full"
+                                                onChange={(e) => {
+                                                    const newPeriods = [...periods];
+                                                    newPeriods[idx].name = e.target.value;
+                                                    setPeriods(newPeriods);
+                                                }}
+                                                placeholder="Label"
+                                            />
+                                            <div className="flex gap-1 text-xs">
+                                                <input
+                                                    type="time"
+                                                    value={p.startTime}
+                                                    className="bg-transparent border-none p-0 w-16 text-on-surface-variant focus:ring-0"
+                                                    onChange={(e) => {
+                                                        const newPeriods = [...periods];
+                                                        newPeriods[idx].startTime = e.target.value;
+                                                        setPeriods(newPeriods);
+                                                    }}
+                                                />
+                                                <span>-</span>
+                                                <input
+                                                    type="time"
+                                                    value={p.endTime}
+                                                    className="bg-transparent border-none p-0 w-16 text-on-surface-variant focus:ring-0"
+                                                    onChange={(e) => {
+                                                        const newPeriods = [...periods];
+                                                        newPeriods[idx].endTime = e.target.value;
+                                                        setPeriods(newPeriods);
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className='flex flex-col gap-1'>
+                                            <button
+                                                onClick={() => {
+                                                    const newPeriods = [...periods];
+                                                    newPeriods[idx].type = newPeriods[idx].type === 'break' ? 'class' : 'break';
+                                                    setPeriods(newPeriods);
+                                                }}
+                                                className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase transition-colors
+                                                    ${p.type === 'break' ? 'bg-orange-500/20 text-orange-500' : 'bg-primary/20 text-primary'}`}
+                                            >
+                                                {p.type}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const newPeriods = periods.filter((_, i) => i !== idx);
+                                                    setPeriods(newPeriods);
+                                                }}
+                                                className="text-error hover:bg-error/10 rounded p-1"
+                                                title="Remove"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button
+                                    variant="outlined"
+                                    className="w-full text-sm mt-2 border-dashed flex flex-row items-center justify-center gap-2"
+                                    onClick={() => {
+                                        const lastPeriod = periods[periods.length - 1];
+                                        const newStart = lastPeriod ? lastPeriod.endTime : '09:00';
+                                        // Simple increment of 1 hour for new placeholder
+                                        const [h, m] = newStart.split(':').map(Number);
+                                        const nextH = (h + 1).toString().padStart(2, '0');
+                                        const newEnd = `${nextH}:${m.toString().padStart(2, '0')}`;
+
+                                        setPeriods([...periods, {
+                                            id: `p${Date.now()}`,
+                                            name: `${periods.length + 1}`,
+                                            startTime: newStart,
+                                            endTime: newEnd,
+                                            type: 'class'
+                                        }]);
+                                    }}
+                                >
+                                    <Plus size={14} className="mr-1" /> Add Period
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Desktop Grid View */}
+            <div className="hidden lg:block w-full">
+                <ScheduleGrid
+                    timetable={timetable}
+                    subjects={subjects}
+                    onEdit={handleOpenEditModal}
+                    onDelete={handleDeleteSlot}
+                    onAdd={handleGridAdd}
+                    periods={periods}
+                />
+            </div>
+
+            {/* Mobile/Tablet Card View - Logic tailored for periods ?? Or keep simple list? 
+                Keeping simple list of slots is safer for mobile as "grid" is hard to show.
+                The logic below already just iterates timetable entries, so it keeps working regardless of grid definition!
+                We just need to ensure the slot filter still works.
+            */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-6">
                 {DAYS.map((day, index) => {
                     const daySchedule = timetable[day] || [];
-                    // Ensure it's an array (handle potential API inconsistencies)
                     const slots = Array.isArray(daySchedule) ? daySchedule : [];
-
-                    // Specific to our new API structure, slots are direct objects
-                    // Filter out non-class items if any legacy data persists
+                    // Show all non-break slots (or even show breaks in list?) - Filtering classes primarily
                     const classSlots = slots.filter((slot: any) => !slot.type || slot.type === 'class');
 
                     return (
@@ -169,7 +325,7 @@ const TimeTable: React.FC = () => {
                                 </div>
 
                                 <div className="p-4 space-y-3 flex-1 min-h-[150px]">
-                                    {classSlots.length === 0 ? (
+                                    {slots.length === 0 ? (
                                         <div className="h-full flex flex-col items-center justify-center py-8 text-on-surface-variant/50 gap-2 opacity-60">
                                             <div className="p-3 rounded-full bg-surface-container-high/30">
                                                 <Clock size={20} />
@@ -178,7 +334,7 @@ const TimeTable: React.FC = () => {
                                         </div>
                                     ) : (
                                         <AnimatePresence>
-                                            {classSlots.map((slot: TimetableSlot, idx: number) => (
+                                            {slots.map((slot: TimetableSlot, idx: number) => (
                                                 <motion.div
                                                     key={slot._id || idx}
                                                     initial={{ opacity: 0, scale: 0.95 }}
@@ -226,71 +382,73 @@ const TimeTable: React.FC = () => {
             <Modal
                 isOpen={isAppModalOpen}
                 onClose={() => setAppModalOpen(false)}
-                title={isEditing ? 'Edit Class Slot' : 'Add Class Slot'}
+                title={ModalTitle}
             >
-                <div className="space-y-4">
+                <div className="space-y-6">
+                    {/* Quick Actions Types */}
                     <div>
-                        <label className="block text-sm font-medium text-on-surface-variant mb-1">Subject</label>
-                        <select
-                            value={currentSlot.subject_id}
-                            onChange={(e) => setCurrentSlot({ ...currentSlot, subject_id: e.target.value })}
-                            className="w-full p-2.5 rounded-lg border border-outline bg-surface-container text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                        >
-                            <option value="" disabled>Select a subject</option>
-                            {subjects.map((s) => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                        {subjects.length === 0 && (
-                            <p className="text-xs text-error mt-1">No subjects found. Please add subjects in Dashboard first.</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-on-surface-variant mb-1">Day</label>
-                        <select
-                            value={currentSlot.day}
-                            onChange={(e) => setCurrentSlot({ ...currentSlot, day: e.target.value })}
-                            className="w-full p-2.5 rounded-lg border border-outline bg-surface-container text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                        >
-                            {DAYS.map(day => (
-                                <option key={day} value={day}>{day}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-on-surface-variant mb-1">Start Time</label>
-                            <input
-                                type="time"
-                                value={currentSlot.start_time}
-                                onChange={(e) => setCurrentSlot({ ...currentSlot, start_time: e.target.value })}
-                                className="w-full p-2.5 rounded-lg border border-outline bg-surface-container text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-on-surface-variant mb-1">End Time</label>
-                            <input
-                                type="time"
-                                value={currentSlot.end_time}
-                                onChange={(e) => setCurrentSlot({ ...currentSlot, end_time: e.target.value })}
-                                className="w-full p-2.5 rounded-lg border border-outline bg-surface-container text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                            />
+                        <h4 className="text-lg font-bold text-on-surface mb-3">Select Slot Type</h4>
+                        <div className="grid grid-cols-3 gap-3">
+                            <button
+                                onClick={() => handleQuickSave({ type: 'break', subject_id: '' })}
+                                disabled={isSaving}
+                                className={`p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all
+                                    ${currentSlot.type === 'break'
+                                        ? 'bg-orange-500/20 border-orange-500 text-orange-500'
+                                        : 'border-outline hover:bg-surface-container-high text-on-surface-variant'
+                                    }`}
+                            >
+                                ☕ Break
+                            </button>
+                            <button
+                                onClick={() => handleQuickSave({ type: 'free', subject_id: '' })}
+                                disabled={isSaving}
+                                className={`p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all
+                                    ${currentSlot.type === 'free'
+                                        ? 'bg-green-500/20 border-green-500 text-green-500'
+                                        : 'border-outline hover:bg-surface-container-high text-on-surface-variant'
+                                    }`}
+                            >
+                                🌱 Free
+                            </button>
+                            {isEditing && (
+                                <button
+                                    onClick={() => currentSlot._id && handleDeleteSlot(currentSlot._id)}
+                                    disabled={isSaving}
+                                    className="p-3 rounded-xl border border-error/20 bg-error/5 text-error hover:bg-error/10 font-bold transition-all"
+                                >
+                                    ✕ Clear
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    <div className="pt-4 flex justify-end gap-3">
-                        <Button variant="ghost" onClick={() => setAppModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={handleSaveSlot}
-                            disabled={isSaving || !currentSlot.subject_id}
-                        >
-                            {isSaving ? <LoadingSpinner size="sm" /> : (isEditing ? 'Update Slot' : 'Add Slot')}
-                        </Button>
+                    <div className="h-px bg-outline-variant/10 w-full" />
+
+                    {/* Subjects Grid */}
+                    <div>
+                        <h4 className="text-lg font-bold text-on-surface mb-3">Assign Subject</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-1">
+                            {subjects.map((sub) => (
+                                <button
+                                    key={String(sub.id)}
+                                    onClick={() => handleQuickSave({ subject_id: sub.id, type: 'class' })}
+                                    disabled={isSaving}
+                                    className={`p-3 rounded-xl border text-sm font-bold text-left transition-all truncate
+                                        ${currentSlot.subject_id === sub.id
+                                            ? 'bg-primary border-primary text-on-primary shadow-lg shadow-primary/25'
+                                            : 'border-outline hover:border-primary/50 hover:bg-surface-container-high text-on-surface'
+                                        }`}
+                                >
+                                    <span className="opacity-70 mr-1">📘</span> {sub.name}
+                                </button>
+                            ))}
+                            {subjects.length === 0 && (
+                                <div className="col-span-3 text-center py-4 text-on-surface-variant text-sm">
+                                    No subjects found.
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </Modal>
@@ -299,3 +457,4 @@ const TimeTable: React.FC = () => {
 };
 
 export default TimeTable;
+

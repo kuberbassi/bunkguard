@@ -1,15 +1,16 @@
-# api/auth.py
-
 import os
 import requests
 from flask import Blueprint, redirect, url_for, session, request, jsonify
 from authlib.integrations.flask_client import OAuth
 from urllib.parse import urlencode, quote_plus
+from . import db
 
 auth_bp = Blueprint('auth', __name__)
 
 # This will be initialized in our main __init__.py
 oauth = OAuth()
+
+users_collection = db.get_collection('users')
 
 @auth_bp.route('/google', methods=['POST'])
 def google_auth():
@@ -19,7 +20,7 @@ def google_auth():
     if not access_token:
         return jsonify({"error": "No access token provided"}), 400
         
-    # Verify the token with Google
+    # Verify the user with Google
     try:
         resp = requests.get(
             'https://www.googleapis.com/oauth2/v3/userinfo',
@@ -30,23 +31,39 @@ def google_auth():
             return jsonify({"error": "Invalid token"}), 401
             
         user_info = resp.json()
+        email = user_info.get("email")
         
-        # Determine user data structure (normalize it to what the app expects)
+        # 1. Get existing user data from DB
+        db_user = users_collection.find_one({'email': email}) or {}
+        
+        # 2. Prepare user data (Google + DB overrides)
         user_data = {
-            "email": user_info.get("email"),
+            "email": email,
             "name": user_info.get("name"),
             "picture": user_info.get("picture"),
             "sub": user_info.get("sub"),
-            "google_token": access_token # Store token for API calls
+            "google_token": access_token,
+            # Merge profile fields from DB
+            "branch": db_user.get("branch", ""),
+            "college": db_user.get("college", ""),
+            "semester": db_user.get("semester", 1),
+            "batch": db_user.get("batch", "")
         }
         
-        # Create Session
+        # 3. Upsert into DB (Store basic info)
+        users_collection.update_one(
+            {'email': email},
+            {'$set': user_data},
+            upsert=True
+        )
+        
+        # 4. Create Session
         session['user'] = user_data
-        session.permanent = True # Keep session alive
+        session.permanent = True
         
         return jsonify({
             "user": user_data,
-            "token": "session_active" # Frontend expects a token field, though we rely on cookies
+            "token": "session_active"
         })
         
     except Exception as e:

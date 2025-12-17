@@ -24,6 +24,8 @@ const Calendar = lazy(() => import('./pages/Calendar.tsx'));
 const Planner = lazy(() => import('./pages/Planner.tsx'));
 const TimeTable = lazy(() => import('./pages/TimeTable.tsx'));
 const Courses = lazy(() => import('./pages/Courses.tsx'));
+const Practicals = lazy(() => import('./pages/Practicals.tsx'));
+const Board = lazy(() => import('./pages/Board.tsx'));
 
 
 
@@ -124,10 +126,30 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route
+          path="/practicals"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingSpinner fullScreen />}>
+                <Practicals />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/settings"
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/board"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingSpinner fullScreen />}>
+                <Board />
+              </Suspense>
             </ProtectedRoute>
           }
         />

@@ -15,6 +15,7 @@ interface AddSubjectModalProps {
 const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSuccess, currentSemester = 1 }) => {
     const [subjectName, setSubjectName] = useState('');
     const [semester, setSemester] = useState(currentSemester.toString());
+    const [categories, setCategories] = useState<string[]>(['Theory']);
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
 
@@ -27,7 +28,7 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSu
 
         setLoading(true);
         try {
-            await attendanceService.addSubject(subjectName, parseInt(semester));
+            await attendanceService.addSubject(subjectName, parseInt(semester), categories);
             showToast('success', 'Subject added successfully');
             setSubjectName('');
             onSuccess();
@@ -76,14 +77,45 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSu
                                     onChange={(e) => setSubjectName(e.target.value)}
                                     autoFocus
                                 />
-                                <Input
-                                    label="Semester"
-                                    type="number"
-                                    min="1"
-                                    max="8"
-                                    value={semester}
-                                    onChange={(e) => setSemester(e.target.value)}
-                                />
+
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Input
+                                        label="Semester"
+                                        type="number"
+                                        min="1"
+                                        max="8"
+                                        value={semester}
+                                        onChange={(e) => setSemester(e.target.value)}
+                                    />
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Categories</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['Theory', 'Practical', 'Assignment', 'Project'].map((cat) => (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (categories.includes(cat)) {
+                                                            setCategories(categories.filter(c => c !== cat));
+                                                        } else {
+                                                            setCategories([...categories, cat]);
+                                                        }
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all
+                                                        ${categories.includes(cat)
+                                                            ? 'bg-primary/10 border-primary text-primary'
+                                                            : 'bg-surface-container border-transparent text-on-surface-variant hover:bg-surface-container-high'
+                                                        }
+                                                    `}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div className="flex justify-end gap-2 mt-4">
                                     <Button

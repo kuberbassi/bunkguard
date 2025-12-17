@@ -1,17 +1,20 @@
-import React, { type InputHTMLAttributes } from 'react';
+import React, { type SelectHTMLAttributes } from 'react';
+import { ChevronDown } from 'lucide-react';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
     label?: string;
     error?: string;
     helperText?: string;
     fullWidth?: boolean;
+    options: { value: string | number; label: string }[];
 }
 
-const Input: React.FC<InputProps> = ({
+const Select: React.FC<SelectProps> = ({
     label,
     error,
     helperText,
     fullWidth = true,
+    options,
     className = '',
     disabled,
     ...props
@@ -24,23 +27,33 @@ const Input: React.FC<InputProps> = ({
                 </label>
             )}
             <div className="relative group">
-                <input
+                <select
                     className={`
-                        w-full px-4 py-3 rounded-xl
+                        w-full px-4 py-3 rounded-xl appearance-none
                         bg-surface-container-high/50
                         border transition-all duration-200
-                        text-on-surface placeholder-on-surface-variant/50
+                        text-on-surface
                         disabled:opacity-50 disabled:cursor-not-allowed
                         focus:outline-none focus:ring-4 focus:ring-primary/10
+                        cursor-pointer
                         ${error
-                            ? 'border-error focus:border-error text-error'
+                            ? 'border-error focus:border-error'
                             : 'border-outline-variant/50 focus:border-primary hover:border-outline-variant'
                         }
                         ${className}
                     `}
                     disabled={disabled}
                     {...props}
-                />
+                >
+                    {options.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                        </option>
+                    ))}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">
+                    <ChevronDown size={18} />
+                </div>
             </div>
             {(error || helperText) && (
                 <p className={`text-xs ml-1 ${error ? 'text-error font-medium' : 'text-on-surface-variant'}`}>
@@ -51,4 +64,4 @@ const Input: React.FC<InputProps> = ({
     );
 };
 
-export default Input;
+export default Select;

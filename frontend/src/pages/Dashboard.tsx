@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button';
 import AddSubjectModal from '@/components/modals/AddSubjectModal';
 import EditSubjectModal from '@/components/modals/EditSubjectModal';
 import AttendanceModal from '@/components/modals/AttendanceModal';
+import NoticesWidget from '@/components/dashboard/NoticesWidget';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
 import type { DashboardData, Subject, SubjectOverview } from '@/types';
@@ -99,6 +100,25 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    // Helper to get emoji based on subject name
+    const getSubjectEmoji = (name: string) => {
+        const lower = name.toLowerCase();
+        if (lower.includes('lab') || lower.includes('practical')) return '🧪';
+        if (lower.includes('math') || lower.includes('calculus') || lower.includes('algebra')) return '📐';
+        if (lower.includes('physics') || lower.includes('mechanic')) return '⚛️';
+        if (lower.includes('chem')) return '⚗️';
+        if (lower.includes('bio')) return '🧬';
+        if (lower.includes('computer') || lower.includes('cs') || lower.includes('prog') || lower.includes('code') || lower.includes('data') || lower.includes('algorithm') || lower.includes('web')) return '💻';
+        if (lower.includes('history')) return '📜';
+        if (lower.includes('geography')) return '🌍';
+        if (lower.includes('english') || lower.includes('fcs') || lower.includes('communication')) return '🗣️';
+        if (lower.includes('art') || lower.includes('design')) return '🎨';
+        if (lower.includes('electronics') || lower.includes('circuit')) return '🔌';
+        if (lower.includes('workshop')) return '🛠️';
+        if (lower.includes('sport') || lower.includes('gym')) return '⚽';
+        return '📘';
+    };
+
     if (loading) {
         return (
             <div className="space-y-8 pb-32">
@@ -186,29 +206,36 @@ const Dashboard: React.FC = () => {
 
                 {/* Secondary Metrics */}
                 <div className="flex flex-col gap-6">
-                    <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                <BookOpen className="w-6 h-6" />
+                    <div className="flex gap-6">
+                        <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                    <BookOpen className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Subjects</p>
+                                    <p className="text-3xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Subjects</p>
-                                <p className="text-3xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
-                            </div>
-                        </div>
-                    </GlassCard>
+                        </GlassCard>
 
-                    <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
-                                <Target className="w-6 h-6" />
+                        <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+                                    <Target className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Target</p>
+                                    <p className="text-3xl font-bold font-display text-on-surface">75%</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Target</p>
-                                <p className="text-3xl font-bold font-display text-on-surface">75%</p>
-                            </div>
-                        </div>
-                    </GlassCard>
+                        </GlassCard>
+                    </div>
+
+                    {/* Notices Widget - Takes remaining height in this column or fixed height */}
+                    <div className="flex-1 min-h-[300px]">
+                        <NoticesWidget />
+                    </div>
                 </div>
             </section>
 
@@ -256,19 +283,32 @@ const Dashboard: React.FC = () => {
                                 return (
                                     <GlassCard key={subject._id} hover className="flex flex-col justify-between min-h-[280px] p-0 !rounded-[24px] border-outline-variant/40">
                                         <div className="p-6 pb-2">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-on-surface line-clamp-1">{subject.name}</h3>
-                                                    {subject.professor && (
-                                                        <p className="text-sm text-on-surface-variant flex items-center gap-1 mt-1">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/50" />
-                                                            {subject.professor}
-                                                        </p>
-                                                    )}
+                                            {/* Header with Emoji and Actions */}
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-2xl bg-surface-container-high flex items-center justify-center text-xl shadow-sm border border-outline-variant/20 shrink-0">
+                                                        {getSubjectEmoji(subject.name)}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-on-surface line-clamp-1 leading-snug">{subject.name}</h3>
+                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                            {subject.code && (
+                                                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium border border-outline-variant/30">
+                                                                    {subject.code}
+                                                                </span>
+                                                            )}
+                                                            {subject.professor && (
+                                                                <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                                                                    <span className="w-1 h-1 rounded-full bg-on-surface-variant/50" />
+                                                                    <span className="line-clamp-1 max-w-[100px]">{subject.professor}</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <button
                                                     onClick={() => handleDeleteSubject(subject._id, subject.name)}
-                                                    className="p-2 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-full transition-colors"
+                                                    className="p-2 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-full transition-colors -mr-2 -mt-2"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>

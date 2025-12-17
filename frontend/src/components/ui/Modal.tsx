@@ -1,14 +1,15 @@
 import React, { useEffect, type ReactNode } from 'react';
-
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ModalProps {
     isOpen: boolean;
     onClose: () => void;
-    title?: string;
+    title?: ReactNode;
     children: ReactNode;
     size?: 'sm' | 'md' | 'lg' | 'xl';
+    className?: string;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -17,6 +18,7 @@ const Modal: React.FC<ModalProps> = ({
     title,
     children,
     size = 'md',
+    className = '',
 }) => {
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -41,10 +43,10 @@ const Modal: React.FC<ModalProps> = ({
         xl: 'max-w-4xl',
     };
 
-    return (
+    return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
                     {/* Backdrop - darker and more blur */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -61,7 +63,7 @@ const Modal: React.FC<ModalProps> = ({
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 10 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-                        className={`relative w-full ${sizeClasses[size]} rounded-2xl shadow-2xl overflow-hidden will-change-transform`}
+                        className={`relative w-full ${sizeClasses[size]} ${className} rounded-2xl shadow-2xl overflow-hidden will-change-transform`}
                         style={{
                             backgroundColor: '#1E1E1E',
                             border: '1px solid rgba(255,255,255,0.1)'
@@ -91,7 +93,8 @@ const Modal: React.FC<ModalProps> = ({
                     </motion.div>
                 </div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 };
 

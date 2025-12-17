@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     PieChart,
+    Beaker,
     CalendarDays,
     BookOpen,
     CalendarClock,
@@ -13,7 +14,8 @@ import {
     Moon,
     GraduationCap,
     ChevronRight,
-    ChevronLeft
+    ChevronLeft,
+    StickyNote
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -36,7 +38,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
         { name: 'Schedule', href: '/timetable', icon: CalendarClock },
         { name: 'Calendar', href: '/calendar', icon: CalendarDays },
         { name: 'Planner', href: '/planner', icon: BookOpen },
+        { name: 'Board', href: '/board', icon: StickyNote },
         { name: 'Courses', href: '/courses', icon: GraduationCap },
+        { name: 'Assignments Manager', href: '/practicals', icon: Beaker },
         { name: 'Settings', href: '/settings', icon: Settings },
     ];
 

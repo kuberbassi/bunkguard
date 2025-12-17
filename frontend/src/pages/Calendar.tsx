@@ -27,9 +27,21 @@ const Calendar: React.FC = () => {
     const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
     const [scheduledClasses, setScheduledClasses] = useState<any[]>([]);
 
+    const [googleEvents, setGoogleEvents] = useState<any[]>([]);
+
     useEffect(() => {
         loadData();
+        loadGoogleEvents();
     }, [currentDate, currentSemester]);
+
+    const loadGoogleEvents = async () => {
+        try {
+            const events = await attendanceService.getGoogleCalendarEvents();
+            setGoogleEvents(events);
+        } catch (error) {
+            console.error("Failed to load google events", error);
+        }
+    };
 
     const loadData = async () => {
         try {
@@ -69,6 +81,14 @@ const Calendar: React.FC = () => {
         return attendanceData[dateStr] || [];
     };
 
+    const getGoogleEventsForDate = (date: Date) => {
+        const dateStr = date.toISOString().split('T')[0];
+        return googleEvents.filter(event => {
+            const start = event.start.dateTime || event.start.date;
+            return start.startsWith(dateStr);
+        });
+    };
+
     const handlePrevMonth = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
     };
@@ -79,10 +99,6 @@ const Calendar: React.FC = () => {
 
     const handleDayClick = async (day: number) => {
         const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-        // Correct for timezone offset to ensure we get the right date string
-        // Actually, just creating date object with Y, M, D treats it as local time 00:00:00.
-        // toISOString() converts to UTC. If local is GMT+5:30, 00:00 becomes previous day 18:30.
-        // Fix: Use generic date string construction manually.
         const year = clickedDate.getFullYear();
         const month = String(clickedDate.getMonth() + 1).padStart(2, '0');
         const dayStr = String(clickedDate.getDate()).padStart(2, '0');
@@ -97,32 +113,6 @@ const Calendar: React.FC = () => {
             setScheduledClasses(classes);
         } catch (error) {
             console.error("Failed to fetch scheduled classes", error);
-        }
-    };
-
-
-
-    const handleBulkMark = async (status: 'present' | 'absent') => {
-        if (!selectedDate || scheduledClasses.length === 0) return;
-
-        const year = selectedDate.getFullYear();
-        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(selectedDate.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-
-        // Get IDs of scheduled classes only
-        const subjectIds = scheduledClasses.map(s => s._id);
-
-        try {
-            await attendanceService.markAllAttendance(subjectIds, status, dateStr);
-            showToast('success', `Marked all scheduled classes as ${status}`);
-            // Refresh local data
-            loadData();
-            // Refresh scheduled classes status
-            const classes = await attendanceService.getClassesForDate(dateStr);
-            setScheduledClasses(classes);
-        } catch (error) {
-            showToast('error', 'Failed to bulk mark attendance');
         }
     };
 
@@ -201,6 +191,7 @@ const Calendar: React.FC = () => {
                         const presentCount = attendance.filter(a => a.status === 'present').length;
                         const absentCount = attendance.filter(a => a.status === 'absent').length;
                         const totalClasses = attendance.length;
+                        const googleEventsForDay = getGoogleEventsForDate(date);
 
                         return (
                             <motion.button
@@ -219,19 +210,17 @@ const Calendar: React.FC = () => {
                                     {day}
                                 </span>
 
-                                {totalClasses > 0 && (
-                                    <div className="mt-auto mb-2 flex gap-1">
-                                        {new Array(Math.min(presentCount, 4)).fill(0).map((_, i) => (
-                                            <div key={`p-${i}`} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
-                                        ))}
-                                        {new Array(Math.min(absentCount, 4)).fill(0).map((_, i) => (
-                                            <div key={`a-${i}`} className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
-                                        ))}
-                                        {totalClasses > 8 && (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-on-surface-variant/50" />
-                                        )}
-                                    </div>
-                                )}
+                                <div className="mt-auto mb-2 flex gap-1 flex-wrap justify-center max-w-full">
+                                    {new Array(Math.min(presentCount, 4)).fill(0).map((_, i) => (
+                                        <div key={`p-${i}`} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
+                                    ))}
+                                    {new Array(Math.min(absentCount, 4)).fill(0).map((_, i) => (
+                                        <div key={`a-${i}`} className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
+                                    ))}
+                                    {googleEventsForDay.length > 0 && (
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" title={`${googleEventsForDay.length} Google Calendar Events`} />
+                                    )}
+                                </div>
                             </motion.button>
                         );
                     })}
@@ -248,22 +237,23 @@ const Calendar: React.FC = () => {
                         <span className="text-on-surface-variant">Absent</span>
                     </div>
                     <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm" />
+                        <span className="text-on-surface-variant">Google Event</span>
+                    </div>
+                    <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
                         <span className="text-primary font-bold">Today</span>
                     </div>
                 </div>
             </GlassCard>
 
-            {/* Mark Attendance Modal */}
             <AttendanceModal
                 isOpen={isMarkModalOpen}
                 onClose={() => setIsMarkModalOpen(false)}
                 defaultDate={selectedDate || new Date()}
                 onSuccess={() => {
-                    // Refresh data
                     loadData();
-                    setIsMarkModalOpen(false); // Optional: keep open if we want rapid marking? usually auto-close or manual.
-                    // The Modal component handles internal state reset on close.
+                    setIsMarkModalOpen(false);
                 }}
             />
         </div>

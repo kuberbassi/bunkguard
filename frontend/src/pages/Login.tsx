@@ -24,7 +24,7 @@ const Login: React.FC = () => {
             console.error('❌ Google Login Failed:', error);
             alert(`Google Login Error: ${JSON.stringify(error)}`);
         },
-        scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly'
+        scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/calendar.events.readonly'
     });
 
     return (

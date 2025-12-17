@@ -104,10 +104,21 @@ export const attendanceService = {
         return response.data;
     },
 
-    addSubject: async (subjectName: string, semester: number): Promise<void> => {
+    addSubject: async (
+        subjectName: string,
+        semester: number,
+        categories?: string[],
+        code?: string,
+        professor?: string,
+        classroom?: string
+    ): Promise<void> => {
         await api.post('/api/add_subject', {
             subject_name: subjectName,
             semester,
+            categories,
+            code,
+            professor,
+            classroom
         });
     },
 
@@ -147,6 +158,20 @@ export const attendanceService = {
             attended,
             total,
         });
+    },
+
+    updatePracticals: async (
+        subjectId: string,
+        data: { total?: number; completed?: number; hardcopy?: boolean }
+    ): Promise<void> => {
+        await api.put(`/api/subject/${subjectId}/practicals`, data);
+    },
+
+    updateAssignments: async (
+        subjectId: string,
+        data: { total?: number; completed?: number }
+    ): Promise<void> => {
+        await api.put(`/api/subject/${subjectId}/assignments`, data);
     },
 
     // Timetable
@@ -287,7 +312,13 @@ export const attendanceService = {
     },
 
     deleteAllData: async () => {
-        const response = await api.delete('/delete_all_data');
+        const response = await api.delete('/api/delete_all_data');
+        return response.data;
+    },
+
+    // User Profile
+    updateProfile: async (data: any) => {
+        const response = await api.post('/api/update_profile', data);
         return response.data;
     },
 
@@ -305,5 +336,17 @@ export const attendanceService = {
 
     updateAcademicRecord: async (data: AcademicRecord): Promise<void> => {
         await api.post('/api/update_academic_record', data);
-    }
+    },
+
+    // Notices
+    getNotices: async () => {
+        const response = await api.get('/api/notices');
+        return response.data;
+    },
+
+    // Integrations
+    getGoogleCalendarEvents: async () => {
+        const response = await api.get('/api/integrations/calendar');
+        return response.data;
+    },
 };
