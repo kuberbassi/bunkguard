@@ -43,11 +43,11 @@ export default {
         surface: {
           DEFAULT: 'var(--md-sys-color-surface)',
           variant: 'var(--md-sys-color-surface-variant)',
-          container: '#141414',                   // M3 surface container
-          'container-low': '#0A0A0A',
-          'container-high': '#1E1E1E',            // M3 surface container high
-          'container-highest': '#2A2A2A',
-          dim: 'var(--md-sys-color-surface-variant)',
+          container: 'var(--md-sys-color-surface-container)',
+          'container-low': 'var(--md-sys-color-surface-container-low)',
+          'container-high': 'var(--md-sys-color-surface-container-high)',
+          'container-highest': 'var(--md-sys-color-surface-container-highest)',
+          dim: 'var(--md-sys-color-surface-dim)',
         },
         'on-surface': 'var(--md-sys-color-on-surface)',
         'on-surface-variant': 'var(--md-sys-color-on-surface-variant)',

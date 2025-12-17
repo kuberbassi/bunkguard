@@ -32,7 +32,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     useEffect(() => {
         const root = window.document.documentElement;
-        root.style.setProperty('--color-primary', accentColor);
+        root.style.setProperty('--md-sys-color-primary', accentColor);
         // You might need to generate container/on-colors if using full material dynamic palette
         // For now, we assume simple overrides or that tailwind.config uses this var
         localStorage.setItem('accent_color', accentColor);

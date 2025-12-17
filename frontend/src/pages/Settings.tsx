@@ -67,8 +67,8 @@ const SystemLogsSection: React.FC = () => {
                 {logs.length === 0 ? (
                     <p className="text-center text-on-surface-variant py-4">No activity recorded yet.</p>
                 ) : (
-                    logs.map((log) => (
-                        <div key={log._id} className="flex gap-4 items-start pb-4 border-b border-outline-variant/30 last:border-0 last:pb-0">
+                    logs.map((log, index) => (
+                        <div key={`${log._id}-${index}`} className="flex gap-4 items-start pb-4 border-b border-outline-variant/30 last:border-0 last:pb-0">
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
                                 <Activity size={14} className="text-primary" />
                             </div>
@@ -295,6 +295,10 @@ const Settings: React.FC = () => {
                     notifications_enabled: prefs.notifications_enabled ?? prev.notifications_enabled,
                     accent_color: prefs.accent_color ?? prev.accent_color
                 }));
+                // Sync global theme
+                if (prefs.accent_color) {
+                    setAccentColor(prefs.accent_color);
+                }
             }
         } catch (error) {
             // Preferences might not exist yet
@@ -325,7 +329,7 @@ const Settings: React.FC = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `bunkguard-data-${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `acadhub-data-${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             showToast('success', 'Data exported successfully');
         } catch (error) {

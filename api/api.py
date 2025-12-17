@@ -17,10 +17,12 @@ from datetime import timedelta, datetime
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
+# Global Collection Definitions
+preferences_collection = db.get_collection('user_preferences')
 
 # --- Preferences & Profile ---
 
-@api_bp.route('/update_preferences', methods=['POST'])
+@api_bp.route('/preferences', methods=['POST'])
 def update_preferences():
     """Update user preferences"""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -28,7 +30,6 @@ def update_preferences():
     user_email = session['user']['email']
     new_prefs = request.json
     
-    # Use preferences_collection (matching get_preferences)
     preferences_collection.update_one(
         {'owner_email': user_email},
         {'$set': {
@@ -1351,7 +1352,7 @@ def export_data():
         "attendance_logs": list(attendance_log_collection.find({"owner_email": user_email}, {'_id': 0})),
         "schedule": timetable_collection.find_one({"owner_email": user_email}, {'_id': 0, 'schedule': 1})
     }
-    return Response(json_util.dumps(data_to_export, indent=4), mimetype="application/json", headers={"Content-Disposition": "attachment;filename=bunkguard_data.json"})
+    return Response(json_util.dumps(data_to_export, indent=4), mimetype="application/json", headers={"Content-Disposition": "attachment;filename=acadhub_data.json"})
 
 @api_bp.route('/deadlines', methods=['GET'])
 def get_deadlines():

@@ -8,7 +8,7 @@
 
 @layer base {
   :root {
-    /* M3 System Colors - Light (Premium Google Feel) */
+    /* M3 System Colors - Light (High Contrast) */
     --md-sys-color-primary: #6750A4;
     --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-primary-container: #EADDFF;
@@ -29,30 +29,76 @@
     --md-sys-color-error-container: #F9DEDC;
     --md-sys-color-on-error-container: #410E0B;
 
-    --md-sys-color-background: #FDF9FD;
-    /* Slightly warm/tinted white */
-    --md-sys-color-on-background: #1C1B1F;
+    --md-sys-color-background: #FFFFFF;
+    /* Pure White Background */
+    --md-sys-color-on-background: #000000;
+    /* Pure Black Text */
 
-    --md-sys-color-surface: #FFFFFF;
-    --md-sys-color-on-surface: #1C1B1F;
-    --md-sys-color-surface-variant: #F3EDF7;
-    --md-sys-color-on-surface-variant: #49454F;
+    --md-sys-color-surface: #F8F9FA;
+    /* Very slight grey for cards to pop against white bg */
+    --md-sys-color-on-surface: #000000;
+    /* Pure Black Text */
+    --md-sys-color-surface-variant: #E1E3E6;
+    --md-sys-color-on-surface-variant: #444746;
+    /* High contrast grey */
 
-    --md-sys-color-outline: #79747E;
-    --md-sys-color-outline-variant: #CAC4D0;
+    --md-sys-color-outline: #747775;
+    --md-sys-color-outline-variant: #C4C7C5;
 
-    /* M3 Elevation - Soft & Layered */
+    /* Surface Containers for Light Mode */
+    --md-sys-color-surface-container: #F3F3F4;
+    --md-sys-color-surface-container-low: #FFFFFF;
+    /* Sidebar should be white in light mode or very light grey */
+    --md-sys-color-surface-container-high: #ECECEE;
+    --md-sys-color-surface-container-highest: #E6E6E8;
+    --md-sys-color-surface-dim: #DCDCDC;
+
+    /* M3 Elevation */
     --md-sys-elevation-level-0: 0px 0px 0px 0px;
     --md-sys-elevation-level-1: 0px 1px 3px 1px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
     --md-sys-elevation-level-2: 0px 2px 6px 2px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.1);
     --md-sys-elevation-level-3: 0px 4px 8px 3px rgba(0, 0, 0, 0.05), 0px 1px 3px 0px rgba(0, 0, 0, 0.1);
 
-    /* M3 Shape - Friendlier */
+    /* M3 Shape */
     --md-sys-shape-corner-extra-small: 4px;
     --md-sys-shape-corner-small: 12px;
     --md-sys-shape-corner-medium: 16px;
     --md-sys-shape-corner-large: 24px;
     --md-sys-shape-corner-extra-large: 32px;
+  }
+
+  /* Responsive Scaling (Global Zoom Handling) */
+  html {
+    font-size: 15px;
+    /* Base - Slightly smaller */
+  }
+
+  @media (max-width: 1536px) {
+    html {
+      font-size: 14px;
+      /* Scaled down for 1080p laptops */
+    }
+  }
+
+  @media (max-width: 1280px) {
+    html {
+      font-size: 13.5px;
+      /* Compact */
+    }
+  }
+
+  @media (max-width: 1024px) {
+    html {
+      font-size: 13px;
+      /* Tablet */
+    }
+  }
+
+  @media (max-width: 768px) {
+    html {
+      font-size: 12.5px;
+      /* Mobile */
+    }
   }
 
   /* Dark Theme Tokens (Deep OLED Black) */
@@ -89,6 +135,13 @@
 
     --md-sys-color-outline: #938F99;
     --md-sys-color-outline-variant: #49454F;
+
+    /* Surface Containers for Dark Mode */
+    --md-sys-color-surface-container: #141414;
+    --md-sys-color-surface-container-low: #0A0A0A;
+    --md-sys-color-surface-container-high: #1E1E1E;
+    --md-sys-color-surface-container-highest: #2A2A2A;
+    --md-sys-color-surface-dim: #111111;
   }
 
   * {

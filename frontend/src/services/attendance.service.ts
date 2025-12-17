@@ -364,4 +364,9 @@ export const attendanceService = {
         const response = await api.get('/api/integrations/calendar');
         return response.data;
     },
+
+    getGoogleTasks: async () => {
+        const response = await api.get('/api/integrations/tasks');
+        return response.data;
+    },
 };
