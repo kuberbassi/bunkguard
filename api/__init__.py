@@ -32,6 +32,10 @@ def create_app():
     
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-in-production")
     
+    # Session Config for Localhost
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = False
+    
     # Enable CORS for React frontend
     CORS(app, 
          resources={r"/*": {
