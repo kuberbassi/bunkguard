@@ -87,16 +87,40 @@ const TimeTable: React.FC = () => {
         setAppModalOpen(true);
     };
 
-    const handleDeleteSlot = async (slotId: string) => {
-        if (!confirm('Are you sure you want to delete this slot?')) return;
+    // Delete Confirmation State
+    const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
+
+    const handleDeleteSlot = (slotId: string) => {
+        setSlotToDelete(slotId);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!slotToDelete) return;
         try {
-            await attendanceService.deleteTimetableSlot(slotId);
+            await attendanceService.deleteTimetableSlot(slotToDelete);
             showToast('success', 'Slot removed successfully');
             loadData();
         } catch (error) {
             console.error(error);
             showToast('error', 'Failed to delete slot');
+        } finally {
+            setDeleteModalOpen(false);
+            setSlotToDelete(null);
         }
+    };
+
+    // Helper to filter valid slots for current period configuration
+    const isSlotValid = (slot: TimetableSlot) => {
+        const normalize = (t: string) => t.includes(':') && t.length === 4 ? `0${t}` : t;
+        const slotStart = normalize(slot.start_time);
+
+        return periods.some(period => {
+            const pStart = normalize(period.startTime);
+            const pEnd = normalize(period.endTime);
+            return slotStart >= pStart && slotStart < pEnd;
+        });
     };
 
     const handleQuickSave = async (overrides: Partial<TimetableSlot>) => {
@@ -302,8 +326,13 @@ const TimeTable: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-6">
                 {DAYS.map((day, index) => {
                     const daySchedule = timetable[day] || [];
-                    const slots = Array.isArray(daySchedule) ? daySchedule : [];
-                    // Show all non-break slots (or even show breaks in list?) - Filtering classes primarily
+                    const rawSlots = Array.isArray(daySchedule) ? daySchedule : [];
+
+                    // Filter slots to show only valid ones for current periods
+                    const slots = rawSlots.filter(isSlotValid).sort((a, b) =>
+                        a.start_time.localeCompare(b.start_time)
+                    );
+
                     const classSlots = slots.filter((slot: any) => !slot.type || slot.type === 'class');
 
                     return (
@@ -345,7 +374,9 @@ const TimeTable: React.FC = () => {
                                                     <div className="flex justify-between items-start">
                                                         <div>
                                                             <h4 className="font-bold text-sm text-on-surface mb-1">
-                                                                {getSubjectName(slot.subject_id) || slot.label || 'Class'}
+                                                                {slot.type === 'break' ? 'Break' :
+                                                                    slot.type === 'free' ? 'Free Period' :
+                                                                        (getSubjectName(slot.subject_id) || slot.label || 'Class')}
                                                             </h4>
                                                             <div className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
                                                                 <Clock size={12} />
@@ -411,15 +442,6 @@ const TimeTable: React.FC = () => {
                             >
                                 🌱 Free
                             </button>
-                            {isEditing && (
-                                <button
-                                    onClick={() => currentSlot._id && handleDeleteSlot(currentSlot._id)}
-                                    disabled={isSaving}
-                                    className="p-3 rounded-xl border border-error/20 bg-error/5 text-error hover:bg-error/10 font-bold transition-all"
-                                >
-                                    ✕ Clear
-                                </button>
-                            )}
                         </div>
                     </div>
 
@@ -431,28 +453,49 @@ const TimeTable: React.FC = () => {
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto pr-1">
                             {subjects.map((sub) => (
                                 <button
-                                    key={String(sub.id)}
-                                    onClick={() => handleQuickSave({ subject_id: sub.id, type: 'class' })}
+                                    key={sub.id || sub._id}
+                                    onClick={() => handleQuickSave({ subject_id: (sub.id || sub._id).toString(), type: 'class' })}
                                     disabled={isSaving}
-                                    className={`p-3 rounded-xl border text-sm font-bold text-left transition-all truncate
-                                        ${currentSlot.subject_id === sub.id
-                                            ? 'bg-primary border-primary text-on-primary shadow-lg shadow-primary/25'
-                                            : 'border-outline hover:border-primary/50 hover:bg-surface-container-high text-on-surface'
-                                        }`}
+                                    className="p-3 rounded-xl border border-outline hover:border-primary hover:bg-primary/5 text-on-surface transition-all text-left group"
                                 >
-                                    <span className="opacity-70 mr-1">📘</span> {sub.name}
+                                    <div className="font-bold truncate">{sub.name}</div>
+                                    <div className="text-xs text-on-surface-variant group-hover:text-primary transition-colors">Select Subject</div>
                                 </button>
                             ))}
-                            {subjects.length === 0 && (
-                                <div className="col-span-3 text-center py-4 text-on-surface-variant text-sm">
-                                    No subjects found.
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
             </Modal>
-        </div>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                title="Delete Slot"
+            >
+                <div className="space-y-6">
+                    <p className="text-on-surface-variant">
+                        Are you sure you want to delete this slot? This action cannot be undone.
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                        <Button
+                            variant="secondary"
+                            onClick={() => setDeleteModalOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="primary" // Or error variant if available, but primary is fine
+                            className="!bg-error !text-white hover:!bg-error/90"
+                            onClick={confirmDelete}
+                        >
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+        </div >
     );
 };
 

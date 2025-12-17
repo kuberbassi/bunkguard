@@ -1022,6 +1022,12 @@ def add_timetable_slot():
     print(f"   Day: {day}")
     print(f"   Slot data: {data}")
     
+    # Remove any existing slot at the same time to prevent duplicates (Auto-replace)
+    timetable_collection.update_one(
+        {'owner_email': user_email},
+        {'$pull': {f'schedule.{day}': {'start_time': data['start_time']}}}
+    )
+
     # Push to specific day array within the schedule object
     result = timetable_collection.update_one(
         {'owner_email': user_email},
