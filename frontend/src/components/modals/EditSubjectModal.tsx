@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
 import { BookOpen, User, MapPin, Hash, FileText, Save } from 'lucide-react';
-import type { Subject } from '@/types';
+
 
 interface EditSubjectModalProps {
     isOpen: boolean;

@@ -4,8 +4,8 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
-import { Check, X, MoreHorizontal, Calendar as CalendarIcon, FileText, ArrowRightLeft } from 'lucide-react';
-import { formatDate } from '@/utils/formatters';
+import { Check, X, MoreHorizontal, Calendar as CalendarIcon } from 'lucide-react';
+
 
 interface AttendanceModalProps {
     isOpen: boolean;
@@ -115,17 +115,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         setDetailSubstitutedBy('');
     };
 
-    // Helper to check if subject has record on this day
-    const getSubjectStatus = (subject: any) => {
-        // scheduledClasses has 'marked_status' property from backend
-        // For manual list (allSubjects), we might need to match if it's in scheduledClasses or check logic
-        // But the simplified `loadClassesForDate` logic currently only pulls `classes_for_date` which populates `marked_status`.
-        // To support "Other Subjects" correctly, we need to know if they were marked manually.
-        // For now, let's rely on scheduledClasses for status. manual list might not update visually instantly without full refetch logic.
-        // We'll iterate scheduledClasses to find status if present.
-        const scheduled = scheduledClasses.find(s => s._id === subject.id || s._id === subject._id);
-        return scheduled ? scheduled.marked_status : 'pending';
-    };
+
 
     return (
         <Modal
