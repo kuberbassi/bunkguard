@@ -25,7 +25,7 @@
       "destination": "/frontend/assets/$1"
     },
     {
-      "source": "/(.*\\.(ico|png|jpg|jpeg|svg|json|js|css|txt|xml|webmanifest))",
+      "source": "/(.*\\.[^/]+)",
       "destination": "/frontend/$1"
     },
     {
