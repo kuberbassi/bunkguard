@@ -21,7 +21,15 @@
       "destination": "/api/index.py"
     },
     {
-      "source": "/((?!assets|.*\\..*).*)",
+      "source": "/assets/(.*)",
+      "destination": "/frontend/assets/$1"
+    },
+    {
+      "source": "/(.*\\.(ico|png|jpg|jpeg|svg|json|js|css|txt|xml|webmanifest))",
+      "destination": "/frontend/$1"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/frontend/index.html"
     }
   ],
