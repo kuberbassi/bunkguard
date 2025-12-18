@@ -269,7 +269,15 @@ def calculate_streak(user_email):
 
 @api_bp.route('/current_user')
 def get_current_user():
-    if 'user' not in session: return jsonify(None), 200 # Return null if not logged in instead of 401 for this check
+    print(f"🔍 /current_user called")
+    print(f"🔍 Session keys: {list(session.keys())}")
+    print(f"🔍 'user' in session: {'user' in session}")
+    if 'user' in session:
+        print(f"🔍 User email: {session['user'].get('email', 'NO EMAIL')}")
+    if 'user' not in session: 
+        print("❌ No user in session, returning None")
+        return jsonify(None), 200 # Return null if not logged in instead of 401 for this check
+    print(f"✅ Returning user: {session['user'].get('email', 'NO EMAIL')}")
     return jsonify(session['user'])
 
 @api_bp.route('/dashboard_data')

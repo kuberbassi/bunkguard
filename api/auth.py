@@ -60,6 +60,8 @@ def google_auth():
         # 4. Create Session
         session['user'] = user_data
         session.permanent = True
+        print(f"✅ SESSION CREATED for {email}")
+        print(f"✅ Session data: {session.get('user', 'NO USER')}")
         
         return jsonify({
             "user": user_data,

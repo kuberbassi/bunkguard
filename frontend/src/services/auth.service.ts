@@ -5,7 +5,8 @@ import type { User } from '@/types';
 export const authService = {
     // Initiate Google OAuth login
     initiateLogin: () => {
-        window.location.href = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/login`;
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+        window.location.href = `${baseUrl}/api/auth/login`;
     },
 
     loginWithGoogle: async (accessToken: string): Promise<User | null> => {
