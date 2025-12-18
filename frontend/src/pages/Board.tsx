@@ -59,7 +59,7 @@ const Board: React.FC = () => {
     if (loading) return <div className="h-full flex items-center justify-center">Loading Board...</div>;
 
     return (
-        <div className="h-[calc(100vh-2rem)] w-full relative rounded-3xl overflow-hidden border border-outline-variant/20 shadow-xl">
+        <div className="h-[calc(100vh-2rem)] w-full relative rounded-3xl overflow-hidden border border-outline-variant/20 shadow-xl touch-none overscroll-none">
             <Tldraw
                 persistenceKey="bunkguard-board-backend"
                 snapshot={snapshot}

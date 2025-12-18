@@ -4,4 +4,4 @@ Disallow: /api/
 Disallow: /login
 Disallow: /callback
 
-Sitemap: https://bunkguard.vercel.app/sitemap.xml
+Sitemap: https://acadhubkb.vercel.app/sitemap.xml

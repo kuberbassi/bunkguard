@@ -1,4 +1,4 @@
-# 🎓 AcadHub (BunkGuard)
+# 🎓 AcadHub
 
 **AcadHub** is a comprehensive student assistant application designed to help you manage your academic life. Track attendance, manage manual courses, whiteboard your ideas, and stay updated with classroom announcements—all in one place.
 
