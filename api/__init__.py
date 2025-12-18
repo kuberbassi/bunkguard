@@ -49,7 +49,6 @@ def create_app():
     @app.after_request
     def add_security_headers(response):
         response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
-        response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
         return response
     
     oauth.init_app(app)
