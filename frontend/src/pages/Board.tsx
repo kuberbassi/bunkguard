@@ -4,6 +4,17 @@ import 'tldraw/tldraw.css';
 import api from '@/services/api';
 import { useToast } from '@/components/ui/Toast';
 
+// Use CDN for tldraw assets to avoid 404 errors in production
+const TLDRAW_VERSION = '4.2.1'; // Match your package.json version
+const assetUrls = {
+    fonts: {
+        draw: `https://unpkg.com/tldraw@${TLDRAW_VERSION}/fonts/Shantell_Sans-Tldrawish.woff2`,
+        monospace: `https://unpkg.com/tldraw@${TLDRAW_VERSION}/fonts/IBMPlexMono-Medium.woff2`,
+        sansSerif: `https://unpkg.com/tldraw@${TLDRAW_VERSION}/fonts/IBMPlexSans-Medium.woff2`,
+        serif: `https://unpkg.com/tldraw@${TLDRAW_VERSION}/fonts/IBMPlexSerif-Medium.woff2`,
+    },
+};
+
 const Board: React.FC = () => {
     const { showToast } = useToast();
     const [snapshot, setSnapshot] = useState<TLStoreSnapshot | undefined>(undefined);
@@ -53,6 +64,7 @@ const Board: React.FC = () => {
                 persistenceKey="bunkguard-board-backend"
                 snapshot={snapshot}
                 onMount={handleMount}
+                assetUrls={assetUrls}
             />
         </div>
     );
