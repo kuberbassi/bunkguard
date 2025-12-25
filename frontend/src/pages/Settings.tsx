@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     User, Palette, Settings as SettingsIcon, Download, Upload,
     Sun, Moon, Percent, Calculator, AlertTriangle, LogOut, Trash2,
-    Activity, GraduationCap, Clock, FileText
+    Activity, Clock, FileText, ExternalLink, Edit2
 } from 'lucide-react';
-import type { SystemLog, AcademicRecord } from '@/types';
+import type { SystemLog } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import Card from '@/components/ui/Card';
@@ -15,7 +15,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
-import Modal from '@/components/ui/Modal';
+import { authService } from '@/services/auth.service';
 
 interface UserPreferences {
     attendance_threshold: number;
@@ -26,12 +26,18 @@ interface UserPreferences {
 }
 
 const ACCENT_COLORS = [
-    { name: 'Blue', value: '#6750A4', class: 'bg-[#6750A4]' },
-    { name: 'Green', value: '#10B981', class: 'bg-green-500' },
-    { name: 'Purple', value: '#8B5CF6', class: 'bg-purple-500' },
-    { name: 'Orange', value: '#F59E0B', class: 'bg-orange-500' },
-    { name: 'Pink', value: '#EC4899', class: 'bg-pink-500' },
-    { name: 'Teal', value: '#14B8A6', class: 'bg-teal-500' },
+    { name: 'Indigo', value: '#6750A4' },
+    { name: 'Blue', value: '#3B82F6' },
+    { name: 'Cyan', value: '#06B6D4' },
+    { name: 'Teal', value: '#14B8A6' },
+    { name: 'Green', value: '#10B981' },
+    { name: 'Lime', value: '#84CC16' },
+    { name: 'Yellow', value: '#EAB308' },
+    { name: 'Orange', value: '#F97316' },
+    { name: 'Red', value: '#EF4444' },
+    { name: 'Pink', value: '#EC4899' },
+    { name: 'Purple', value: '#8B5CF6' },
+    { name: 'Rose', value: '#F43F5E' },
 ];
 
 // --- Sub-Components ---
@@ -93,140 +99,11 @@ const SystemLogsSection: React.FC = () => {
     );
 };
 
-const AcademicRecordsSection: React.FC = () => {
-    const { showToast } = useToast();
-    const [records, setRecords] = useState<AcademicRecord[]>([]);
-    const [isEditing, setIsEditing] = useState(false);
-
-    // New Record Form
-    const [formData, setFormData] = useState<Partial<AcademicRecord>>({
-        semester: 1,
-        sgpa: 0,
-        cgpa: 0,
-        credits: 0
-    });
-
-    useEffect(() => {
-        loadRecords();
-    }, []);
-
-    const loadRecords = async () => {
-        try {
-            const data = await attendanceService.getAcademicRecords();
-            setRecords(data);
-            if (data.length > 0) {
-                const last = data[data.length - 1];
-                setFormData({ semester: last.semester + 1, sgpa: 0, cgpa: 0, credits: 0 });
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    const handleSave = async () => {
-        if (!formData.semester || formData.semester < 1) {
-            showToast('error', 'Invalid Semester');
-            return;
-        }
-        try {
-            await attendanceService.updateAcademicRecord(formData as AcademicRecord);
-            showToast('success', 'Record updated');
-            setIsEditing(false);
-            loadRecords(); // Refresh
-        } catch (error) {
-            showToast('error', 'Failed to save record');
-        }
-    };
-
-    return (
-        <GlassCard className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h3 className="font-bold text-on-surface">Semester Results</h3>
-                    <p className="text-sm text-on-surface-variant">Track your IPU academic performance</p>
-                </div>
-                <Button variant="filled" icon={<GraduationCap size={16} />} onClick={() => setIsEditing(true)}>
-                    Add / Update
-                </Button>
-            </div>
-
-            <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                    <thead className="border-b border-outline-variant/30 text-on-surface-variant uppercase text-xs font-semibold">
-                        <tr>
-                            <th className="px-4 py-3">Semester</th>
-                            <th className="px-4 py-3">SGPA</th>
-                            <th className="px-4 py-3">CGPA</th>
-                            <th className="px-4 py-3">Credits</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                        {records.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="px-4 py-8 text-center text-on-surface-variant">
-                                    No records found. Add your first semester result.
-                                </td>
-                            </tr>
-                        ) : (
-                            records.map((rec) => (
-                                <tr key={rec._id || rec.semester} className="hover:bg-surface-container/30 transition-colors">
-                                    <td className="px-4 py-3 font-medium">Sem {rec.semester}</td>
-                                    <td className="px-4 py-3 font-bold text-primary">{rec.sgpa}</td>
-                                    <td className="px-4 py-3 text-on-surface">{rec.cgpa}</td>
-                                    <td className="px-4 py-3 text-on-surface-variant">{rec.credits}</td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Edit Modal */}
-            <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Update Academic Record">
-                <div className="space-y-4">
-                    <Select
-                        label="Semester"
-                        value={formData.semester}
-                        onChange={e => setFormData({ ...formData, semester: parseInt(e.target.value) })}
-                        options={[1, 2, 3, 4, 5, 6, 7, 8].map(s => ({ value: s, label: `Semester ${s}` }))}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input
-                            label="SGPA"
-                            type="number" step="0.01" min="0" max="10"
-                            value={formData.sgpa}
-                            onChange={e => setFormData({ ...formData, sgpa: parseFloat(e.target.value) })}
-                        />
-                        <Input
-                            label="CGPA"
-                            type="number" step="0.01" min="0" max="10"
-                            value={formData.cgpa}
-                            onChange={e => setFormData({ ...formData, cgpa: parseFloat(e.target.value) })}
-                        />
-                    </div>
-                    <Input
-                        label="Credits Secured"
-                        type="number" min="0"
-                        value={formData.credits}
-                        onChange={e => setFormData({ ...formData, credits: parseInt(e.target.value) })}
-                    />
-
-                    <div className="pt-4 flex justify-end gap-2">
-                        <Button variant="text" onClick={() => setIsEditing(false)}>Cancel</Button>
-                        <Button onClick={handleSave}>Save Record</Button>
-                    </div>
-                </div>
-            </Modal>
-        </GlassCard>
-    );
-};
-
 // --- Main Settings Component ---
 
 const Settings: React.FC = () => {
     const { user, logout } = useAuth();
-    const { theme, toggleTheme, setAccentColor } = useTheme(); // Added setAccentColor
+    const { theme, toggleTheme, setAccentColor, accentColor } = useTheme(); // Added setAccentColor
     const { showToast } = useToast();
 
     // ... (rest of state)
@@ -238,7 +115,7 @@ const Settings: React.FC = () => {
         warning_threshold: 76,
         counting_mode: 'percentage',
         notifications_enabled: false,
-        accent_color: '#6750A4'
+        accent_color: accentColor || '#6750A4'
     });
 
     const [name, setName] = useState(user?.name || '');
@@ -271,6 +148,21 @@ const Settings: React.FC = () => {
                 name,
                 ...profileForm
             });
+
+            // Update stored user in localStorage so it persists
+            if (user) {
+                const updatedUser = {
+                    ...user,
+                    name,
+                    branch: profileForm.branch,
+                    college: profileForm.college,
+                    semester: profileForm.semester,
+                    batch: profileForm.batch,
+                    picture: profileForm.picture || user.picture
+                };
+                authService.storeUser(updatedUser);
+            }
+
             showToast('success', 'Profile updated');
             setIsEditingProfile(false);
             window.location.reload();
@@ -293,7 +185,7 @@ const Settings: React.FC = () => {
                     warning_threshold: prefs.warning_threshold ?? prev.warning_threshold,
                     counting_mode: prefs.counting_mode ?? prev.counting_mode,
                     notifications_enabled: prefs.notifications_enabled ?? prev.notifications_enabled,
-                    accent_color: prefs.accent_color ?? prev.accent_color
+                    accent_color: prefs.accent_color ?? accentColor // Use context as fallback
                 }));
                 // Sync global theme
                 if (prefs.accent_color) {
@@ -305,6 +197,47 @@ const Settings: React.FC = () => {
         }
     };
 
+    // Debounce ref for saving preferences
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Update preferences locally (no API call)
+    const updateLocalPreferences = (newPrefs: Partial<UserPreferences>) => {
+        setPreferences(prev => ({ ...prev, ...newPrefs }));
+
+        // Instant visual update for accent color
+        if (newPrefs.accent_color) {
+            setAccentColor(newPrefs.accent_color);
+        }
+    };
+
+    // Save to API with debounce (only shows toast once)
+    const savePreferencesToAPI = useCallback(async (prefs: UserPreferences) => {
+        try {
+            await attendanceService.updatePreferences(prefs);
+            showToast('success', 'Preferences saved');
+        } catch (error) {
+            showToast('error', 'Failed to save preferences');
+        }
+    }, [showToast]);
+
+    // Debounced save - waits 800ms after last change before saving
+    const debouncedSave = useCallback((newPrefs: Partial<UserPreferences>) => {
+        // Update locally immediately
+        const updated = { ...preferences, ...newPrefs };
+        updateLocalPreferences(newPrefs);
+
+        // Clear existing timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+
+        // Set new timeout to save after 800ms
+        saveTimeoutRef.current = setTimeout(() => {
+            savePreferencesToAPI(updated);
+        }, 400);
+    }, [preferences, savePreferencesToAPI]);
+
+    // For instant saves (like accent color buttons)
     const savePreferences = async (newPrefs: Partial<UserPreferences>) => {
         const updated = { ...preferences, ...newPrefs };
         setPreferences(updated);
@@ -392,7 +325,7 @@ const Settings: React.FC = () => {
                     onClick={() => setActiveTab('academics')}
                     className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'academics' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
                 >
-                    Academic Record
+                    Activity Log
                 </button>
             </div>
 
@@ -407,9 +340,18 @@ const Settings: React.FC = () => {
                             </h2>
                             <GlassCard className="p-6">
                                 <div className="flex flex-col md:flex-row gap-6 items-start">
-                                    <div className="w-20 h-20 rounded-full bg-primary-container text-primary text-3xl flex items-center justify-center font-bold">
-                                        {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                                    </div>
+                                    {/* Profile Picture */}
+                                    {profileForm.picture || user?.picture ? (
+                                        <img
+                                            src={profileForm.picture || user?.picture}
+                                            alt={user?.name || 'Profile'}
+                                            className="w-20 h-20 rounded-full object-cover border-2 border-primary/20"
+                                        />
+                                    ) : (
+                                        <div className="w-20 h-20 rounded-full bg-primary-container text-primary text-3xl flex items-center justify-center font-bold shrink-0">
+                                            {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                                        </div>
+                                    )}
                                     <div className="flex-1 w-full space-y-4">
                                         {/* PFP File Upload */}
                                         <div>
@@ -534,13 +476,48 @@ const Settings: React.FC = () => {
                                 </GlassCard>
 
                                 <GlassCard className="p-6">
-                                    <h3 className="font-medium text-on-surface mb-3">Accent Color</h3>
-                                    <div className="grid grid-cols-6 gap-2">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-medium text-on-surface">Accent Color</h3>
+                                        {/* Custom Color Picker */}
+                                        <div className="relative group flex items-center gap-2 bg-surface-container-high/50 pl-1 pr-3 py-1 rounded-full border border-outline-variant/20 hover:border-primary/30 transition-colors">
+                                            <div className="relative w-8 h-8 shrink-0">
+                                                <div className="w-8 h-8 rounded-full shadow-sm ring-2 ring-white/20 overflow-hidden bg-surface-container">
+                                                    <div
+                                                        className="w-full h-full transition-colors"
+                                                        style={{ backgroundColor: preferences.accent_color }}
+                                                    />
+                                                </div>
+                                                <input
+                                                    type="color"
+                                                    value={preferences.accent_color}
+                                                    onChange={(e) => {
+                                                        const color = e.target.value;
+                                                        setAccentColor(color);
+                                                        setPreferences({ ...preferences, accent_color: color });
+                                                        debouncedSave({ accent_color: color });
+                                                    }}
+                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                />
+                                                <div className="absolute -bottom-1 -right-1 bg-surface-container-highest rounded-full p-0.5 shadow-sm border border-outline-variant/20 pointer-events-none z-0">
+                                                    <Edit2 size={8} className="text-on-surface-variant" />
+                                                </div>
+                                            </div>
+                                            <span className="text-xs font-medium text-on-surface-variant">Custom</span>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-6 gap-3">
                                         {ACCENT_COLORS.map((color) => (
                                             <button
                                                 key={color.value}
-                                                onClick={() => savePreferences({ accent_color: color.value })}
-                                                className={`w-10 h-10 rounded-full ${color.class} ${preferences.accent_color === color.value ? 'ring-4 ring-primary/30 scale-110' : ''} transition-all hover:scale-105`}
+                                                onClick={() => {
+                                                    setAccentColor(color.value);
+                                                    savePreferences({ accent_color: color.value });
+                                                }}
+                                                className={`w-10 h-10 rounded-full transition-all hover:scale-110 ${preferences.accent_color === color.value
+                                                    ? 'ring-4 ring-white/30 scale-110 shadow-lg'
+                                                    : 'hover:ring-2 hover:ring-white/20'
+                                                    }`}
+                                                style={{ backgroundColor: color.value }}
                                                 title={color.name}
                                             />
                                         ))}
@@ -557,78 +534,76 @@ const Settings: React.FC = () => {
                             </h2>
                             <GlassCard className="p-6">
                                 <div className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-medium text-on-surface mb-2">
-                                                Minimum Attendance Threshold
+                                    {/* Threshold Settings */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="p-4 rounded-xl bg-surface-container/50 border border-outline-variant/20">
+                                            <label className="block text-sm font-medium text-on-surface mb-3">
+                                                Minimum Attendance
                                             </label>
                                             <div className="flex items-center gap-3">
                                                 <input
-                                                    type="range"
-                                                    min="60"
+                                                    type="number"
+                                                    min="50"
                                                     max="100"
                                                     value={preferences.attendance_threshold}
-                                                    onChange={(e) => savePreferences({ attendance_threshold: parseInt(e.target.value) })}
-                                                    className="flex-1"
+                                                    onChange={(e) => debouncedSave({ attendance_threshold: Math.min(100, Math.max(50, parseInt(e.target.value) || 75)) })}
+                                                    onBlur={() => savePreferencesToAPI(preferences)}
+                                                    className="w-20 px-3 py-2 text-center text-lg font-bold rounded-lg bg-primary/10 text-primary border-2 border-primary/30 focus:border-primary outline-none"
                                                 />
-                                                <div className="w-16 text-center font-bold text-primary bg-primary-container px-3 py-1 rounded-lg">
-                                                    {preferences.attendance_threshold}%
-                                                </div>
+                                                <span className="text-on-surface-variant">%</span>
                                             </div>
                                             <p className="text-xs text-on-surface-variant mt-2">
-                                                Below this value, subjects will be marked as "at risk"
+                                                Below this, subjects are "at risk"
                                             </p>
                                         </div>
 
-                                        <div>
-                                            <label className="block text-sm font-medium text-on-surface mb-2">
+                                        <div className="p-4 rounded-xl bg-surface-container/50 border border-outline-variant/20">
+                                            <label className="block text-sm font-medium text-on-surface mb-3">
                                                 Warning Threshold
                                             </label>
                                             <div className="flex items-center gap-3">
                                                 <input
-                                                    type="range"
+                                                    type="number"
                                                     min={preferences.attendance_threshold}
                                                     max="100"
                                                     value={preferences.warning_threshold}
-                                                    onChange={(e) => savePreferences({ warning_threshold: parseInt(e.target.value) })}
-                                                    className="flex-1"
+                                                    onChange={(e) => debouncedSave({ warning_threshold: Math.min(100, Math.max(preferences.attendance_threshold, parseInt(e.target.value) || 76)) })}
+                                                    onBlur={() => savePreferencesToAPI(preferences)}
+                                                    className="w-20 px-3 py-2 text-center text-lg font-bold rounded-lg bg-orange-500/10 text-orange-500 border-2 border-orange-500/30 focus:border-orange-500 outline-none"
                                                 />
-                                                <div className="w-16 text-center font-bold text-orange-600 bg-orange-100 dark:bg-orange-900/30 px-3 py-1 rounded-lg">
-                                                    {preferences.warning_threshold}%
-                                                </div>
+                                                <span className="text-on-surface-variant">%</span>
                                             </div>
                                             <p className="text-xs text-on-surface-variant mt-2">
-                                                You'll be warned when attendance drops below this
+                                                Warning when below this
                                             </p>
                                         </div>
                                     </div>
 
+                                    {/* Counting Mode */}
                                     <div>
                                         <label className="block text-sm font-medium text-on-surface mb-3">
-                                            Counting Mode
+                                            Display Mode
                                         </label>
-                                        <div className="flex gap-3">
+                                        <div className="grid grid-cols-2 gap-3">
                                             <button
                                                 onClick={() => savePreferences({ counting_mode: 'percentage' })}
-                                                className={`flex-1 p-4 rounded-lg border-2 transition-all ${preferences.counting_mode === 'percentage'
+                                                className={`p-4 rounded-xl border-2 transition-all ${preferences.counting_mode === 'percentage'
                                                     ? 'border-primary bg-primary/10'
-                                                    : 'border-outline hover:bg-surface-container'
+                                                    : 'border-outline-variant/30 hover:bg-surface-container-high'
                                                     }`}
                                             >
                                                 <Percent className="w-6 h-6 mx-auto mb-2 text-primary" />
-                                                <p className="font-medium text-on-surface">Percentage</p>
-                                                <p className="text-xs text-on-surface-variant mt-1">Display as percentages</p>
+                                                <p className="font-medium text-on-surface text-sm">Percentage</p>
                                             </button>
                                             <button
                                                 onClick={() => savePreferences({ counting_mode: 'classes' })}
-                                                className={`flex-1 p-4 rounded-lg border-2 transition-all ${preferences.counting_mode === 'classes'
+                                                className={`p-4 rounded-xl border-2 transition-all ${preferences.counting_mode === 'classes'
                                                     ? 'border-primary bg-primary/10'
-                                                    : 'border-outline hover:bg-surface-container'
+                                                    : 'border-outline-variant/30 hover:bg-surface-container-high'
                                                     }`}
                                             >
                                                 <Calculator className="w-6 h-6 mx-auto mb-2 text-primary" />
-                                                <p className="font-medium text-on-surface">Class Count</p>
-                                                <p className="text-xs text-on-surface-variant mt-1">Display as X/Y classes</p>
+                                                <p className="font-medium text-on-surface text-sm">Class Count</p>
                                             </button>
                                         </div>
                                     </div>
@@ -638,13 +613,23 @@ const Settings: React.FC = () => {
                     </>
                 ) : (
                     <>
-                        {/* Academic Records */}
+                        {/* Results Page Link */}
                         <section>
-                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                                <GraduationCap className="w-5 h-5 text-primary" />
-                                Academic Records
-                            </h2>
-                            <AcademicRecordsSection />
+                            <GlassCard className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-bold text-on-surface">Semester Results</h3>
+                                        <p className="text-sm text-on-surface-variant">Track your IPU academic performance with detailed marks</p>
+                                    </div>
+                                    <a
+                                        href="/results"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors"
+                                    >
+                                        Open Results
+                                        <ExternalLink size={16} />
+                                    </a>
+                                </div>
+                            </GlassCard>
                         </section>
 
                         {/* System Logs */}

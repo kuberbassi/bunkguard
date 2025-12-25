@@ -30,7 +30,7 @@ const Select: React.FC<SelectProps> = ({
                 <select
                     className={`
                         w-full px-4 py-3 rounded-xl appearance-none
-                        bg-surface-container-high/50
+                        bg-surface-container-highest
                         border transition-all duration-200
                         text-on-surface
                         disabled:opacity-50 disabled:cursor-not-allowed

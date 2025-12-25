@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -15,8 +15,9 @@ import {
     GraduationCap,
     ChevronRight,
     ChevronLeft,
+    ChevronDown,
     StickyNote,
-    Bell
+    Trophy
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -28,28 +29,59 @@ interface SidebarProps {
     setIsCollapsed: (isCollapsed: boolean) => void;
 }
 
+// Navigation groups
+const navigationGroups = [
+    {
+        name: 'Overview',
+        items: [
+            { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+            { name: 'Analytics', href: '/analytics', icon: PieChart },
+        ]
+    },
+    {
+        name: 'Academics',
+        items: [
+            { name: 'Courses', href: '/courses', icon: GraduationCap },
+            { name: 'Results', href: '/results', icon: Trophy },
+            { name: 'Assignments', href: '/practicals', icon: Beaker },
+        ]
+    },
+    {
+        name: 'Planning',
+        items: [
+            { name: 'Schedule', href: '/timetable', icon: CalendarClock },
+            { name: 'Calendar', href: '/calendar', icon: CalendarDays },
+            { name: 'Planner', href: '/planner', icon: BookOpen },
+            { name: 'Board', href: '/board', icon: StickyNote },
+        ]
+    },
+];
+
 const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isCollapsed, setIsCollapsed }) => {
     const { user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const location = useLocation();
 
-    const navigation = [
-        { name: 'Notifications', href: '/notifications', icon: Bell },
-        { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-        { name: 'Analytics', href: '/analytics', icon: PieChart },
-        { name: 'Schedule', href: '/timetable', icon: CalendarClock },
-        { name: 'Calendar', href: '/calendar', icon: CalendarDays },
-        { name: 'Planner', href: '/planner', icon: BookOpen },
-        { name: 'Board', href: '/board', icon: StickyNote },
-        { name: 'Courses', href: '/courses', icon: GraduationCap },
-        { name: 'Assignments Manager', href: '/practicals', icon: Beaker },
-        { name: 'Settings', href: '/settings', icon: Settings },
-    ];
+    // Track expanded groups
+    const [expandedGroups, setExpandedGroups] = useState<string[]>(['Overview', 'Academics', 'Planning']);
+
+    const toggleGroup = (groupName: string) => {
+        setExpandedGroups(prev =>
+            prev.includes(groupName)
+                ? prev.filter(g => g !== groupName)
+                : [...prev, groupName]
+        );
+    };
+
+    // Check if any item in group is active
+    const isGroupActive = (group: typeof navigationGroups[0]) => {
+        return group.items.some(item => location.pathname === item.href);
+    };
 
     const SidebarContent = () => (
         <div className="flex flex-col h-full bg-surface-container-low text-on-surface transition-all duration-300">
             {/* Logo Area */}
-            <div className={`flex items-center gap-3 px-6 py-8 ${isCollapsed ? 'justify-center px-2' : ''}`}>
+            <div className={`flex items-center gap-3 px-6 py-6 ${isCollapsed ? 'justify-center px-2' : ''}`}>
                 <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-none shrink-0">
                     <GraduationCap className="w-6 h-6" />
                 </div>
@@ -69,48 +101,105 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                 )}
             </div>
 
-            {/* Navigation Items */}
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto no-scrollbar">
-                {navigation.map((item) => {
-                    const isActive = location.pathname === item.href;
+            {/* Navigation Groups */}
+            <nav className="flex-1 px-3 py-2 overflow-y-auto no-scrollbar">
+                {navigationGroups.map((group) => {
+                    const isExpanded = expandedGroups.includes(group.name);
+                    const groupActive = isGroupActive(group);
+
                     return (
-                        <Link
-                            key={item.name}
-                            to={item.href}
-                            onClick={() => setIsMobileOpen(false)}
-                            className="block"
-                        >
-                            <div
-                                className={`flex items-center gap-4 px-4 py-3.5 rounded-full transition-all duration-200 group relative overflow-hidden ${isActive
-                                    ? 'bg-secondary-container text-on-secondary-container font-semibold shadow-sm'
-                                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface font-medium'
-                                    } ${isCollapsed ? 'justify-center px-0 w-12 h-12 mx-auto' : ''}`}
-                            >
-                                <item.icon
-                                    className={`w-[22px] h-[22px] shrink-0 ${isActive ? 'text-on-secondary-container' : 'text-on-surface-variant group-hover:text-primary transition-colors'}`}
-                                    strokeWidth={isActive ? 2.5 : 2}
-                                />
-                                {!isCollapsed && (
-                                    <motion.span
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        className="whitespace-nowrap"
-                                    >
-                                        {item.name}
-                                    </motion.span>
-                                )}
-                                {isActive && !isCollapsed && (
-                                    <motion.div
-                                        layoutId="activeTab"
-                                        className="absolute left-0 w-1 h-1/2 bg-primary rounded-r-full"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 0 }}
+                        <div key={group.name} className="mb-2">
+                            {/* Group Header */}
+                            {!isCollapsed ? (
+                                <button
+                                    onClick={() => toggleGroup(group.name)}
+                                    className={`w-full flex items-center justify-between px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors rounded-lg ${groupActive
+                                            ? 'text-primary bg-primary/5'
+                                            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                                        }`}
+                                >
+                                    <span>{group.name}</span>
+                                    <ChevronDown
+                                        size={14}
+                                        className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}
                                     />
+                                </button>
+                            ) : (
+                                <div className="h-2" />
+                            )}
+
+                            {/* Group Items */}
+                            <AnimatePresence initial={false}>
+                                {(isExpanded || isCollapsed) && (
+                                    <motion.div
+                                        initial={isCollapsed ? false : { height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={isCollapsed ? undefined : { height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className={`${isCollapsed ? '' : 'ml-2 border-l border-outline-variant/20 pl-2'} space-y-1 mt-1`}>
+                                            {group.items.map((item) => {
+                                                const isActive = location.pathname === item.href;
+                                                return (
+                                                    <Link
+                                                        key={item.name}
+                                                        to={item.href}
+                                                        onClick={() => setIsMobileOpen(false)}
+                                                        className="block"
+                                                    >
+                                                        <div
+                                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
+                                                                    ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                                                                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                                                                } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
+                                                        >
+                                                            <item.icon
+                                                                className={`w-5 h-5 shrink-0 ${isActive
+                                                                        ? 'text-on-secondary-container'
+                                                                        : 'text-on-surface-variant group-hover:text-primary transition-colors'
+                                                                    }`}
+                                                                strokeWidth={isActive ? 2.5 : 2}
+                                                            />
+                                                            {!isCollapsed && (
+                                                                <span className="text-sm">{item.name}</span>
+                                                            )}
+                                                        </div>
+                                                    </Link>
+                                                );
+                                            })}
+                                        </div>
+                                    </motion.div>
                                 )}
-                            </div>
-                        </Link>
+                            </AnimatePresence>
+                        </div>
                     );
                 })}
+
+                {/* Settings - Standalone */}
+                <div className={`mt-4 pt-4 border-t border-outline-variant/10 ${isCollapsed ? 'border-0' : ''}`}>
+                    <Link
+                        to="/settings"
+                        onClick={() => setIsMobileOpen(false)}
+                        className="block"
+                    >
+                        <div
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${location.pathname === '/settings'
+                                    ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                                } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
+                        >
+                            <Settings
+                                className={`w-5 h-5 shrink-0 ${location.pathname === '/settings'
+                                        ? 'text-on-secondary-container'
+                                        : 'text-on-surface-variant group-hover:text-primary transition-colors'
+                                    }`}
+                                strokeWidth={location.pathname === '/settings' ? 2.5 : 2}
+                            />
+                            {!isCollapsed && <span className="text-sm">Settings</span>}
+                        </div>
+                    </Link>
+                </div>
             </nav>
 
             {/* User & Settings Area */}
@@ -176,7 +265,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
             {/* Collapse Toggle for Desktop */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="hidden lg:flex absolute -right-3 top-24 w-6 h-6 bg-surface border border-outline-variant items-center justify-center rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors z-50"
+                className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-surface border border-outline-variant items-center justify-center rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors z-50"
             >
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
@@ -187,7 +276,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
         <>
             {/* Desktop Sidebar */}
             <aside
-                className={`hidden lg:block fixed left-0 top-0 h-full z-40 transition-all duration-300 ease-in-out border-r border-outline-variant/10 ${isCollapsed ? 'w-20' : 'w-72'}`}
+                className={`hidden lg:block fixed left-0 top-0 h-full z-40 transition-all duration-300 ease-in-out border-r border-outline-variant/10 ${isCollapsed ? 'w-20' : 'w-64'}`}
             >
                 <SidebarContent />
             </aside>
@@ -210,7 +299,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                             animate={{ x: 0 }}
                             exit={{ x: '-100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                            className="fixed left-0 top-0 h-full w-80 bg-surface z-50 lg:hidden shadow-2xl"
+                            className="fixed left-0 top-0 h-full w-72 bg-surface z-50 lg:hidden shadow-2xl"
                         >
                             <SidebarContent />
                         </motion.div>

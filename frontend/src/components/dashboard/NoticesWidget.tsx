@@ -36,7 +36,7 @@ const NoticesWidget: React.FC = () => {
             <GlassCard className="h-full flex flex-col p-6 !bg-surface">
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-200">
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
                             <Bell size={18} />
                         </div>
                         <h3 className="font-bold text-on-surface">University Notices</h3>
@@ -78,11 +78,11 @@ const NoticesWidget: React.FC = () => {
                             >
                                 <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className="relative z-10">
-                                    <div className="flex justify-between items-start gap-3">
+                                    <div className="grid grid-cols-[1fr_auto] items-start gap-3">
                                         <p className="text-sm font-medium text-on-surface line-clamp-2 leading-snug group-hover:text-primary transition-colors">
                                             {notice.title}
                                         </p>
-                                        <ExternalLink size={14} className="text-primary shrink-0 mt-0.5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                        <ExternalLink size={14} className="text-primary mt-0.5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                                     </div>
                                     <div className="flex items-center gap-2 mt-3">
                                         <div className="h-1 w-1 rounded-full bg-primary/50" />
@@ -134,11 +134,11 @@ const NoticesWidget: React.FC = () => {
                                     rel="noopener noreferrer"
                                     className="block p-4 rounded-xl bg-surface-container/30 hover:bg-surface-container transition-colors border border-outline-variant/20 group"
                                 >
-                                    <div className="flex justify-between items-start gap-3">
+                                    <div className="grid grid-cols-[1fr_auto] items-start gap-3">
                                         <p className="text-sm font-medium text-on-surface font-sans group-hover:text-primary transition-colors">
                                             {notice.title}
                                         </p>
-                                        <ExternalLink size={16} className="text-on-surface-variant shrink-0 mt-1 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                        <ExternalLink size={16} className="text-on-surface-variant mt-1 opacity-50 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                     <div className="flex items-center gap-2 mt-2">
                                         <span className="text-xs font-mono px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant">

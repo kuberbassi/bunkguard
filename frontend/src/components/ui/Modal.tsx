@@ -63,7 +63,7 @@ const Modal: React.FC<ModalProps> = ({
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 10 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-                        className={`relative w-full ${sizeClasses[size]} ${className} rounded-2xl shadow-2xl overflow-hidden will-change-transform`}
+                        className={`relative w-full ${sizeClasses[size]} ${className} rounded-2xl shadow-2xl overflow-hidden will-change-transform max-h-[90vh] flex flex-col`}
                         style={{
                             backgroundColor: '#1E1E1E',
                             border: '1px solid rgba(255,255,255,0.1)'
@@ -89,7 +89,7 @@ const Modal: React.FC<ModalProps> = ({
                         )}
 
                         {/* Body */}
-                        <div className="p-6 text-white">{children}</div>
+                        <div className="p-6 text-white overflow-y-auto flex-1 custom-scrollbar">{children}</div>
                     </motion.div>
                 </div>
             )}

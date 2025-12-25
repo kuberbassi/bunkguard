@@ -6,6 +6,10 @@ import { useToast } from '@/components/ui/Toast';
 
 // Use CDN for tldraw assets to avoid 404 errors in production
 const TLDRAW_VERSION = '4.2.1'; // Match your package.json version
+
+// tldraw license key from environment variable
+const TLDRAW_LICENSE_KEY = import.meta.env.VITE_TLDRAW_LICENSE_KEY || '';
+
 const assetUrls = {
     fonts: {
         draw: `https://unpkg.com/tldraw@${TLDRAW_VERSION}/fonts/Shantell_Sans-Tldrawish.woff2`,
@@ -61,6 +65,7 @@ const Board: React.FC = () => {
     return (
         <div className="h-[calc(100vh-2rem)] w-full relative rounded-3xl overflow-hidden border border-outline-variant/20 shadow-xl touch-none overscroll-none">
             <Tldraw
+                licenseKey={TLDRAW_LICENSE_KEY}
                 persistenceKey="bunkguard-board-backend"
                 snapshot={snapshot}
                 onMount={handleMount}

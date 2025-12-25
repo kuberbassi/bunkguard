@@ -22,25 +22,38 @@ preferences_collection = db.get_collection('user_preferences')
 
 # --- Preferences & Profile ---
 
-@api_bp.route('/preferences', methods=['POST'])
+@api_bp.route('/preferences', methods=['GET', 'POST'])
 def update_preferences():
-    """Update user preferences"""
+    """Get or Update user preferences"""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     
     user_email = session['user']['email']
+    
+    if request.method == 'GET':
+        existing = preferences_collection.find_one({'owner_email': user_email})
+        current_prefs = existing.get('preferences', {}) if existing else {}
+        return jsonify(current_prefs)
+
     new_prefs = request.json
+    
+    # Get existing preferences
+    existing = preferences_collection.find_one({'owner_email': user_email})
+    current_prefs = existing.get('preferences', {}) if existing else {}
+    
+    # Merge new with existing
+    current_prefs.update(new_prefs)
     
     preferences_collection.update_one(
         {'owner_email': user_email},
         {'$set': {
             'owner_email': user_email,
-            'preferences': new_prefs,
+            'preferences': current_prefs,
             'updated_at': datetime.utcnow()
         }},
         upsert=True
     )
     
-    return jsonify({"success": True, "preferences": new_prefs})
+    return jsonify({"success": True, "preferences": current_prefs})
 
 @api_bp.route('/upload_pfp', methods=['POST'])
 def upload_pfp():
@@ -185,9 +198,11 @@ system_logs_collection = db.get_collection('system_logs')
 deadlines_collection = db.get_collection('deadlines')
 holidays_collection = db.get_collection('holidays')
 academic_records_collection = db.get_collection('academic_records')
+users_collection = db.get_collection('users')
 # New Collections for Persistence
 board_collection = db.get_collection('board_data')
 manual_courses_collection = db.get_collection('manual_courses')
+semester_results_collection = db.get_collection('semester_results')
 
 
 # --- Helper Functions ---
@@ -203,6 +218,96 @@ def create_system_log(user_email, action, description):
 def calculate_percent(attended, total):
     """Calculates the attendance percentage."""
     return round((attended / total) * 100, 1) if total > 0 else 0
+
+# --- IPU Grading Helper Functions ---
+def get_ipu_grade(percentage):
+    """Returns IPU grade and grade point based on percentage."""
+    if percentage >= 90:
+        return 'O', 10
+    elif percentage >= 75:
+        return 'A+', 9
+    elif percentage >= 65:
+        return 'A', 8
+    elif percentage >= 55:
+        return 'B+', 7
+    elif percentage >= 50:
+        return 'B', 6
+    elif percentage >= 45:
+        return 'C', 5
+    elif percentage >= 40:
+        return 'P', 4
+    else:
+        return 'F', 0
+
+def calculate_subject_result(subject):
+    """
+    Calculates total marks, percentage, grade and grade point for a subject.
+    IPU formula: Theory (40 internal + 60 external) + Practical (40 internal + 60 external)
+    """
+    subject_type = subject.get('type', 'theory')
+    total_marks = 0
+    max_marks = 0
+    
+    if subject_type in ['theory', 'both']:
+        internal_theory = subject.get('internal_theory', 0) or 0
+        external_theory = subject.get('external_theory', 0) or 0
+        total_marks += internal_theory + external_theory
+        max_marks += 100  # 40 internal + 60 external
+    
+    if subject_type in ['practical', 'both']:
+        internal_practical = subject.get('internal_practical', 0) or 0
+        external_practical = subject.get('external_practical', 0) or 0
+        total_marks += internal_practical + external_practical
+        max_marks += 100  # 40 internal + 60 external
+    
+    percentage = round((total_marks / max_marks) * 100, 2) if max_marks > 0 else 0
+    grade, grade_point = get_ipu_grade(percentage)
+    
+    return {
+        'total_marks': total_marks,
+        'max_marks': max_marks,
+        'percentage': percentage,
+        'grade': grade,
+        'grade_point': grade_point
+    }
+
+def calculate_sgpa(subjects):
+    """
+    Calculates SGPA using IPU formula.
+    SGPA = Σ(Grade Point × Credits) / Σ(Credits)
+    """
+    total_credits = 0
+    weighted_sum = 0
+    
+    for subject in subjects:
+        credits = subject.get('credits', 0) or 0
+        grade_point = subject.get('grade_point', 0) or 0
+        weighted_sum += grade_point * credits
+        total_credits += credits
+    
+    return round(weighted_sum / total_credits, 2) if total_credits > 0 else 0
+
+def calculate_cgpa(all_semester_results):
+    """
+    Calculates CGPA across all semesters using IPU Ordinance 11 formula.
+    CGPA = ΣΣ(Cni × Gni) / ΣΣ(Cni)
+    Where Cni = credits of ith course of nth semester
+          Gni = grade point of ith course of nth semester
+    This sums across ALL courses from ALL semesters.
+    """
+    total_credits = 0
+    weighted_sum = 0
+    
+    for result in all_semester_results:
+        # Sum across each subject in this semester
+        subjects = result.get('subjects', [])
+        for subject in subjects:
+            credits = subject.get('credits', 0) or 0
+            grade_point = subject.get('grade_point', 0) or 0
+            weighted_sum += grade_point * credits
+            total_credits += credits
+    
+    return round(weighted_sum / total_credits, 2) if total_credits > 0 else 0
 
 def calculate_bunk_guard(attended, total, required_percent=75):
     """Calculates bunk status and messages using a potentially custom threshold."""
@@ -285,8 +390,10 @@ def get_dashboard_data():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     try:
         user_email = session['user']['email']
-        user_prefs_doc = timetable_collection.find_one({'owner_email': user_email}, {'preferences': 1})
-        required_percent = user_prefs_doc.get('preferences', {}).get('threshold', 75) if user_prefs_doc else 75
+        # Fetch preferences from the correct collection
+        user_prefs_doc = preferences_collection.find_one({'owner_email': user_email})
+        prefs = user_prefs_doc.get('preferences', {}) if user_prefs_doc else {}
+        required_percent = int(prefs.get('attendance_threshold', 75))
 
         current_semester = int(request.args.get('semester', 1)) 
         # Filter by semester when provided
@@ -1926,6 +2033,9 @@ def get_preferences():
 
 
 
+
+
+
 @api_bp.route('/notifications/subscribe', methods=['POST'])
 def subscribe():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -2013,3 +2123,130 @@ def analytics_monthly_trend():
         print(f"---! ERROR IN /api/analytics/monthly_trend: {e} !---")
         traceback.print_exc()
         return jsonify({"error": "Could not fetch monthly analytics."}), 500
+
+
+# --- SEMESTER RESULTS (IPU Grading) ---
+
+@api_bp.route('/semester_results', methods=['GET'])
+def get_semester_results():
+    """Get all semester results for the user."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    results = list(semester_results_collection.find({'owner_email': user_email}).sort('semester', 1))
+    
+    # Recalculate CGPA for all results
+    if results:
+        cgpa = calculate_cgpa(results)
+        for result in results:
+            result['cgpa'] = cgpa
+    
+    return Response(json_util.dumps(results), mimetype='application/json')
+
+
+@api_bp.route('/semester_results/<int:semester>', methods=['GET'])
+def get_semester_result(semester):
+    """Get a specific semester result."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    result = semester_results_collection.find_one({'owner_email': user_email, 'semester': semester})
+    
+    if not result:
+        return jsonify({"error": "Semester result not found"}), 404
+    
+    # Get all results to calculate CGPA
+    all_results = list(semester_results_collection.find({'owner_email': user_email}))
+    result['cgpa'] = calculate_cgpa(all_results)
+    
+    return Response(json_util.dumps(result), mimetype='application/json')
+
+
+@api_bp.route('/semester_results', methods=['POST'])
+def save_semester_result():
+    """Save or update a semester result with auto-calculations."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    data = request.json
+    semester = int(data.get('semester', 0))
+    
+    if not semester or semester < 1 or semester > 8:
+        return jsonify({"error": "Invalid semester (must be 1-8)"}), 400
+    
+    subjects = data.get('subjects', [])
+    if not subjects:
+        return jsonify({"error": "At least one subject is required"}), 400
+    
+    # Calculate results for each subject
+    processed_subjects = []
+    total_credits = 0
+    
+    for subject in subjects:
+        result = calculate_subject_result(subject)
+        processed_subject = {
+            'name': subject.get('name', 'Unnamed Subject'),
+            'code': subject.get('code', ''),
+            'credits': int(subject.get('credits', 0) or 0),
+            'type': subject.get('type', 'theory'),
+            'internal_theory': subject.get('internal_theory'),
+            'external_theory': subject.get('external_theory'),
+            'internal_practical': subject.get('internal_practical'),
+            'external_practical': subject.get('external_practical'),
+            'total_marks': result['total_marks'],
+            'max_marks': result['max_marks'],
+            'percentage': result['percentage'],
+            'grade': result['grade'],
+            'grade_point': result['grade_point']
+        }
+        processed_subjects.append(processed_subject)
+        total_credits += processed_subject['credits']
+    
+    # Calculate SGPA
+    sgpa = calculate_sgpa(processed_subjects)
+    
+    # Create result document
+    result_doc = {
+        'owner_email': user_email,
+        'semester': semester,
+        'subjects': processed_subjects,
+        'total_credits': total_credits,
+        'sgpa': sgpa,
+        'timestamp': datetime.utcnow()
+    }
+    
+    # Upsert the result
+    semester_results_collection.update_one(
+        {'owner_email': user_email, 'semester': semester},
+        {'$set': result_doc},
+        upsert=True
+    )
+    
+    # Get all results to calculate CGPA
+    all_results = list(semester_results_collection.find({'owner_email': user_email}))
+    cgpa = calculate_cgpa(all_results)
+    result_doc['cgpa'] = cgpa
+    
+    create_system_log(user_email, "Result Updated", f"Updated semester {semester} result (SGPA: {sgpa}, CGPA: {cgpa})")
+    
+    return Response(json_util.dumps({"success": True, "result": result_doc}), mimetype='application/json')
+
+
+@api_bp.route('/semester_results/<int:semester>', methods=['DELETE'])
+def delete_semester_result(semester):
+    """Delete a semester result."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    result = semester_results_collection.delete_one({'owner_email': user_email, 'semester': semester})
+    
+    if result.deleted_count == 0:
+        return jsonify({"error": "Semester result not found"}), 404
+    
+    create_system_log(user_email, "Result Deleted", f"Deleted semester {semester} result")
+    
+    return jsonify({"success": True})

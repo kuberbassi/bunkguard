@@ -27,7 +27,7 @@ const Input: React.FC<InputProps> = ({
                 <input
                     className={`
                         w-full px-4 py-3 rounded-xl
-                        bg-surface-container-high/50
+                        bg-surface-container-highest
                         border transition-all duration-200
                         text-on-surface placeholder-on-surface-variant/50
                         disabled:opacity-50 disabled:cursor-not-allowed

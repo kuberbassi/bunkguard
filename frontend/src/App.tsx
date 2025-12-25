@@ -27,6 +27,7 @@ const Courses = lazy(() => import('./pages/Courses.tsx'));
 const Practicals = lazy(() => import('./pages/Practicals.tsx'));
 const Board = lazy(() => import('./pages/Board.tsx'));
 const Notifications = lazy(() => import('./pages/Notifications.tsx'));
+const Results = lazy(() => import('./pages/Results.tsx'));
 
 
 
@@ -160,6 +161,16 @@ const AppRoutes: React.FC = () => {
             <ProtectedRoute>
               <Suspense fallback={<LoadingSpinner fullScreen />}>
                 <Notifications />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/results"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingSpinner fullScreen />}>
+                <Results />
               </Suspense>
             </ProtectedRoute>
           }

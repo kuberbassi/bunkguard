@@ -50,6 +50,32 @@ export interface AcademicRecord {
     timestamp?: string;
 }
 
+export interface SubjectResult {
+    name: string;
+    code?: string;
+    credits: number;
+    type: 'theory' | 'practical' | 'both' | 'nues';
+    internal_theory?: number;
+    external_theory?: number;
+    internal_practical?: number;
+    external_practical?: number;
+    total_marks?: number;
+    max_marks?: number;
+    percentage?: number;
+    grade?: string;
+    grade_point?: number;
+}
+
+export interface SemesterResult {
+    _id?: string;
+    semester: number;
+    subjects: SubjectResult[];
+    total_credits: number;
+    sgpa: number;
+    cgpa?: number;
+    timestamp?: string;
+}
+
 export interface AttendanceLog {
     _id: string;
     owner_email: string;

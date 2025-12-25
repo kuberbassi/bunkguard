@@ -8,7 +8,8 @@ import type {
     Deadline,
     Holiday,
     SystemLog,
-    AcademicRecord
+    AcademicRecord,
+    SemesterResult
 } from '@/types';
 
 export const attendanceService = {
@@ -240,7 +241,7 @@ export const attendanceService = {
         return response.data;
     },
 
-    updatePreferences: async (preferences: Preferences): Promise<void> => {
+    updatePreferences: async (preferences: Partial<Preferences>): Promise<void> => {
         await api.post('/api/preferences', preferences);
     },
 
@@ -353,6 +354,26 @@ export const attendanceService = {
         await api.post('/api/update_academic_record', data);
     },
 
+    // Semester Results (IPU Grading)
+    getSemesterResults: async (): Promise<SemesterResult[]> => {
+        const response = await api.get('/api/semester_results');
+        return response.data;
+    },
+
+    getSemesterResult: async (semester: number): Promise<SemesterResult> => {
+        const response = await api.get(`/api/semester_results/${semester}`);
+        return response.data;
+    },
+
+    saveSemesterResult: async (data: Omit<SemesterResult, '_id' | 'timestamp'>): Promise<{ success: boolean; result: SemesterResult }> => {
+        const response = await api.post('/api/semester_results', data);
+        return response.data;
+    },
+
+    deleteSemesterResult: async (semester: number): Promise<void> => {
+        await api.delete(`/api/semester_results/${semester}`);
+    },
+
     // Notices
     getNotices: async () => {
         const response = await api.get('/api/notices');
@@ -367,6 +388,14 @@ export const attendanceService = {
 
     getGoogleTasks: async () => {
         const response = await api.get('/api/integrations/tasks');
+        return response.data;
+    },
+
+
+
+    // Notifications
+    getNotifications: async () => {
+        const response = await api.get('/api/notifications');
         return response.data;
     },
 };

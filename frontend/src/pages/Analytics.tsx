@@ -154,7 +154,7 @@ const Analytics: React.FC = () => {
                 <GlassCard className="p-6 !bg-surface flex flex-col">
                     <div className="w-full flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-tertiary/10 rounded-lg text-tertiary">
+                            <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                 <TrendingUp size={20} />
                             </div>
                             <h3 className="text-lg font-bold text-on-surface">Focus Areas</h3>

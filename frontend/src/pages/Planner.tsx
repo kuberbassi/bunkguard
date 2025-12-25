@@ -270,8 +270,8 @@ const Planner: React.FC = () => {
                                     <GlassCard hover className={`relative overflow-hidden group h-full flex flex-col p-5 transition-all ${task.completed ? 'opacity-60 grayscale bg-surface-container/50' : ''}`}>
                                         <div className="flex justify-between items-start mb-3">
                                             <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${task.source === 'classroom' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200' :
-                                                    task.source === 'google' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' :
-                                                        'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200'
+                                                task.source === 'google' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200' :
+                                                    'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-200'
                                                 }`}>
                                                 {task.source === 'classroom' ? 'Classroom' : task.source === 'google' ? 'Google Task' : 'Manual'}
                                             </div>

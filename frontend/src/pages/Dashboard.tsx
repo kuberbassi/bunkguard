@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import {
     Plus, Check, X, Calendar, Edit2, Trash2,
-    Target, TrendingUp, AlertCircle, BookOpen
+    Target, TrendingUp, AlertCircle, BookOpen,
+    Trophy, CalendarDays, ArrowRight
 } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
@@ -45,10 +47,25 @@ const Dashboard: React.FC = () => {
     const { currentSemester, setCurrentSemester } = useSemester();
 
     const [availableSemesters, setAvailableSemesters] = useState<number[]>([]);
+    const [cgpa, setCgpa] = useState<number | null>(null);
+    const [targetThreshold, setTargetThreshold] = useState<number>(75);
 
     useEffect(() => {
         loadDashboard();
+        loadCGPA();
+        loadPreferences();
     }, [currentSemester]);
+
+    const loadPreferences = async () => {
+        try {
+            const prefs = await attendanceService.getPreferences();
+            if (prefs?.attendance_threshold) {
+                setTargetThreshold(prefs.attendance_threshold);
+            }
+        } catch (e) {
+            // Use default
+        }
+    };
 
     const loadDashboard = async () => {
         try {
@@ -74,6 +91,21 @@ const Dashboard: React.FC = () => {
             showToast('error', 'Failed to load dashboard');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadCGPA = async () => {
+        try {
+            const results = await attendanceService.getSemesterResults();
+            if (results && results.length > 0) {
+                // Get the latest CGPA (from last result)
+                const latest = results[results.length - 1];
+                if (latest.cgpa !== undefined) {
+                    setCgpa(latest.cgpa);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load CGPA:', error);
         }
     };
 
@@ -205,35 +237,71 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Secondary Metrics */}
-                <div className="flex flex-col gap-6">
-                    <div className="flex gap-6">
-                        <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                    <BookOpen className="w-6 h-6" />
+                <div className="flex flex-col gap-4">
+                    {/* Quick Stats Row */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <GlassCard className="flex flex-col justify-center p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                    <BookOpen className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Subjects</p>
-                                    <p className="text-3xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
+                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Subjects</p>
+                                    <p className="text-2xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
                                 </div>
                             </div>
                         </GlassCard>
 
-                        <GlassCard className="flex-1 flex flex-col justify-center p-6 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
-                                    <Target className="w-6 h-6" />
+                        <GlassCard className="flex flex-col justify-center p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                    <Target className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Target</p>
-                                    <p className="text-3xl font-bold font-display text-on-surface">75%</p>
+                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Target</p>
+                                    <p className="text-2xl font-bold font-display text-on-surface">{targetThreshold}%</p>
+                                </div>
+                            </div>
+                        </GlassCard>
+
+                        {/* CGPA Widget - Not clickable */}
+                        <GlassCard className="flex flex-col justify-center p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                    <Trophy className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">CGPA</p>
+                                    <p className="text-2xl font-bold font-display text-primary">
+                                        {cgpa !== null ? cgpa.toFixed(2) : '—'}
+                                    </p>
                                 </div>
                             </div>
                         </GlassCard>
                     </div>
 
-                    {/* Notices Widget - Takes remaining height in this column or fixed height */}
-                    <div className="flex-1 min-h-[300px]">
+                    {/* Quick Actions */}
+                    <div className="flex gap-2">
+                        <Link
+                            to="/calendar"
+                            className="flex-1 flex items-center gap-3 py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-sm font-medium text-on-surface"
+                        >
+                            <CalendarDays size={18} className="text-primary shrink-0" />
+                            <span className="flex-1">Calendar</span>
+                            <ArrowRight size={14} className="text-on-surface-variant shrink-0" />
+                        </Link>
+                        <Link
+                            to="/results"
+                            className="flex-1 flex items-center gap-3 py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-sm font-medium text-on-surface"
+                        >
+                            <Trophy size={18} className="text-secondary shrink-0" />
+                            <span className="flex-1">Results</span>
+                            <ArrowRight size={14} className="text-on-surface-variant shrink-0" />
+                        </Link>
+                    </div>
+
+                    {/* Notices Widget */}
+                    <div className="flex-1 min-h-[240px]">
                         <NoticesWidget />
                     </div>
                 </div>
@@ -277,7 +345,7 @@ const Dashboard: React.FC = () => {
                         <AnimatePresence>
                             {dashboardData?.subjects?.map((subject) => {
                                 const percentage = subject.attendance_percentage;
-                                const status = percentage >= 75 ? 'safe' : 'danger';
+                                const status = percentage >= targetThreshold ? 'safe' : 'danger';
                                 const config = STATUS_CONFIG[status];
 
                                 return (
