@@ -924,12 +924,7 @@ const Results: React.FC = () => {
                                                 </table>
 
                                                 <div className="mt-4 flex justify-between items-center">
-                                                    <Button
-                                                        variant="text"
-                                                        onClick={() => setSelectedSemester(result.semester)}
-                                                    >
-                                                        Edit Results
-                                                    </Button>
+
                                                     <Button
                                                         variant="text"
                                                         className="text-error"

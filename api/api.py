@@ -248,7 +248,7 @@ def calculate_subject_result(subject):
     total_marks = 0
     max_marks = 0
     
-    if subject_type in ['theory', 'both']:
+    if subject_type in ['theory', 'both', 'nues']:
         internal_theory = subject.get('internal_theory', 0) or 0
         external_theory = subject.get('external_theory', 0) or 0
         total_marks += internal_theory + external_theory
