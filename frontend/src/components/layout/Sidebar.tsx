@@ -53,6 +53,7 @@ const navigationGroups = [
             { name: 'Calendar', href: '/calendar', icon: CalendarDays },
             { name: 'Planner', href: '/planner', icon: BookOpen },
             { name: 'Board', href: '/board', icon: StickyNote },
+            // { name: 'Brain Dump', href: '/braindump', icon: Lightbulb }, // Temporarily hidden
         ]
     },
 ];
@@ -114,8 +115,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                                 <button
                                     onClick={() => toggleGroup(group.name)}
                                     className={`w-full flex items-center justify-between px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors rounded-lg ${groupActive
-                                            ? 'text-primary bg-primary/5'
-                                            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                                        ? 'text-primary bg-primary/5'
+                                        : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
                                         }`}
                                 >
                                     <span>{group.name}</span>
@@ -150,14 +151,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                                                     >
                                                         <div
                                                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
-                                                                    ? 'bg-secondary-container text-on-secondary-container font-semibold'
-                                                                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                                                                ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                                                                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                                                                 } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
                                                         >
                                                             <item.icon
                                                                 className={`w-5 h-5 shrink-0 ${isActive
-                                                                        ? 'text-on-secondary-container'
-                                                                        : 'text-on-surface-variant group-hover:text-primary transition-colors'
+                                                                    ? 'text-on-secondary-container'
+                                                                    : 'text-on-surface-variant group-hover:text-primary transition-colors'
                                                                     }`}
                                                                 strokeWidth={isActive ? 2.5 : 2}
                                                             />
@@ -185,14 +186,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                     >
                         <div
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${location.pathname === '/settings'
-                                    ? 'bg-secondary-container text-on-secondary-container font-semibold'
-                                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                                ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                                 } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
                         >
                             <Settings
                                 className={`w-5 h-5 shrink-0 ${location.pathname === '/settings'
-                                        ? 'text-on-secondary-container'
-                                        : 'text-on-surface-variant group-hover:text-primary transition-colors'
+                                    ? 'text-on-secondary-container'
+                                    : 'text-on-surface-variant group-hover:text-primary transition-colors'
                                     }`}
                                 strokeWidth={location.pathname === '/settings' ? 2.5 : 2}
                             />

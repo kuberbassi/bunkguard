@@ -28,6 +28,9 @@ const Practicals = lazy(() => import('./pages/Practicals.tsx'));
 const Board = lazy(() => import('./pages/Board.tsx'));
 const Notifications = lazy(() => import('./pages/Notifications.tsx'));
 const Results = lazy(() => import('./pages/Results.tsx'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.tsx'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService.tsx'));
+const BrainDump = lazy(() => import('./pages/BrainDump.tsx'));
 
 
 
@@ -64,6 +67,24 @@ const AppRoutes: React.FC = () => {
           <PublicRoute>
             <Login />
           </PublicRoute>
+        }
+      />
+
+      {/* Public Legal Pages */}
+      <Route
+        path="/privacy"
+        element={
+          <Suspense fallback={<LoadingSpinner fullScreen />}>
+            <PrivacyPolicy />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/terms"
+        element={
+          <Suspense fallback={<LoadingSpinner fullScreen />}>
+            <TermsOfService />
+          </Suspense>
         }
       />
 
@@ -171,6 +192,16 @@ const AppRoutes: React.FC = () => {
             <ProtectedRoute>
               <Suspense fallback={<LoadingSpinner fullScreen />}>
                 <Results />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/braindump"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingSpinner fullScreen />}>
+                <BrainDump />
               </Suspense>
             </ProtectedRoute>
           }

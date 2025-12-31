@@ -3,6 +3,11 @@
 import os
 import sys
 
+# Fix Windows console encoding for emoji/unicode output
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 # Add project root to path
 sys.path.insert(0, os.path.dirname(__file__))
 

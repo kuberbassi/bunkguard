@@ -13,8 +13,9 @@ import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { attendanceService } from '@/services/attendance.service';
-import { classroomService } from '@/services/google-classroom.service';
-import type { ClassroomCourseWork } from '@/services/google-classroom.service';
+// Classroom imports removed - assignments shown in Notifications page only
+// import { classroomService } from '@/services/google-classroom.service';
+// import type { ClassroomCourseWork } from '@/services/google-classroom.service';
 import { useToast } from '@/components/ui/Toast';
 import Modal from '@/components/ui/Modal';
 import { formatDate } from '@/utils/formatters';
@@ -51,13 +52,13 @@ const Planner: React.FC = () => {
             // 1. Fetch Manual Deadlines
             const manualDeadlines = await attendanceService.getDeadlines();
 
-            // 2. Fetch Classroom Assignments
-            let classroomWork: ClassroomCourseWork[] = [];
-            try {
-                classroomWork = await classroomService.getAllAssignments();
-            } catch (err) {
-                console.warn("Classroom fetch failed", err);
-            }
+            // 2. Classroom assignments removed from planner (kept in Notifications page only)
+            // let classroomWork: ClassroomCourseWork[] = [];
+            // try {
+            //     classroomWork = await classroomService.getAllAssignments();
+            // } catch (err) {
+            //     console.warn("Classroom fetch failed", err);
+            // }
 
             // 3. Fetch Google Tasks
             let googleTasks: any[] = [];
@@ -81,37 +82,14 @@ const Planner: React.FC = () => {
                 id: t.id,
                 title: t.title,
                 dueDate: t.due ? new Date(t.due) : undefined,
-                courseName: 'Google Task',
-                source: 'classroom', // Re-using styling for now, or add 'google' source
+                courseName: 'Google Tasks',
+                source: 'google',
                 completed: t.status === 'completed',
-                link: 'https://tasks.google.com' // Generic link
+                link: 'https://tasks.google.com'
             }));
 
-            // Make Google Tasks visually distinct if needed, for now 'Classroom' style (Yellow) is okay or we update PlannerItem type
-
-
-            const classItems: PlannerItem[] = classroomWork.map((w: any) => {
-                let due = undefined;
-                if (w.dueDate) {
-                    due = new Date(w.dueDate.year, w.dueDate.month - 1, w.dueDate.day);
-                    if (w.dueTime) {
-                        due.setHours(w.dueTime.hours);
-                        due.setMinutes(w.dueTime.minutes);
-                    }
-                }
-                return {
-                    id: w.id,
-                    title: w.title,
-                    dueDate: due,
-                    courseName: w.courseName || 'Classroom',
-                    source: 'classroom',
-                    link: w.alternateLink,
-                    completed: w.state === 'TURNED_IN' || w.state === 'RETURNED',
-                    type: w.workType
-                };
-            });
-
-            const allTasks = [...manualItems, ...classItems, ...googleTaskItems].sort((a, b) => {
+            // Classroom items removed - only manual tasks and Google Tasks now
+            const allTasks = [...manualItems, ...googleTaskItems].sort((a, b) => {
                 // Sort by Completed (false first), then Date
                 if (a.completed !== b.completed) return a.completed ? 1 : -1;
                 if (!a.dueDate) return 1;

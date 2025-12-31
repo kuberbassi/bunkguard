@@ -178,7 +178,13 @@ const Dashboard: React.FC = () => {
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                     <h1 className="text-4xl md:text-5xl font-bold font-display text-on-surface mb-2 tracking-tight">
-                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}!
+                        Good {(() => {
+                            const hour = new Date().getHours();
+                            if (hour >= 5 && hour < 12) return 'Morning';
+                            if (hour >= 12 && hour < 17) return 'Afternoon';
+                            if (hour >= 17 && hour < 21) return 'Evening';
+                            return 'Night';
+                        })()}!
                         <span className="ml-3 inline-block animate-bounce">👋</span>
                     </h1>
                     <p className="text-lg text-on-surface-variant font-medium">

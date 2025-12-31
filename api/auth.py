@@ -69,8 +69,10 @@ def google_auth():
         })
         
     except Exception as e:
+        import traceback
         print(f"Google Auth Error: {e}")
-        return jsonify({"error": "Authentication failed"}), 500
+        traceback.print_exc()
+        return jsonify({"error": f"Authentication failed: {str(e)}"}), 500
 
 @auth_bp.route('/login')
 def login():

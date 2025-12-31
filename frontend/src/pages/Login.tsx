@@ -24,7 +24,7 @@ const Login: React.FC = () => {
             console.error('❌ Google Login Failed:', error);
             alert(`Google Login Error: ${JSON.stringify(error)}`);
         },
-        scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/tasks.readonly'
+        scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks'
     });
 
     return (
@@ -68,7 +68,10 @@ const Login: React.FC = () => {
                     </Button>
 
                     <p className="mt-8 text-xs text-on-surface-variant dark:text-dark-surface-variant opacity-70">
-                        By continuing, you agree to our Terms of Service
+                        By continuing, you agree to our{' '}
+                        <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
+                        {' '}and{' '}
+                        <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
                     </p>
                 </Card>
             </motion.div>
