@@ -1,6 +1,19 @@
 # 🎓 AcadHub
 
-**AcadHub** is a comprehensive student assistant application designed to help you manage your academic life. Track attendance, manage manual courses, whiteboard your ideas, and stay updated with classroom announcements—all in one place.
+> **An Agentic AI Prompt Engineering Project**
+
+**AcadHub** is a comprehensive student assistant application built entirely through **agentic AI prompt engineering**. This project demonstrates the power of AI-assisted development, where complex features—from OAuth integrations to real-time data syncing—were implemented through carefully crafted prompts and iterative AI collaboration.
+
+## 🤖 About This Project
+
+This application showcases **prompt engineering in action**. Every feature, component, and integration was developed using AI agents as coding partners. The project serves as a practical demonstration of:
+
+- **Agentic AI Development**: Leveraging AI assistants to write, debug, and refine production-ready code
+- **Iterative Prompt Engineering**: Crafting precise prompts to achieve specific technical outcomes
+- **Human-AI Collaboration**: Combining human creativity with AI capabilities for rapid development
+- **Full-Stack Implementation**: From React frontends to Flask backends, all built through AI interaction
+
+---
 
 ## ✨ Features
 
@@ -46,7 +59,7 @@
 *   Python 3.x & pip
 *   MongoDB Connection String
 
-### installation
+### Installation
 
 1.  **Clone the repository**
     ```bash
