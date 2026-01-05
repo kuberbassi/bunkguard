@@ -513,7 +513,7 @@ const Results: React.FC = () => {
 
             {/* IPU Grading Info - Collapsible */}
             <details className="group">
-                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden w-full">
                     <GlassCard className="w-full p-4 grid grid-cols-[1fr_auto] items-center gap-4 hover:bg-surface-container-high/50 transition-colors">
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -617,7 +617,7 @@ const Results: React.FC = () => {
                         </Button>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         {subjects.map((subject, index) => {
                             const result = calculateLocalResult(subject);
                             return (

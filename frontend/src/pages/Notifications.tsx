@@ -132,18 +132,21 @@ const Notifications: React.FC = () => {
                                                         {item.sender?.displayName}
                                                     </span>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    icon={<ExternalLink size={14} />}
-                                                    onClick={() => window.open(item.alternateLink, '_blank')}
-                                                >
-                                                    Open
-                                                </Button>
+
                                             </div>
-                                            <p className="text-sm text-on-surface-variant mt-2 whitespace-pre-wrap line-clamp-3">
+                                            <p className="text-sm text-on-surface-variant mt-2 whitespace-pre-wrap line-clamp-3 pr-16">
                                                 {item.text}
                                             </p>
+                                        </div>
+                                        <div className="absolute top-4 right-4">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                icon={<ExternalLink size={14} />}
+                                                onClick={() => window.open(item.alternateLink, '_blank')}
+                                            >
+                                                Open
+                                            </Button>
                                         </div>
                                     </GlassCard>
                                 </motion.div>

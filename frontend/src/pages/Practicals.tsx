@@ -232,7 +232,7 @@ const Practicals: React.FC = () => {
 
                                                 <Button
                                                     variant={practicals.hardcopy ? "filled" : "outlined"}
-                                                    className={`w-full !flex !flex-row !items-center justify-center gap-2 h-10 text-xs font-bold tracking-wide transition-all
+                                                    className={`w-full justify-center h-10 text-xs font-bold tracking-wide transition-all
                                                         ${practicals.hardcopy
                                                             ? '!bg-emerald-500 hover:!bg-emerald-600 !text-white border-transparent shadow-md shadow-emerald-500/20'
                                                             : 'border-outline-variant/40 text-on-surface-variant/80 hover:border-primary hover:text-primary hover:bg-primary/5'
@@ -240,7 +240,9 @@ const Practicals: React.FC = () => {
                                                     `}
                                                     onClick={() => handleUpdate(subject._id, { hardcopy: !practicals.hardcopy })}
                                                 >
-                                                    {practicals.hardcopy ? <><CheckCircle size={14} strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={14} className="opacity-50" /> MARK SUBMITTED</>}
+                                                    <div className="flex items-center gap-2">
+                                                        {practicals.hardcopy ? <><CheckCircle size={14} strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={14} className="opacity-50" /> MARK SUBMITTED</>}
+                                                    </div>
                                                 </Button>
                                             </div>
                                         )}
@@ -275,7 +277,7 @@ const Practicals: React.FC = () => {
                                                 {/* Hardcopy for Assignments */}
                                                 <Button
                                                     variant={assignments.hardcopy ? "filled" : "outlined"}
-                                                    className={`w-full !flex !flex-row !items-center justify-center gap-2 h-10 text-xs font-bold tracking-wide transition-all
+                                                    className={`w-full justify-center h-10 text-xs font-bold tracking-wide transition-all
                                                         ${assignments.hardcopy
                                                             ? '!bg-emerald-500 hover:!bg-emerald-600 !text-white border-transparent shadow-md shadow-emerald-500/20'
                                                             : 'border-outline-variant/40 text-on-surface-variant/80 hover:border-primary hover:text-primary hover:bg-primary/5'
@@ -283,7 +285,9 @@ const Practicals: React.FC = () => {
                                                     `}
                                                     onClick={() => handleAssignmentUpdate(subject._id, { hardcopy: !assignments.hardcopy })}
                                                 >
-                                                    {assignments.hardcopy ? <><CheckCircle size={14} strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={14} className="opacity-50" /> MARK SUBMITTED</>}
+                                                    <div className="flex items-center gap-2">
+                                                        {assignments.hardcopy ? <><CheckCircle size={14} strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={14} className="opacity-50" /> MARK SUBMITTED</>}
+                                                    </div>
                                                 </Button>
                                             </div>
                                         )}
