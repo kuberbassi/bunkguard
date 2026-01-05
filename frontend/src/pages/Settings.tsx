@@ -21,7 +21,7 @@ interface UserPreferences {
     attendance_threshold: number;
     warning_threshold: number;
     counting_mode: 'classes' | 'percentage';
-    notifications_enabled: boolean;
+
     accent_color: string;
 }
 
@@ -114,7 +114,7 @@ const Settings: React.FC = () => {
         attendance_threshold: 75,
         warning_threshold: 76,
         counting_mode: 'percentage',
-        notifications_enabled: false,
+
         accent_color: accentColor || '#6750A4'
     });
 
@@ -184,7 +184,6 @@ const Settings: React.FC = () => {
                     attendance_threshold: prefs.attendance_threshold ?? prev.attendance_threshold,
                     warning_threshold: prefs.warning_threshold ?? prev.warning_threshold,
                     counting_mode: prefs.counting_mode ?? prev.counting_mode,
-                    notifications_enabled: prefs.notifications_enabled ?? prev.notifications_enabled,
                     accent_color: prefs.accent_color ?? accentColor // Use context as fallback
                 }));
                 // Sync global theme

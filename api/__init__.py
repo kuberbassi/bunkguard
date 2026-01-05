@@ -78,14 +78,14 @@ def create_app():
     from .auth import auth_bp
     from .classroom import classroom_bp
     from .keep import keep_bp
-    from .push import push_bp
+
     from .rate_limiter import create_limiter
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(classroom_bp)
     app.register_blueprint(keep_bp)
-    app.register_blueprint(push_bp)
+
     
     # Initialize Rate Limiter
     limiter = create_limiter(app)

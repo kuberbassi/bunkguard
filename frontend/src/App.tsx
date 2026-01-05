@@ -1,6 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
-import api from './services/api';
-import { pushManager } from './utils/pushNotifications';
+import React, { Suspense, lazy } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -210,32 +208,8 @@ const AppRoutes: React.FC = () => {
 
 // Main App Component
 const AppContent: React.FC = () => {
-  const { user } = useAuth();
 
-  // Auto-request notification permission on load (if supported and user is logged in)
-  useEffect(() => {
-    if (user) {
-      const initPush = async () => {
-        try {
-          const hasPermission = await pushManager.initialize();
-          if (hasPermission) {
-            // Check if we need to subscribe
-            const existingSub = await pushManager.getSubscription();
-            if (!existingSub) {
-              // Fetch key and subscribe
-              const res = await api.get('/api/push/vapid_public_key');
-              if (res.data?.publicKey) {
-                await pushManager.subscribe(res.data.publicKey);
-              }
-            }
-          }
-        } catch (e) {
-          console.log("Push init skipped/failed", e);
-        }
-      };
-      initPush();
-    }
-  }, [user]);
+
 
   return (
     <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
