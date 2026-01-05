@@ -514,15 +514,19 @@ const Results: React.FC = () => {
             {/* IPU Grading Info - Collapsible */}
             <details className="group">
                 <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden w-full">
-                    <GlassCard className="w-full p-4 grid grid-cols-[1fr_auto] items-center gap-4 hover:bg-surface-container-high/50 transition-colors">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                <AlertCircle className="w-4 h-4 text-primary" />
+                    <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden w-full">
+                        <GlassCard className="w-full p-4 hover:bg-surface-container-high/50 transition-colors">
+                            <div className="grid grid-cols-[1fr_auto] items-center gap-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                        <AlertCircle className="w-4 h-4 text-primary" />
+                                    </div>
+                                    <span className="font-semibold text-on-surface truncate">IPU Grading Reference</span>
+                                </div>
+                                <ChevronDown className="w-5 h-5 text-on-surface-variant group-open:rotate-180 transition-transform" />
                             </div>
-                            <span className="font-semibold text-on-surface truncate">IPU Grading Reference</span>
-                        </div>
-                        <ChevronDown className="w-5 h-5 text-on-surface-variant group-open:rotate-180 transition-transform" />
-                    </GlassCard>
+                        </GlassCard>
+                    </summary>
                 </summary>
                 <div className="mt-2">
                     <GlassCard className="p-5">
@@ -617,7 +621,7 @@ const Results: React.FC = () => {
                         </Button>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {subjects.map((subject, index) => {
                             const result = calculateLocalResult(subject);
                             return (

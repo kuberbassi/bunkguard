@@ -116,37 +116,39 @@ const Notifications: React.FC = () => {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.05 }}
                                 >
-                                    <GlassCard className="p-5 flex gap-4">
-                                        <div className="pt-1">
-                                            <div className="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold">
-                                                {item.courseName?.charAt(0) || 'C'}
-                                            </div>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <div>
-                                                    <h3 className="font-bold text-on-surface">{item.courseName}</h3>
-                                                    <span className="text-xs text-on-surface-variant flex items-center gap-1">
-                                                        {new Date(item.creationTime).toLocaleDateString()}
-                                                        <span className="w-1 h-1 rounded-full bg-outline-variant" />
-                                                        {item.sender?.displayName}
-                                                    </span>
+                                    <GlassCard className="p-5">
+                                        <div className="flex gap-4 relative">
+                                            <div className="pt-1">
+                                                <div className="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container font-bold">
+                                                    {item.courseName?.charAt(0) || 'C'}
                                                 </div>
-
                                             </div>
-                                            <p className="text-sm text-on-surface-variant mt-2 whitespace-pre-wrap line-clamp-3 pr-16">
-                                                {item.text}
-                                            </p>
-                                        </div>
-                                        <div className="absolute top-4 right-4">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                icon={<ExternalLink size={14} />}
-                                                onClick={() => window.open(item.alternateLink, '_blank')}
-                                            >
-                                                Open
-                                            </Button>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <div>
+                                                        <h3 className="font-bold text-on-surface">{item.courseName}</h3>
+                                                        <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                                                            {new Date(item.creationTime).toLocaleDateString()}
+                                                            <span className="w-1 h-1 rounded-full bg-outline-variant" />
+                                                            {item.sender?.displayName}
+                                                        </span>
+                                                    </div>
+
+                                                </div>
+                                                <p className="text-sm text-on-surface-variant mt-2 whitespace-pre-wrap line-clamp-3 pr-16">
+                                                    {item.text}
+                                                </p>
+                                            </div>
+                                            <div className="absolute top-0 right-0">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    icon={<ExternalLink size={14} />}
+                                                    onClick={() => window.open(item.alternateLink, '_blank')}
+                                                >
+                                                    Open
+                                                </Button>
+                                            </div>
                                         </div>
                                     </GlassCard>
                                 </motion.div>
