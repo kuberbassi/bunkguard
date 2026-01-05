@@ -22,6 +22,13 @@ if __name__ == '__main__':
     print(f"📍 Server running at: http://localhost:5000")
     print(f"🛑 Press Ctrl+C to stop")
     
+    # Start Background Worker (Notification Polling)
+    from api.background_worker import start_worker
+    
+    # Only start worker in the reloader's worker process (or main if no reloader)
+    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        start_worker(app)
+
     app.run(
         debug=True,
         host='0.0.0.0',

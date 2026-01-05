@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
     User, Palette, Settings as SettingsIcon, Download, Upload,
     Sun, Moon, Percent, Calculator, AlertTriangle, LogOut, Trash2,
-    Activity, Clock, FileText, ExternalLink, Edit2
+    Activity, Clock, FileText, Edit2
 } from 'lucide-react';
 import type { SystemLog } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -613,24 +613,7 @@ const Settings: React.FC = () => {
                     </>
                 ) : (
                     <>
-                        {/* Results Page Link */}
-                        <section>
-                            <GlassCard className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="font-bold text-on-surface">Semester Results</h3>
-                                        <p className="text-sm text-on-surface-variant">Track your IPU academic performance with detailed marks</p>
-                                    </div>
-                                    <a
-                                        href="/results"
-                                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-xl font-medium hover:bg-primary/90 transition-colors"
-                                    >
-                                        Open Results
-                                        <ExternalLink size={16} />
-                                    </a>
-                                </div>
-                            </GlassCard>
-                        </section>
+
 
                         {/* System Logs */}
                         <section>

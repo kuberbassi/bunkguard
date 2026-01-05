@@ -1,42 +1,111 @@
+// Service Worker for Background Push Notifications
+/// <reference lib="webworker" />
+
+// Cache version
+const CACHE_VERSION = 'acadhub-v1';
+const CACHE_ASSETS = [
+    '/',
+    '/index.html',
+    '/manifest.json'
+];
+
+// Install event - cache assets
 self.addEventListener('install', (event) => {
+    console.log('[SW] Install event');
+    event.waitUntil(
+        caches.open(CACHE_VERSION).then((cache) => {
+            console.log('[SW] Caching assets');
+            return cache.addAll(CACHE_ASSETS);
+        })
+    );
     self.skipWaiting();
 });
 
+// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
+    console.log('[SW] Activate event');
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_VERSION) {
+                        console.log('[SW] Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+    self.clients.claim();
 });
 
+// Push event - handle background notifications
 self.addEventListener('push', (event) => {
-    const data = event.data ? event.data.json() : {};
+    console.log('[SW] Push received', event);
 
-    const title = data.title || 'New Notification';
+    let data = {
+        title: 'AcadHub Notification',
+        body: 'New update available',
+        icon: '/icon.svg',
+        badge: '/icon.svg',
+        tag: 'default',
+        data: {}
+    };
+
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (e) {
+            console.error('[SW] Error parsing push data:', e);
+            data.body = event.data.text();
+        }
+    }
+
     const options = {
-        body: data.body || 'You have a new update in AcadHub.',
-        icon: '/vite.svg',
-        badge: '/vite.svg',
-        data: { url: data.url || '/' }
+        body: data.body,
+        icon: data.icon || '/icon.svg',
+        badge: data.badge || '/icon.svg',
+        tag: data.tag,
+        data: data.data,
+        vibrate: [200, 100, 200],
+        requireInteraction: false,
+        actions: [
+            {
+                action: 'open',
+                title: 'View',
+                icon: '/icon.svg'
+            }
+        ]
     };
 
     event.waitUntil(
-        self.registration.showNotification(title, options)
+        self.registration.showNotification(data.title, options)
     );
 });
 
+// Notification click event
 self.addEventListener('notificationclick', (event) => {
+    console.log('[SW] Notification click', event);
+
     event.notification.close();
 
+    if (event.action === 'close') {
+        return;
+    }
+
+    // Open or focus the app
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // Check if there is already a window/tab open with the target URL
-            for (let i = 0; i < windowClients.length; i++) {
-                const client = windowClients[i];
-                if (client.url === event.notification.data.url && 'focus' in client) {
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            // Check if there's already a window open
+            for (const client of clientList) {
+                if (client.url.includes(self.registration.scope) && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // If not, open a new window
+            // Open new window
             if (clients.openWindow) {
-                return clients.openWindow(event.notification.data.url);
+                const url = event.notification.data?.url || '/notifications';
+                return clients.openWindow(url);
             }
         })
     );

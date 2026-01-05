@@ -24,21 +24,24 @@ This application showcases **prompt engineering in action**. Every feature, comp
 
 ### 📅 Dynamic Timetable & Calendar
 *   **Interactive Timetable**: Fully customizable grid structure (Periods/Breaks).
-*   **Calendar View**: Toggle between "Attendance" (history) and "Events" (holidays/tasks).
+*   **Attendance Calendar**: View your complete attendance history in a visual calendar.
 *   **Preferences**: Your view settings are saved automatically.
 
 ### 🔔 Notification Center
 *   **Unified Feed**: Aggregates updates from two sources:
-    1.  **Google Classroom**: Announcements from your teachers.
+    1.  **Google Classroom**: Announcements and Assignments from your teachers.
     2.  **University Notices**: Live-scraped official circulars.
+*   **Background Updates**: Automatic polling ensures you never miss an update.
 *   **PWA Support**: Install as a native app on Mobile/Desktop to receive background alerts.
 
-### 📚 Course Manager
-*   **Manual Courses**: Track progress for self-paced courses (Udemy, Coursera, etc.).
-*   **Kanban/Board**: A built-in whiteboard (`tldraw`) for jotting down quick notes found in the "Board" tab.
+### 🎯 Skill Tracker
+*   **Skill Management**: Track and monitor your skill development across multiple domains.
+*   **Progress Tracking**: Visual progress indicators for each skill.
+*   **Categories**: Organize skills by Programming, Design, Languages, Business, Creative, and more.
+*   **Skill Levels**: Track from Beginner to Expert.
 
 ### 💾 Data Persistence
-*   All data (Structure, Courses, Drawings) is securely synced to the cloud (MongoDB), linked to your Google Account.
+*   All data (Attendance, Skills, Settings) is securely synced to the cloud (MongoDB), linked to your Google Account.
 *   No more data loss on browser refresh.
 
 ---

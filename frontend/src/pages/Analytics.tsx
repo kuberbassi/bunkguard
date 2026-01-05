@@ -16,10 +16,12 @@ const Analytics: React.FC = () => {
     const { showToast } = useToast();
     const { currentSemester } = useSemester();
     const [loading, setLoading] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
     const [dayOfWeekData, setDayOfWeekData] = useState<any>(null);
     const [reportsData, setReportsData] = useState<any>(null);
 
     useEffect(() => {
+        setIsMounted(true);
         loadAnalytics();
     }, [currentSemester]);
 
@@ -110,43 +112,45 @@ const Analytics: React.FC = () => {
                             <h3 className="text-lg font-bold text-on-surface">Weekly Overview</h3>
                         </div>
                     </div>
-                    <div className="w-full h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={COLORS.grid} opacity={0.5} />
-                                <XAxis
-                                    dataKey="day"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: COLORS.text, fontSize: 12 }}
-                                    dy={10}
-                                />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: COLORS.text, fontSize: 12 }}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: theme === 'dark' ? '#ffffff10' : '#00000005', radius: 8 }}
-                                    contentStyle={{
-                                        backgroundColor: theme === 'dark' ? '#1e1e1e' : '#ffffff',
-                                        borderColor: theme === 'dark' ? '#333' : '#e5e5e5',
-                                        borderRadius: '12px',
-                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                        color: theme === 'dark' ? '#fff' : '#000'
-                                    }}
-                                />
-                                <Bar dataKey="percentage" radius={[8, 8, 8, 8]} maxBarSize={60}>
-                                    {weeklyData.map((entry: any, index: number) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={entry.percentage >= 75 ? COLORS.safe : COLORS.danger}
-                                            fillOpacity={0.8}
-                                        />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="w-full relative" style={{ height: 400 }}>
+                        {isMounted && (
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
+                                <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={COLORS.grid} opacity={0.5} />
+                                    <XAxis
+                                        dataKey="day"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: COLORS.text, fontSize: 12 }}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: COLORS.text, fontSize: 12 }}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: theme === 'dark' ? '#ffffff10' : '#00000005', radius: 8 }}
+                                        contentStyle={{
+                                            backgroundColor: theme === 'dark' ? '#1e1e1e' : '#ffffff',
+                                            borderColor: theme === 'dark' ? '#333' : '#e5e5e5',
+                                            borderRadius: '12px',
+                                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                            color: theme === 'dark' ? '#fff' : '#000'
+                                        }}
+                                    />
+                                    <Bar dataKey="percentage" radius={[8, 8, 8, 8]} maxBarSize={60}>
+                                        {weeklyData.map((entry: any, index: number) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={entry.percentage >= 75 ? COLORS.safe : COLORS.danger}
+                                                fillOpacity={0.8}
+                                            />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </GlassCard>
 
@@ -163,38 +167,40 @@ const Analytics: React.FC = () => {
                     </div>
 
                     {subjectPerformance.length > 0 ? (
-                        <div className="w-full h-[400px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart layout="vertical" data={subjectPerformance} margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={COLORS.grid} opacity={0.5} />
-                                    <XAxis type="number" hide domain={[0, 100]} />
-                                    <YAxis
-                                        dataKey="name"
-                                        type="category"
-                                        width={100}
-                                        tick={{ fill: COLORS.text, fontSize: 12, fontWeight: 500 }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                    />
-                                    <Tooltip
-                                        cursor={{ fill: 'transparent' }}
-                                        contentStyle={{
-                                            backgroundColor: theme === 'dark' ? '#1e1e1e' : '#ffffff',
-                                            borderColor: theme === 'dark' ? '#333' : '#e5e5e5',
-                                            borderRadius: '12px',
-                                            color: theme === 'dark' ? '#fff' : '#000'
-                                        }}
-                                    />
-                                    <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24} background={{ fill: theme === 'dark' ? '#333' : '#f3f4f6', radius: [0, 8, 8, 0] as any }}>
-                                        {subjectPerformance.map((entry: any, index: number) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill={entry.value >= 75 ? COLORS.safe : COLORS.danger}
-                                            />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div className="w-full relative" style={{ height: 400 }}>
+                            {isMounted && (
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
+                                    <BarChart layout="vertical" data={subjectPerformance} margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={COLORS.grid} opacity={0.5} />
+                                        <XAxis type="number" hide domain={[0, 100]} />
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            width={100}
+                                            tick={{ fill: COLORS.text, fontSize: 12, fontWeight: 500 }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
+                                        <Tooltip
+                                            cursor={{ fill: 'transparent' }}
+                                            contentStyle={{
+                                                backgroundColor: theme === 'dark' ? '#1e1e1e' : '#ffffff',
+                                                borderColor: theme === 'dark' ? '#333' : '#e5e5e5',
+                                                borderRadius: '12px',
+                                                color: theme === 'dark' ? '#fff' : '#000'
+                                            }}
+                                        />
+                                        <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={24} background={{ fill: theme === 'dark' ? '#333' : '#f3f4f6', radius: [0, 8, 8, 0] as any }}>
+                                            {subjectPerformance.map((entry: any, index: number) => (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={entry.value >= 75 ? COLORS.safe : COLORS.danger}
+                                                />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-on-surface-variant opacity-50">

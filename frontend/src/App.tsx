@@ -1,4 +1,6 @@
-import React, { lazy, Suspense } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
+import api from './services/api';
+import { pushManager } from './utils/pushNotifications';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -21,16 +23,15 @@ import AppLayout from './components/layout/AppLayout';
 // Lazy Load Heavy Pages
 const Analytics = lazy(() => import('./pages/Analytics.tsx'));
 const Calendar = lazy(() => import('./pages/Calendar.tsx'));
-const Planner = lazy(() => import('./pages/Planner.tsx'));
 const TimeTable = lazy(() => import('./pages/TimeTable.tsx'));
 const Courses = lazy(() => import('./pages/Courses.tsx'));
 const Practicals = lazy(() => import('./pages/Practicals.tsx'));
-const Board = lazy(() => import('./pages/Board.tsx'));
 const Notifications = lazy(() => import('./pages/Notifications.tsx'));
 const Results = lazy(() => import('./pages/Results.tsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.tsx'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService.tsx'));
 const BrainDump = lazy(() => import('./pages/BrainDump.tsx'));
+const SkillTracker = lazy(() => import('./pages/SkillTracker.tsx'));
 
 
 
@@ -128,16 +129,7 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/planner"
-          element={
-            <ProtectedRoute>
-              <Suspense fallback={<LoadingSpinner fullScreen />}>
-                <Planner />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/courses"
           element={
@@ -166,16 +158,7 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/board"
-          element={
-            <ProtectedRoute>
-              <Suspense fallback={<LoadingSpinner fullScreen />}>
-                <Board />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/notifications"
           element={
@@ -206,6 +189,16 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/skills"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<LoadingSpinner fullScreen />}>
+                <SkillTracker />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       {/* Default redirect */}
@@ -216,6 +209,41 @@ const AppRoutes: React.FC = () => {
 
 
 // Main App Component
+const AppContent: React.FC = () => {
+  const { user } = useAuth();
+
+  // Auto-request notification permission on load (if supported and user is logged in)
+  useEffect(() => {
+    if (user) {
+      const initPush = async () => {
+        try {
+          const hasPermission = await pushManager.initialize();
+          if (hasPermission) {
+            // Check if we need to subscribe
+            const existingSub = await pushManager.getSubscription();
+            if (!existingSub) {
+              // Fetch key and subscribe
+              const res = await api.get('/api/push/vapid_public_key');
+              if (res.data?.publicKey) {
+                await pushManager.subscribe(res.data.publicKey);
+              }
+            }
+          }
+        } catch (e) {
+          console.log("Push init skipped/failed", e);
+        }
+      };
+      initPush();
+    }
+  }, [user]);
+
+  return (
+    <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
+      <AppRoutes />
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
@@ -225,9 +253,7 @@ const App: React.FC = () => {
             <SemesterProvider>
               <ToastProvider>
                 <ErrorBoundary>
-                  <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
-                    <AppRoutes />
-                  </div>
+                  <AppContent />
                 </ErrorBoundary>
               </ToastProvider>
             </SemesterProvider>

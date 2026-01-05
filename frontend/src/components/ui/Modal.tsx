@@ -47,49 +47,39 @@ const Modal: React.FC<ModalProps> = ({
         <AnimatePresence>
             {isOpen && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-                    {/* Backdrop - darker and more blur */}
+                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.15 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-lg will-change-[opacity]"
+                        className="absolute inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-lg will-change-[opacity]"
                     />
 
-                    {/* Modal - solid background, not transparent */}
+                    {/* Modal - Theme-aware colors */}
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 10 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 10 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-                        className={`relative w-full ${sizeClasses[size]} ${className} rounded-2xl shadow-2xl overflow-hidden will-change-transform max-h-[90vh] flex flex-col`}
-                        style={{
-                            backgroundColor: '#1E1E1E',
-                            border: '1px solid rgba(255,255,255,0.1)'
-                        }}
+                        className={`relative w-full ${sizeClasses[size]} ${className} rounded-2xl shadow-2xl overflow-hidden will-change-transform max-h-[90vh] flex flex-col bg-surface dark:bg-dark-surface border border-outline-variant dark:border-dark-outline-variant`}
                     >
                         {/* Header */}
                         {title && (
-                            <div
-                                className="flex items-center justify-between p-6"
-                                style={{
-                                    backgroundColor: '#171717',
-                                    borderBottom: '1px solid rgba(255,255,255,0.1)'
-                                }}
-                            >
-                                <h2 className="text-xl font-bold text-white">{title}</h2>
+                            <div className="flex items-center justify-between p-6 bg-surface-container-low dark:bg-dark-surface-container border-b border-outline-variant/20 dark:border-dark-outline-variant/20">
+                                <h2 className="text-xl font-bold text-on-surface dark:text-dark-surface-on">{title}</h2>
                                 <button
                                     onClick={onClose}
-                                    className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                                    className="p-1.5 rounded-lg hover:bg-surface-container-high dark:hover:bg-dark-surface-container-high transition-colors text-on-surface-variant dark:text-dark-surface-on-variant"
                                 >
-                                    <X className="w-5 h-5 text-gray-400" />
+                                    <X className="w-5 h-5" />
                                 </button>
                             </div>
                         )}
 
-                        {/* Body */}
-                        <div className="p-6 text-white overflow-y-auto flex-1 custom-scrollbar">{children}</div>
+                        {/* Body - theme-aware text colors */}
+                        <div className="p-6 text-on-surface dark:text-dark-surface-on overflow-y-auto flex-1 custom-scrollbar">{children}</div>
                     </motion.div>
                 </div>
             )}

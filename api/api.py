@@ -5,15 +5,37 @@ import requests
 import math
 import traceback
 from datetime import datetime, timedelta
-from bson import json_util, ObjectId
-from flask import Blueprint, jsonify, request, session, Response
+from functools import wraps
+from time import time
+import os
+import json
+from bson import ObjectId, json_util
+from flask import Flask, Blueprint, jsonify, request, session, send_from_directory, Response
 from itertools import groupby
-from . import db  # ✅ FIXED - Import db from the same package
-from datetime import timedelta, datetime
+from werkzeug.utils import secure_filename
+from pymongo import MongoClient, IndexModel, ASCENDING, DESCENDING
+from . import db  # ✅ Import db from __init__.py
 # try:
 #     from pywebpush import webpush, WebPushException
 # except ImportError:
 #     print("pywebpush not installed")
+
+# Performance: In-memory cache for frequently accessed data
+CACHE = {}
+CACHE_TTL = {}
+
+def get_cached(key, ttl_seconds=300):
+    """Get cached value if not expired"""
+    if key in CACHE and key in CACHE_TTL:
+        if time() - CACHE_TTL[key] < ttl_seconds:
+            return CACHE[key]
+    return None
+
+def set_cached(key, value):
+    """Set cached value with timestamp"""
+    CACHE[key] = value
+    CACHE_TTL[key] = time()
+
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -67,8 +89,6 @@ def upload_pfp():
 
     if file:
         # Save to static/uploads
-        import os
-        from werkzeug.utils import secure_filename
         
         UPLOAD_FOLDER = 'frontend/public/uploads' # Serve from public in dev, or static
         # In production, might need specific path
@@ -95,114 +115,19 @@ def upload_pfp():
         
     return jsonify({"error": "Upload failed"}), 500
 
-# --- Integrations ---
-
-@api_bp.route('/integrations/calendar', methods=['GET'])
-def get_google_calendar_events():
-    if 'user' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    token = session['user'].get('google_token')
-    if not token:
-        return jsonify({"error": "Google token missing"}), 403
-
-    try:
-        # Fetch Events (Primary Calendar)
-        # timeMin=now, singleEvents=True, orderBy=startTime
-        from datetime import datetime
-        now = datetime.utcnow().isoformat() + 'Z'
-        
-        resp = requests.get(
-            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-            headers={'Authorization': f'Bearer {token}'},
-            params={
-                'timeMin': now,
-                'maxResults': 50,
-                'singleEvents': True,
-                'orderBy': 'startTime'
-            }
-        )
-        
-        if resp.status_code != 200:
-            print(f"Calendar API Error: {resp.text}")
-            return jsonify([]), 200 # Return empty if fails to avoid crash
-            
-        events = resp.json().get('items', [])
-        
-        # Format for frontend
-        formatted = []
-        for e in events:
-            start = e.get('start', {}).get('dateTime') or e.get('start', {}).get('date')
-            end = e.get('end', {}).get('dateTime') or e.get('end', {}).get('date')
-            formatted.append({
-                'id': e['id'],
-                'title': e.get('summary', 'No Title'),
-                'start': start,
-                'end': end,
-                'type': 'google_event',
-                'link': e.get('htmlLink')
-            })
-            
-        return jsonify(formatted)
-        
-    except Exception as e:
-        print(f"Calendar Integ Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@api_bp.route('/integrations/tasks', methods=['GET'])
-def get_google_tasks():
-    if 'user' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    token = session['user'].get('google_token')
-    if not token:
-        return jsonify({"error": "Google token missing"}), 403
-
-    try:
-        # Fetch Tasks from Default List
-        resp = requests.get(
-            'https://tasks.googleapis.com/tasks/v1/lists/@default/tasks',
-            headers={'Authorization': f'Bearer {token}'},
-            params={'showCompleted': False, 'maxResults': 20}
-        )
-        
-        if resp.status_code != 200:
-             # Tasks API might not be enabled or user didn't grant scope initially
-            print(f"Tasks API Error: {resp.text}")
-            return jsonify([]), 200
-
-        tasks = resp.json().get('items', [])
-        
-        formatted = []
-        for t in tasks:
-            formatted.append({
-                'id': t['id'],
-                'title': t['title'],
-                'due': t.get('due'),
-                'link': t.get('selfLink'), # Tasks API selfLink is API link, not UI. 
-                # UI link construction is complex for tasks, usually just open tasks.google.com
-                'status': t['status']
-            })
-            
-        return jsonify(formatted)
-
-    except Exception as e:
-        print(f"Tasks Integ Error: {e}")
-        return jsonify({"error": str(e)}), 500
 
 # --- Collections ---
 subjects_collection = db.get_collection('subjects')
 attendance_log_collection = db.get_collection('attendance_logs')
 timetable_collection = db.get_collection('timetable')
 system_logs_collection = db.get_collection('system_logs')
-deadlines_collection = db.get_collection('deadlines')
 holidays_collection = db.get_collection('holidays')
-academic_records_collection = db.get_collection('academic_records')
+academic_records_collection = db.get_collection('users_collection')
 users_collection = db.get_collection('users')
-# New Collections for Persistence
-board_collection = db.get_collection('board_data')
+# Collections for Persistence
 manual_courses_collection = db.get_collection('manual_courses')
 semester_results_collection = db.get_collection('semester_results')
+skills_collection = db.get_collection('skills')
 
 
 # --- Helper Functions ---
@@ -728,7 +653,15 @@ def get_classes_for_date():
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
     user_email = session['user']['email']
-    day_name = target_date.strftime('%A')
+    user_email = session['user']['email']
+    
+    # Python's weekday(): Monday=0, Sunday=6
+    # Map Python weekday to day names used in DB
+    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    day_name = day_names[target_date.weekday()]
+    
+    # Debug log
+    print(f"📅 Classes for date: {target_date.strftime('%Y-%m-%d')} → {day_name} (weekday={target_date.weekday()})")
     
     timetable_doc = timetable_collection.find_one({'owner_email': user_email})
     if not timetable_doc:
@@ -755,8 +688,14 @@ def get_classes_for_date():
     
     if not subject_ids:
         return Response(json_util.dumps([]), mimetype='application/json')
-
-    subjects = list(subjects_collection.find({"owner_email": user_email, "_id": {"$in": subject_ids}}))
+    
+    # Filter only by subjects of the requested semester (if provided)
+    semester = request.args.get('semester', type=int)
+    query = {"owner_email": user_email, "_id": {"$in": subject_ids}}
+    if semester:
+        query["semester"] = semester
+        
+    subjects = list(subjects_collection.find(query))
     for subject in subjects:
         log = attendance_log_collection.find_one({"subject_id": subject["_id"], "date": date_str})
         subject["marked_status"] = log["status"] if log else "pending"
@@ -799,9 +738,6 @@ def edit_attendance(log_id):
     if old_status == 'substituted' and log.get('substituted_by'):
        # We need to find the "Extra Class" log for the substitute and delete/revert it?
        # This is tricky. We'd have to find the log created at similiar time or by logic.
-       # For now, simplistic approach: "Substitution cannot be fully undone automatically" warning 
-       # or we enforce finding that log.
-       # Let's try to find the linked log if possible, but our schema didn't link back effectively.
        # Improvement: Store `linked_log_id` in future.
        # For now: User manually fixes substitute subject if needed.
        pass
@@ -1524,7 +1460,135 @@ def update_deadline(deadline_id):
     log_user_action(session['user']['email'], 'update_deadline', f"Updated deadline {deadline_id}")
     return jsonify({"success": True})
 
+# Helper for percentage
+# --- NOTIFICATIONS ---
+@api_bp.route('/notifications')
+def get_notifications():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    notifications = []
+    
+    try:
+        # 1. Attendance Alerts (<75%)
+        # Fetch active semester subjects
+        subjects = list(subjects_collection.find({'owner_email': user_email}))
+        threshold = 75 # Get from prefs later
+        
+        for subject in subjects:
+            percentage = calculate_percent(subject.get('attended', 0), subject.get('total', 0))
+            if percentage < threshold and subject.get('total', 0) > 0:
+                 notifications.append({
+                    "id": f"att_{subject['_id']}",
+                    "title": "Low Attendance Warning",
+                    "message": f"Attendance for '{subject['name']}' is low ({percentage}%).",
+                    "type": "attendance",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "read": False
+                })
+
+        # 2. IPU Notices
+        ipu_notices_col = db.get_collection('ipu_notices')
+        notices = list(ipu_notices_col.find().sort('date', -1).limit(10))
+        for notice in notices:
+            timestamp = notice.get('date')
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat()
+            elif not timestamp:
+                timestamp = datetime.utcnow().isoformat()
+            
+            notifications.append({
+                "id": str(notice['_id']),
+                "title": "New University Notice",
+                "message": notice.get('title', 'Notice'),
+                "type": "university",
+                "timestamp": timestamp,
+                "link": notice.get('link'),
+                "read": False
+            })
+            
+        # 3. System Logs (Alerts)
+        logs = list(system_logs_collection.find({'owner_email': user_email}).sort('timestamp', -1).limit(5))
+        for log in logs:
+            timestamp = log.get('timestamp')
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat()
+            elif not timestamp:
+                timestamp = datetime.utcnow().isoformat()
+
+            notifications.append({
+                "id": str(log['_id']),
+                "title": log.get('action', 'System Alert'),
+                "message": log.get('description', ''),
+                "type": "system",
+                "timestamp": timestamp,
+                "read": True
+            })
+
+        # Sort by timestamp desc (ensure all are strings or all are datetimes)
+        notifications.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
+        
+        return jsonify(notifications)
+        
+    except Exception as e:
+        print(f"Error fetching notifications: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Failed to fetch notifications"}), 500
+
 # --- CALENDAR & LOGS ---
+
+@api_bp.route('/todays_classes')
+def todays_classes():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    
+    try:
+        # Get today's date
+        today = datetime.now()
+        
+        # Python's weekday(): Monday=0, Sunday=6
+        # JavaScript's getDay(): Sunday=0, Monday=1, ..., Saturday=6
+        # Our timetable uses: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        
+        # Map Python weekday to day names
+        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        day_name = day_names[today.weekday()]  # Python weekday() already gives Mon=0
+        
+        print(f"📅 Today's classes: {today.strftime('%Y-%m-%d')} → {day_name} (weekday={today.weekday()})")
+        
+        # Fetch timetable
+        tt_doc = db.timetable.find_one({'owner_email': user_email})
+        schedule = tt_doc.get('schedule', {}) if tt_doc else {}
+        
+        # Get today's slots
+        todays_slots = schedule.get(day_name, [])
+        
+        # Fetch subjects
+        subjects_cursor = db.subjects.find({'owner_email': user_email})
+        subjects_map = {str(s['_id']): s for s in subjects_cursor}
+        
+        # Build response with subject details
+        classes = []
+        for slot in todays_slots:
+            if slot.get('type') in ['break', 'free']:
+                continue
+                
+            subject_id = slot.get('subject_id')
+            if subject_id and str(subject_id) in subjects_map:
+                subject = subjects_map[str(subject_id)]
+                classes.append({
+                    'id': str(subject['_id']),
+                    'name': subject.get('name'),
+                    'start_time': slot.get('start_time'),
+                    'end_time': slot.get('end_time')
+                })
+        
+        return Response(json_util.dumps(classes), mimetype='application/json')
+    except Exception as e:
+        print(f"Error in todays_classes: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Failed to fetch classes"}), 500
 
 @api_bp.route('/calendar_data')
 def calendar_data():
@@ -1536,10 +1600,16 @@ def calendar_data():
         start_date = datetime(year, month, 1)
         end_date = datetime(year, month, calendar.monthrange(year, month)[1], 23, 59, 59)
         
-        logs = list(attendance_log_collection.find({
+        query = {
             'owner_email': user_email, 
             'timestamp': {'$gte': start_date, '$lte': end_date}
-        }))
+        }
+        
+        semester = request.args.get('semester')
+        if semester:
+            query['semester'] = int(semester)
+            
+        logs = list(attendance_log_collection.find(query))
         
         date_data = {}
         for log in logs:
@@ -1833,44 +1903,6 @@ def delete_holiday(holiday_id):
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     holidays_collection.delete_one({'_id': ObjectId(holiday_id)})
     return jsonify({"success": True})
-
-
-@api_bp.route('/notifications')
-def get_notifications():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    notifications = []
-
-    # Deadline notifications
-    two_days_from_now = (datetime.utcnow() + timedelta(days=2)).strftime('%Y-%m-%d')
-    upcoming_deadlines = deadlines_collection.find({
-        'owner_email': user_email,
-        'completed': False,
-        'due_date': {'$lte': two_days_from_now}
-    })
-    for deadline in upcoming_deadlines:
-        notifications.append({
-            "type": "deadline",
-            "message": f"Deadline for '{deadline['title']}' is approaching.",
-            "timestamp": datetime.utcnow()
-        })
-
-    # Low attendance notifications
-    user_prefs_doc = timetable_collection.find_one({'owner_email': user_email}, {'preferences': 1})
-    threshold = user_prefs_doc.get('preferences', {}).get('threshold', 75) if user_prefs_doc else 75
-    
-    subjects = list(subjects_collection.find({'owner_email': user_email}))
-    for subject in subjects:
-        percentage = calculate_percent(subject.get('attended', 0), subject.get('total', 0))
-        if percentage < threshold and subject.get('total', 0) > 0:
-            notifications.append({
-                "type": "attendance",
-                "message": f"Attendance for '{subject['name']}' is low ({percentage}%).",
-                "timestamp": datetime.utcnow()
-            })
-    
-    notifications.sort(key=lambda x: x['timestamp'], reverse=True)
-    return Response(json_util.dumps(notifications), mimetype='application/json')
 
 
 @api_bp.route('/achievements')
@@ -2250,3 +2282,100 @@ def delete_semester_result(semester):
     create_system_log(user_email, "Result Deleted", f"Deleted semester {semester} result")
     
     return jsonify({"success": True})
+
+
+# === SKILLS API ROUTES ===
+
+@api_bp.route('/skills', methods=['GET'])
+def get_skills():
+    """Get all skills for the current user."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    skills = list(skills_collection.find({'owner_email': user_email}).sort('created_at', -1))
+    
+    return Response(json_util.dumps(skills), mimetype='application/json')
+
+
+@api_bp.route('/skills', methods=['POST'])
+def add_skill():
+    """Add a new skill."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    user_email = session['user']['email']
+    
+    skill = {
+        'owner_email': user_email,
+        'name': data.get('name'),
+        'category': data.get('category'),
+        'level': data.get('level'),
+        'progress': data.get('progress', 0),
+        'notes': data.get('notes', ''),
+        'created_at': datetime.utcnow(),
+        'updated_at': datetime.utcnow()
+    }
+    
+    result = skills_collection.insert_one(skill)
+    skill['_id'] = result.inserted_id
+    
+    create_system_log(user_email, "Skill Added", f"Added skill: {skill['name']}")
+    
+    return Response(json_util.dumps({'success': True, 'skill': skill}), mimetype='application/json')
+
+
+@api_bp.route('/skills/<skill_id>', methods=['PUT'])
+def update_skill(skill_id):
+    """Update an existing skill."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    data = request.json
+    user_email = session['user']['email']
+    
+    update_data = {
+        'updated_at': datetime.utcnow()
+    }
+    
+    if 'name' in data:
+        update_data['name'] = data['name']
+    if 'category' in data:
+        update_data['category'] = data['category']
+    if 'level' in data:
+        update_data['level'] = data['level']
+    if 'progress' in data:
+        update_data['progress'] = data['progress']
+    if 'notes' in data:
+        update_data['notes'] = data['notes']
+    
+    result = skills_collection.update_one(
+        {'_id': ObjectId(skill_id), 'owner_email': user_email},
+        {'$set': update_data}
+    )
+    
+    if result.matched_count == 0:
+        return jsonify({"error": "Skill not found"}), 404
+    
+    create_system_log(user_email, "Skill Updated", f"Updated skill: {data.get('name', skill_id)}")
+    
+    return jsonify({'success': True})
+
+
+@api_bp.route('/skills/<skill_id>', methods=['DELETE'])
+def delete_skill(skill_id):
+    """Delete a skill."""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    user_email = session['user']['email']
+    
+    result = skills_collection.delete_one({'_id': ObjectId(skill_id), 'owner_email': user_email})
+    
+    if result.deleted_count == 0:
+        return jsonify({"error": "Skill not found"}), 404
+    
+    create_system_log(user_email, "Skill Deleted", f"Deleted skill: {skill_id}")
+    
+    return jsonify({'success': True})

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
@@ -6,7 +7,6 @@ import {
     PieChart,
     Beaker,
     CalendarDays,
-    BookOpen,
     CalendarClock,
     Settings,
     LogOut,
@@ -16,8 +16,8 @@ import {
     ChevronRight,
     ChevronLeft,
     ChevronDown,
-    StickyNote,
-    Trophy
+    Trophy,
+    Target
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -44,6 +44,7 @@ const navigationGroups = [
             { name: 'Courses', href: '/courses', icon: GraduationCap },
             { name: 'Results', href: '/results', icon: Trophy },
             { name: 'Assignments', href: '/practicals', icon: Beaker },
+            { name: 'Skills', href: '/skills', icon: Target },
         ]
     },
     {
@@ -51,9 +52,6 @@ const navigationGroups = [
         items: [
             { name: 'Schedule', href: '/timetable', icon: CalendarClock },
             { name: 'Calendar', href: '/calendar', icon: CalendarDays },
-            { name: 'Planner', href: '/planner', icon: BookOpen },
-            { name: 'Board', href: '/board', icon: StickyNote },
-            // { name: 'Brain Dump', href: '/braindump', icon: Lightbulb }, // Temporarily hidden
         ]
     },
 ];
@@ -74,62 +72,51 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
         );
     };
 
-    // Check if any item in group is active
-    const isGroupActive = (group: typeof navigationGroups[0]) => {
-        return group.items.some(item => location.pathname === item.href);
-    };
+
 
     const SidebarContent = () => (
         <div className="flex flex-col h-full bg-surface-container-low text-on-surface transition-all duration-300">
-            {/* Logo Area */}
-            <div className={`flex items-center gap-3 px-6 py-6 ${isCollapsed ? 'justify-center px-2' : ''}`}>
-                <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-none shrink-0">
-                    <GraduationCap className="w-6 h-6" />
+            {/* Logo */}
+            <div className={`flex items-center gap-3 px-6 py-5 ${isCollapsed ? 'justify-center px-0' : ''}`}>
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary shrink-0">
+                    <GraduationCap size={24} />
                 </div>
                 {!isCollapsed && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex flex-col"
-                    >
-                        <span className="text-xl font-display font-bold text-on-surface tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary-dark">
+                    <div>
+                        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
                             AcadHub
-                        </span>
-                        <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+                        </h1>
+                        <p className="text-[10px] font-bold tracking-widest text-primary/80 uppercase">
                             Student Center
-                        </span>
-                    </motion.div>
+                        </p>
+                    </div>
                 )}
             </div>
 
-            {/* Navigation Groups */}
-            <nav className="flex-1 px-3 py-2 overflow-y-auto no-scrollbar">
+            {/* Navigation */}
+            <nav className="flex-1 px-4 space-y-6 overflow-y-auto no-scrollbar pb-4">
                 {navigationGroups.map((group) => {
                     const isExpanded = expandedGroups.includes(group.name);
-                    const groupActive = isGroupActive(group);
 
                     return (
                         <div key={group.name} className="mb-2">
-                            {/* Group Header */}
-                            {!isCollapsed ? (
-                                <button
-                                    onClick={() => toggleGroup(group.name)}
-                                    className={`w-full flex items-center justify-between px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors rounded-lg ${groupActive
-                                        ? 'text-primary bg-primary/5'
-                                        : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-                                        }`}
-                                >
-                                    <span>{group.name}</span>
+                            <div
+                                className="flex items-center justify-between w-full mb-3 px-2 cursor-pointer group"
+                                onClick={() => toggleGroup(group.name)}
+                            >
+                                {!isCollapsed && (
+                                    <h3 className="text-xs font-bold leading-6 text-primary uppercase tracking-wider">
+                                        {group.name}
+                                    </h3>
+                                )}
+                                {!isCollapsed && (
                                     <ChevronDown
                                         size={14}
-                                        className={`transition-transform ${isExpanded ? '' : '-rotate-90'}`}
+                                        className={`text-primary/60 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                                     />
-                                </button>
-                            ) : (
-                                <div className="h-2" />
-                            )}
+                                )}
+                            </div>
 
-                            {/* Group Items */}
                             <AnimatePresence initial={false}>
                                 {(isExpanded || isCollapsed) && (
                                     <motion.div
@@ -151,13 +138,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                                                     >
                                                         <div
                                                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
-                                                                ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                                                                ? 'bg-primary/10 text-primary font-bold'
                                                                 : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
                                                                 } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
                                                         >
                                                             <item.icon
                                                                 className={`w-5 h-5 shrink-0 ${isActive
-                                                                    ? 'text-on-secondary-container'
+                                                                    ? 'text-primary'
                                                                     : 'text-on-surface-variant group-hover:text-primary transition-colors'
                                                                     }`}
                                                                 strokeWidth={isActive ? 2.5 : 2}
@@ -178,7 +165,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                 })}
 
                 {/* Settings - Standalone */}
-                <div className={`mt-4 pt-4 border-t border-outline-variant/10 ${isCollapsed ? 'border-0' : ''}`}>
+                <div className={`mt-4 pt-4 border-t border-outline-variant/10 ${isCollapsed ? 'border-0' : ''} `}>
                     <Link
                         to="/settings"
                         onClick={() => setIsMobileOpen(false)}
@@ -186,15 +173,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                     >
                         <div
                             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${location.pathname === '/settings'
-                                ? 'bg-secondary-container text-on-secondary-container font-semibold'
+                                ? 'bg-primary/10 text-primary font-bold'
                                 : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                                } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
+                                } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''} `}
                         >
                             <Settings
                                 className={`w-5 h-5 shrink-0 ${location.pathname === '/settings'
-                                    ? 'text-on-secondary-container'
+                                    ? 'text-primary'
                                     : 'text-on-surface-variant group-hover:text-primary transition-colors'
-                                    }`}
+                                    } `}
                                 strokeWidth={location.pathname === '/settings' ? 2.5 : 2}
                             />
                             {!isCollapsed && <span className="text-sm">Settings</span>}
@@ -217,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                                 <p className="text-sm font-bold text-on-surface truncate leading-tight">{user?.name}</p>
                                 <p className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant truncate">Student</p>
                             </div>
-                        </div>
+                        </div >
 
                         <div className="grid grid-cols-2 gap-2">
                             <button
@@ -235,7 +222,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                                 <span>Sign Out</span>
                             </button>
                         </div>
-                    </div>
+                    </div >
+
                 ) : (
                     <div className="flex flex-col gap-3 items-center">
                         <button
@@ -261,16 +249,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                         </div>
                     </div>
                 )}
-            </div>
+            </div >
 
             {/* Collapse Toggle for Desktop */}
-            <button
+            < button
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-surface border border-outline-variant items-center justify-center rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors z-50"
             >
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-            </button>
-        </div>
+            </button >
+        </div >
     );
 
     return (

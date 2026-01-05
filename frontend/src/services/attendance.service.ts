@@ -5,7 +5,6 @@ import type {
     Subject,
     TimetableSchedule,
     Preferences,
-    Deadline,
     Holiday,
     SystemLog,
     AcademicRecord,
@@ -75,8 +74,9 @@ export const attendanceService = {
         });
     },
 
-    getCalendarData: async (year: number, month: number) => {
-        const response = await api.get(`/api/calendar_data?year=${year}&month=${month}`);
+    getCalendarData: async (year: number, month: number, semester?: number) => {
+        const url = semester ? `/api/calendar_data?year=${year}&month=${month}&semester=${semester}` : `/api/calendar_data?year=${year}&month=${month}`;
+        const response = await api.get(url);
         return response.data;
     },
 
@@ -94,8 +94,21 @@ export const attendanceService = {
         return response.data;
     },
 
-    getClassesForDate: async (date: string): Promise<Subject[]> => {
-        const response = await api.get(`/api/classes_for_date?date=${date}`);
+    getClassesForDate: async (date: string, semester?: number): Promise<Subject[]> => {
+        const url = semester ? `/api/classes_for_date?date=${date}&semester=${semester}` : `/api/classes_for_date?date=${date}`;
+        const response = await api.get(url);
+
+        // Parse the date and get day name (Monday-first)
+        const dateObj = new Date(date);
+        const dayOfWeek = dateObj.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+
+        // Map to our timetable day names (Monday-first)
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = dayNames[dayOfWeek];
+
+        // Debug log to verify mapping
+        console.log(`📅 Day mapping: ${date} → ${dayName} (dayOfWeek=${dayOfWeek})`);
+
         return response.data;
     },
 
@@ -245,35 +258,7 @@ export const attendanceService = {
         await api.post('/api/preferences', preferences);
     },
 
-    // Deadlines
-    getDeadlines: async (): Promise<Deadline[]> => {
-        const response = await api.get('/api/deadlines');
-        return response.data;
-    },
 
-    addDeadline: async (title: string, dueDate: string): Promise<void> => {
-        await api.post('/api/add_deadline', {
-            title,
-            due_date: dueDate,
-        });
-    },
-
-    toggleDeadline: async (deadlineId: string): Promise<void> => {
-        await api.post(`/api/toggle_deadline/${deadlineId}`);
-    },
-
-    deleteDeadline: async (deadlineId: string): Promise<void> => {
-        await api.delete(`/api/deadlines/${deadlineId}`);
-    },
-
-    updateDeadline: async (deadlineId: string, title: string, dueDate: string): Promise<void> => {
-        await api.put(`/api/deadlines/${deadlineId}`, {
-            title,
-            due_date: dueDate,
-        });
-    },
-
-    // Holidays
     getHolidays: async (): Promise<Holiday[]> => {
         const response = await api.get('/api/holidays');
         return response.data;
@@ -379,18 +364,6 @@ export const attendanceService = {
         const response = await api.get('/api/notices');
         return response.data;
     },
-
-    // Integrations
-    getGoogleCalendarEvents: async () => {
-        const response = await api.get('/api/integrations/calendar');
-        return response.data;
-    },
-
-    getGoogleTasks: async () => {
-        const response = await api.get('/api/integrations/tasks');
-        return response.data;
-    },
-
 
 
     // Notifications

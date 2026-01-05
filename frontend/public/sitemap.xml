@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://acadhubkb.vercel.app/</loc>
-    <lastmod>2025-12-19</lastmod>
+    <lastmod>2026-01-05</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -22,23 +22,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://acadhubkb.vercel.app/courses</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://acadhubkb.vercel.app/timetable</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://acadhubkb.vercel.app/board</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://acadhubkb.vercel.app/planner</loc>
-    <changefreq>daily</changefreq>
+    <loc>https://acadhubkb.vercel.app/skills</loc>
+    <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
@@ -47,8 +37,18 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://acadhubkb.vercel.app/practicals</loc>
+    <loc>https://acadhubkb.vercel.app/results</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://acadhubkb.vercel.app/settings</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://acadhubkb.vercel.app/notifications</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>

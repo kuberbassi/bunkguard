@@ -3,6 +3,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/components/ui/Toast';
+import { useSemester } from '@/contexts/SemesterContext';
 import { attendanceService } from '@/services/attendance.service';
 import { Check, X, MoreHorizontal, Calendar as CalendarIcon } from 'lucide-react';
 
@@ -17,6 +18,7 @@ interface AttendanceModalProps {
 
 const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defaultDate, onSuccess }) => {
     const { showToast } = useToast();
+    const { currentSemester } = useSemester();
     const [selectedDate, setSelectedDate] = useState<Date>(defaultDate || new Date());
     const [loading, setLoading] = useState(false);
     const [scheduledClasses, setScheduledClasses] = useState<any[]>([]);
@@ -38,10 +40,15 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
     const loadClassesForDate = async (date: Date) => {
         setLoading(true);
         try {
-            const dateStr = date.toISOString().split('T')[0];
+            // Fix timezone issue: Avoid toISOString() which shifts day for regions like India
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+
             const [scheduled, subjects] = await Promise.all([
-                attendanceService.getClassesForDate(dateStr),
-                attendanceService.getSubjects(1) // Assuming sem 1 or fetch from context? Using 1 for now.
+                attendanceService.getClassesForDate(dateStr, currentSemester),
+                attendanceService.getSubjects(currentSemester)
             ]);
             setScheduledClasses(scheduled);
             setAllSubjects(subjects);
@@ -137,7 +144,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                         <input
                             type="date"
                             className="bg-transparent border-none p-0 text-on-surface font-sans font-medium focus:ring-0 w-full"
-                            value={selectedDate.toISOString().split('T')[0]}
+                            value={`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`}
                             onChange={handleDateChange}
                         />
                     </div>
@@ -154,63 +161,39 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                             <h3 className="text-sm font-bold text-on-surface-variant mb-3 uppercase tracking-wider">Scheduled Classes</h3>
                             {scheduledClasses.length > 0 ? (
                                 <div className="space-y-3">
-                                    {scheduledClasses.map(subject => (
-                                        <SubjectRow
-                                            key={subject._id}
-                                            subject={subject}
-                                            status={subject.marked_status}
-                                            expanded={expandedSubjectId === subject._id}
-                                            onSimpleMark={markSimple}
-                                            onOpenDetails={openDetails}
-                                            onCloseDetails={() => setExpandedSubjectId(null)}
+                                    {scheduledClasses.map(subject => {
+                                        const subId = typeof subject._id === 'object'
+                                            ? (subject._id as any).$oid
+                                            : (subject._id?.toString() || subject.id?.toString() || String(subject._id));
+                                        return (
+                                            <SubjectRow
+                                                key={`scheduled-${subId}`}
+                                                subject={{ ...subject, _id: subId }}
+                                                status={subject.marked_status}
+                                                expanded={expandedSubjectId === subId}
+                                                onSimpleMark={markSimple}
+                                                onOpenDetails={openDetails}
+                                                onCloseDetails={() => setExpandedSubjectId(null)}
 
-                                            // Detail Props
-                                            detailStatus={detailStatus}
-                                            setDetailStatus={setDetailStatus}
-                                            detailNotes={detailNotes}
-                                            setDetailNotes={setDetailNotes}
-                                            detailSubstitutedBy={detailSubstitutedBy}
-                                            setDetailSubstitutedBy={setDetailSubstitutedBy}
-                                            allSubjects={allSubjects}
-                                            onSubmitDetail={submitDetailedMark}
-                                        />
-                                    ))}
+                                                // Detail Props
+                                                detailStatus={detailStatus}
+                                                setDetailStatus={setDetailStatus}
+                                                detailNotes={detailNotes}
+                                                setDetailNotes={setDetailNotes}
+                                                detailSubstitutedBy={detailSubstitutedBy}
+                                                setDetailSubstitutedBy={setDetailSubstitutedBy}
+                                                allSubjects={allSubjects}
+                                                onSubmitDetail={submitDetailedMark}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <p className="text-sm text-on-surface-variant/70 italic text-center py-4">No classes scheduled.</p>
                             )}
                         </div>
 
-                        {/* Other Subjects */}
-                        <div className="pt-4 border-t border-outline-variant/20">
-                            <h3 className="text-sm font-bold text-on-surface-variant mb-3 uppercase tracking-wider">Other Subjects</h3>
-                            <div className="space-y-3">
-                                {allSubjects
-                                    .filter(s => !scheduledClasses.some(sc => sc._id === s.id))
-                                    .map(subject => (
-                                        <SubjectRow
-                                            key={subject._id || subject.id}
-                                            subject={{ ...subject, _id: subject._id || subject.id }}
-                                            status='pending' // Can't easily know status of unscheduled w/o extra check, assume pending or use getLogsForDate
-                                            // Improvement: Fetch logs_for_date separately to populate this status.
-                                            expanded={expandedSubjectId === (subject._id || subject.id)}
-                                            onSimpleMark={markSimple}
-                                            onOpenDetails={openDetails}
-                                            onCloseDetails={() => setExpandedSubjectId(null)}
 
-                                            detailStatus={detailStatus}
-                                            setDetailStatus={setDetailStatus}
-                                            detailNotes={detailNotes}
-                                            setDetailNotes={setDetailNotes}
-                                            detailSubstitutedBy={detailSubstitutedBy}
-                                            setDetailSubstitutedBy={setDetailSubstitutedBy}
-                                            allSubjects={allSubjects}
-                                            onSubmitDetail={submitDetailedMark}
-                                        />
-                                    ))
-                                }
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>

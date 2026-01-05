@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -26,31 +26,10 @@ const Calendar: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [isMarkModalOpen, setIsMarkModalOpen] = useState(false);
 
-
-    // View Toggle State: 'attendance' | 'events'
-    const [viewMode, setViewMode] = useState<'attendance' | 'events'>(() => {
-        return localStorage.getItem('calendar_view_mode') as 'attendance' | 'events' || 'attendance';
-    });
-
-    useEffect(() => {
-        localStorage.setItem('calendar_view_mode', viewMode);
-    }, [viewMode]);
-
-    const [googleEvents, setGoogleEvents] = useState<any[]>([]);
-
     useEffect(() => {
         loadData();
-        loadGoogleEvents();
     }, [currentDate, currentSemester]);
 
-    const loadGoogleEvents = async () => {
-        try {
-            const events = await attendanceService.getGoogleCalendarEvents();
-            setGoogleEvents(events);
-        } catch (error) {
-            console.error("Failed to load google events", error);
-        }
-    };
 
     const loadData = async () => {
         try {
@@ -59,7 +38,7 @@ const Calendar: React.FC = () => {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1;
 
-            const calendarData = await attendanceService.getCalendarData(year, month);
+            const calendarData = await attendanceService.getCalendarData(year, month, currentSemester);
             setAttendanceData(calendarData as Record<string, AttendanceRecord[]> || {});
         } catch (error) {
             console.error(error);
@@ -75,7 +54,10 @@ const Calendar: React.FC = () => {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
-        const startingDayOfWeek = firstDay.getDay();
+
+        // Convert to Monday-first week (0=Monday, 6=Sunday)
+        let startingDayOfWeek = firstDay.getDay() - 1;
+        if (startingDayOfWeek === -1) startingDayOfWeek = 6; // Sunday becomes 6
 
         return { daysInMonth, startingDayOfWeek, year, month };
     };
@@ -88,14 +70,6 @@ const Calendar: React.FC = () => {
         const dateStr = `${year}-${month}-${day}`;
 
         return attendanceData[dateStr] || [];
-    };
-
-    const getGoogleEventsForDate = (date: Date) => {
-        const dateStr = date.toISOString().split('T')[0];
-        return googleEvents.filter(event => {
-            const start = event.start.dateTime || event.start.date;
-            return start.startsWith(dateStr);
-        });
     };
 
     const handlePrevMonth = () => {
@@ -146,28 +120,6 @@ const Calendar: React.FC = () => {
                     <p className="text-on-surface-variant text-lg">Track your attendance history</p>
                 </div>
 
-                {/* View Controller */}
-                <div className="flex items-center gap-4 bg-surface-container rounded-xl p-1 border border-outline-variant/20">
-                    <button
-                        onClick={() => setViewMode('attendance')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'attendance'
-                            ? 'bg-primary text-on-primary shadow-sm'
-                            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                            }`}
-                    >
-                        Attendance
-                    </button>
-                    <button
-                        onClick={() => setViewMode('events')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'events'
-                            ? 'bg-primary text-on-primary shadow-sm'
-                            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
-                            }`}
-                    >
-                        Events
-                    </button>
-                </div>
-
                 <div className="flex items-center gap-3 bg-surface-container-low rounded-xl p-1 border border-outline-variant/20">
                     <Button variant="ghost" onClick={handlePrevMonth} className="!p-2">
                         <ChevronLeft size={20} />
@@ -181,95 +133,74 @@ const Calendar: React.FC = () => {
                 </div>
             </div>
 
-            {viewMode === 'events' ? (
-                <div className="flex flex-col items-center justify-center p-12 text-center bg-surface-container-low/50 rounded-2xl border border-dashed border-outline-variant">
-                    <div className="p-4 rounded-full bg-primary/10 mb-4 text-primary">
-                        <CalendarIcon size={32} />
-                    </div>
-                    <h3 className="text-xl font-bold text-on-surface mb-2">Events & Holidays</h3>
-                    <p className="text-on-surface-variant max-w-md">
-                        This view will show academic holidays, exam schedules, and synced Google Calendar events.
-                        <br />🚧 <span className="text-sm font-bold opacity-80">Coming Soon</span>
-                    </p>
+            <GlassCard className="p-6">
+                {/* Weekday Headers - Monday first */}
+                <div className="grid grid-cols-7 gap-4 mb-4">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                        <div key={day} className="text-center text-sm font-medium text-on-surface-variant">
+                            {day}
+                        </div>
+                    ))}
                 </div>
-            ) : (
-                <GlassCard className="p-6">
-                    {/* Weekday Headers */}
-                    <div className="grid grid-cols-7 gap-4 mb-4">
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                            <div key={day} className="text-center text-sm font-bold text-on-surface-variant/70 uppercase tracking-wilder py-2">
-                                {day}
-                            </div>
-                        ))}
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 gap-4 flex-1">
+                    {days.map((day, index) => {
+                        if (typeof day !== 'number') return day;
+
+                        const date = new Date(year, month, day);
+                        const attendance = getAttendanceForDate(date);
+                        const isToday = new Date().toDateString() === date.toDateString();
+                        const presentCount = attendance.filter(a => a.status === 'present').length;
+                        const absentCount = attendance.filter(a => a.status === 'absent').length;
+                        const totalClasses = attendance.length;
+
+                        return (
+                            <motion.button
+                                key={index}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleDayClick(day)}
+                                className={`aspect-square rounded-2xl p-2 relative flex flex-col items-center justify-start transition-all border ${isToday
+                                    ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary),0.3)]'
+                                    : totalClasses > 0
+                                        ? 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'
+                                        : 'border-transparent hover:bg-surface-dim'
+                                    }`}
+                            >
+                                <span className={`text-base font-medium mt-1 ${isToday ? 'text-primary font-bold' : 'text-on-surface'}`}>
+                                    {day}
+                                </span>
+
+                                <div className="mt-auto mb-2 flex gap-1 flex-wrap justify-center max-w-full">
+                                    {new Array(Math.min(presentCount, 4)).fill(0).map((_, i) => (
+                                        <div key={`p-${i}`} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
+                                    ))}
+                                    {new Array(Math.min(absentCount, 4)).fill(0).map((_, i) => (
+                                        <div key={`a-${i}`} className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
+                                    ))}
+                                </div>
+                            </motion.button>
+                        );
+                    })}
+                </div>
+
+                {/* Legend */}
+                <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-wrap justify-center gap-8 text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm" />
+                        <span className="text-on-surface-variant">Present</span>
                     </div>
-
-                    {/* Calendar Grid */}
-                    <div className="grid grid-cols-7 gap-4 flex-1">
-                        {days.map((day, index) => {
-                            if (typeof day !== 'number') return day;
-
-                            const date = new Date(year, month, day);
-                            const attendance = getAttendanceForDate(date);
-                            const isToday = new Date().toDateString() === date.toDateString();
-                            const presentCount = attendance.filter(a => a.status === 'present').length;
-                            const absentCount = attendance.filter(a => a.status === 'absent').length;
-                            const totalClasses = attendance.length;
-                            const googleEventsForDay = getGoogleEventsForDate(date);
-
-                            return (
-                                <motion.button
-                                    key={index}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleDayClick(day)}
-                                    className={`aspect-square rounded-2xl p-2 relative flex flex-col items-center justify-start transition-all border ${isToday
-                                        ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary),0.3)]'
-                                        : totalClasses > 0
-                                            ? 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'
-                                            : 'border-transparent hover:bg-surface-dim'
-                                        }`}
-                                >
-                                    <span className={`text-base font-medium mt-1 ${isToday ? 'text-primary font-bold' : 'text-on-surface'}`}>
-                                        {day}
-                                    </span>
-
-                                    <div className="mt-auto mb-2 flex gap-1 flex-wrap justify-center max-w-full">
-                                        {new Array(Math.min(presentCount, 4)).fill(0).map((_, i) => (
-                                            <div key={`p-${i}`} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
-                                        ))}
-                                        {new Array(Math.min(absentCount, 4)).fill(0).map((_, i) => (
-                                            <div key={`a-${i}`} className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
-                                        ))}
-                                        {googleEventsForDay.length > 0 && (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" title={`${googleEventsForDay.length} Google Calendar Events`} />
-                                        )}
-                                    </div>
-                                </motion.button>
-                            );
-                        })}
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm" />
+                        <span className="text-on-surface-variant">Absent</span>
                     </div>
-
-                    {/* Legend */}
-                    <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-wrap justify-center gap-8 text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm" />
-                            <span className="text-on-surface-variant">Present</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm" />
-                            <span className="text-on-surface-variant">Absent</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500 shadow-sm" />
-                            <span className="text-on-surface-variant">Google Event</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
-                            <span className="text-primary font-bold">Today</span>
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
+                        <span className="text-primary font-bold">Today</span>
                     </div>
-                </GlassCard>
-            )}
+                </div>
+            </GlassCard>
 
             <AttendanceModal
                 isOpen={isMarkModalOpen}

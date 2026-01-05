@@ -263,43 +263,46 @@ const TimeTable: React.FC = () => {
                                         </div>
                                     ) : (
                                         <AnimatePresence>
-                                            {slots.map((slot: TimetableSlot, idx: number) => (
-                                                <motion.div
-                                                    key={slot._id || idx}
-                                                    initial={{ opacity: 0, scale: 0.95 }}
-                                                    animate={{ opacity: 1, scale: 1 }}
-                                                    exit={{ opacity: 0, scale: 0.95 }}
-                                                    className="group relative p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
-                                                >
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <h4 className="font-bold text-sm text-on-surface mb-1">
-                                                                {slot.type === 'break' ? 'Break' :
-                                                                    slot.type === 'free' ? 'Free Period' :
-                                                                        (getSubjectName(slot.subject_id) || slot.label || 'Class')}
-                                                            </h4>
-                                                            <div className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
-                                                                <Clock size={12} />
-                                                                {slot.start_time} - {slot.end_time}
+                                            {slots.map((slot: TimetableSlot, idx: number) => {
+                                                const slotId = typeof slot._id === 'object' ? (slot._id as any).$oid : String(slot._id || idx);
+                                                return (
+                                                    <motion.div
+                                                        key={slotId}
+                                                        initial={{ opacity: 0, scale: 0.95 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.95 }}
+                                                        className="group relative p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
+                                                    >
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <h4 className="font-bold text-sm text-on-surface mb-1">
+                                                                    {slot.type === 'break' ? 'Break' :
+                                                                        slot.type === 'free' ? 'Free Period' :
+                                                                            (getSubjectName(slot.subject_id) || slot.label || 'Class')}
+                                                                </h4>
+                                                                <div className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
+                                                                    <Clock size={12} />
+                                                                    {slot.start_time} - {slot.end_time}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <button
+                                                                    onClick={() => handleOpenEditModal(slot)}
+                                                                    className="p-1.5 rounded-lg hover:bg-surface-container text-primary hover:text-primary-dark transition-colors"
+                                                                >
+                                                                    <Edit2 size={14} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => slot._id && handleDeleteSlot(slot._id)}
+                                                                    className="p-1.5 rounded-lg hover:bg-error-container text-error hover:text-on-error-container transition-colors"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button
-                                                                onClick={() => handleOpenEditModal(slot)}
-                                                                className="p-1.5 rounded-lg hover:bg-surface-container text-primary hover:text-primary-dark transition-colors"
-                                                            >
-                                                                <Edit2 size={14} />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => slot._id && handleDeleteSlot(slot._id)}
-                                                                className="p-1.5 rounded-lg hover:bg-error-container text-error hover:text-on-error-container transition-colors"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </motion.div>
-                                            ))}
+                                                    </motion.div>
+                                                );
+                                            })}
                                         </AnimatePresence>
                                     )}
                                 </div>

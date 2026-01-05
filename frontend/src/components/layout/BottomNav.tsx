@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    LayoutDashboard, CalendarDays, GraduationCap, BookOpen, MoreHorizontal,
-    PieChart, CalendarClock, StickyNote, Trophy, Beaker, Settings, Bell, X
+    LayoutDashboard, CalendarDays, GraduationCap, MoreHorizontal,
+    PieChart, CalendarClock, Trophy, Beaker, Settings, Bell, X, Target
 } from 'lucide-react';
 
 // Main bottom nav items (5 max)
@@ -11,16 +11,15 @@ const mainNavItems = [
     { name: 'Home', href: '/', icon: LayoutDashboard },
     { name: 'Calendar', href: '/calendar', icon: CalendarDays },
     { name: 'Academics', href: '/courses', icon: GraduationCap },
-    { name: 'Planner', href: '/planner', icon: BookOpen },
 ];
 
 // "More" menu items
 const moreMenuItems = [
     { name: 'Analytics', href: '/analytics', icon: PieChart },
     { name: 'Schedule', href: '/timetable', icon: CalendarClock },
-    { name: 'Board', href: '/board', icon: StickyNote },
     { name: 'Results', href: '/results', icon: Trophy },
     { name: 'Assignments', href: '/practicals', icon: Beaker },
+    { name: 'Skills', href: '/skills', icon: Target },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Settings', href: '/settings', icon: Settings },
 ];
@@ -129,8 +128,8 @@ const BottomNav: React.FC = () => {
                                             to={item.href}
                                             onClick={() => setMoreMenuOpen(false)}
                                             className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-colors ${isActive
-                                                    ? 'bg-primary/10 text-primary'
-                                                    : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant'
+                                                ? 'bg-primary/10 text-primary'
+                                                : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant'
                                                 }`}
                                         >
                                             <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} />

@@ -10,7 +10,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 try:
-    client = MongoClient(os.getenv('MONGO_URI'))
+    # MongoDB Connection with Connection Pooling for 50+ concurrent users
+    client = MongoClient(
+        os.getenv('MONGO_URI'),
+        maxPoolSize=50,  # Max concurrent connections
+        minPoolSize=10,  # Keep minimum connections alive
+        maxIdleTimeMS=45000,  # Close idle connections after 45s
+        waitQueueTimeoutMS=2500,  # Wait max 2.5s for available connection
+        serverSelectionTimeoutMS=5000,  # Server selection timeout
+        connectTimeoutMS=10000,  # Initial connection timeout
+        socketTimeoutMS=20000,  # Socket operation timeout
+    )
     db = client.get_database('attendanceDB')
 except Exception as e:
     print(f"MongoDB failed: {e}")
@@ -68,10 +78,16 @@ def create_app():
     from .auth import auth_bp
     from .classroom import classroom_bp
     from .keep import keep_bp
+    from .push import push_bp
+    from .rate_limiter import create_limiter
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(classroom_bp)
     app.register_blueprint(keep_bp)
+    app.register_blueprint(push_bp)
+    
+    # Initialize Rate Limiter
+    limiter = create_limiter(app)
     
     return app
