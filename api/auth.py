@@ -10,6 +10,14 @@ auth_bp = Blueprint('auth', __name__)
 # This will be initialized in our main __init__.py
 oauth = OAuth()
 
+@auth_bp.route('/google', methods=['POST'])
+def google_auth():
+    data = request.json
+    access_token = data.get('access_token')
+    
+    if not access_token:
+        return jsonify({"error": "No access token provided"}), 400
+        
     # Verify the user with Google
     try:
         if db is None:
