@@ -40,7 +40,8 @@ def set_cached(key, value):
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Global Collection Definitions
-preferences_collection = db.get_collection('user_preferences')
+# Global Collection Definitions
+# preferences_collection = db.get_collection('user_preferences') # Moved inside functions
 
 # --- Preferences & Profile ---
 
@@ -48,6 +49,9 @@ preferences_collection = db.get_collection('user_preferences')
 def update_preferences():
     """Get or Update user preferences"""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+
+    if db is None: return jsonify({"error": "Database not available"}), 500
+    preferences_collection = db.get_collection('user_preferences')
     
     user_email = session['user']['email']
     
