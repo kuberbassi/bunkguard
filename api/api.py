@@ -43,6 +43,28 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 # Global Collection Definitions
 # preferences_collection = db.get_collection('user_preferences') # Moved inside functions
 
+# --- Health Check (for debugging Vercel) ---
+@api_bp.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint to verify DB and env vars"""
+    status = {
+        "status": "ok",
+        "db_connected": db is not None,
+        "mongo_uri_set": bool(os.getenv('MONGO_URI')),
+        "flask_secret_set": bool(os.getenv('FLASK_SECRET_KEY'))
+    }
+    
+    if db is not None:
+        try:
+            # Try a simple operation
+            db.list_collection_names()
+            status["db_pingable"] = True
+        except Exception as e:
+            status["db_pingable"] = False
+            status["db_error"] = str(e)
+    
+    return jsonify(status)
+
 # --- Preferences & Profile ---
 
 @api_bp.route('/preferences', methods=['GET', 'POST'])
