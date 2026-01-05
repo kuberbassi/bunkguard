@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
     User, Palette, Settings as SettingsIcon, Download, Upload,
-    Sun, Moon, Percent, Calculator, AlertTriangle, LogOut, Trash2,
+    Sun, Moon, AlertTriangle, LogOut, Trash2,
     Activity, Clock, FileText, Edit2
 } from 'lucide-react';
 import type { SystemLog } from '@/types';
@@ -579,34 +579,7 @@ const Settings: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Counting Mode */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-on-surface mb-3">
-                                            Display Mode
-                                        </label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button
-                                                onClick={() => savePreferences({ counting_mode: 'percentage' })}
-                                                className={`p-4 rounded-xl border-2 transition-all ${preferences.counting_mode === 'percentage'
-                                                    ? 'border-primary bg-primary/10'
-                                                    : 'border-outline-variant/30 hover:bg-surface-container-high'
-                                                    }`}
-                                            >
-                                                <Percent className="w-6 h-6 mx-auto mb-2 text-primary" />
-                                                <p className="font-medium text-on-surface text-sm">Percentage</p>
-                                            </button>
-                                            <button
-                                                onClick={() => savePreferences({ counting_mode: 'classes' })}
-                                                className={`p-4 rounded-xl border-2 transition-all ${preferences.counting_mode === 'classes'
-                                                    ? 'border-primary bg-primary/10'
-                                                    : 'border-outline-variant/30 hover:bg-surface-container-high'
-                                                    }`}
-                                            >
-                                                <Calculator className="w-6 h-6 mx-auto mb-2 text-primary" />
-                                                <p className="font-medium text-on-surface text-sm">Class Count</p>
-                                            </button>
-                                        </div>
-                                    </div>
+
                                 </div>
                             </GlassCard>
                         </section>

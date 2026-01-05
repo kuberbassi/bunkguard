@@ -170,22 +170,24 @@ const Notifications: React.FC = () => {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.05 }}
                                 >
-                                    <GlassCard className="p-4 flex items-center justify-between group hover:bg-surface-container/50 transition-colors cursor-pointer" onClick={() => window.open(item.link, '_blank')}>
-                                        <div className="flex items-start gap-4">
-                                            <div className="p-2 rounded-lg bg-error/10 text-error">
-                                                <Info size={20} />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-medium text-on-surface group-hover:text-primary transition-colors">
-                                                    {item.title}
-                                                </h3>
-                                                <div className="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
-                                                    <Calendar size={12} />
-                                                    {item.date}
+                                    <GlassCard className="p-4 group hover:bg-surface-container/50 transition-colors cursor-pointer" onClick={() => window.open(item.link, '_blank')}>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-2 rounded-lg bg-error/10 text-error">
+                                                    <Info size={20} />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-medium text-on-surface group-hover:text-primary transition-colors">
+                                                        {item.title}
+                                                    </h3>
+                                                    <div className="flex items-center gap-2 mt-1 text-xs text-on-surface-variant">
+                                                        <Calendar size={12} />
+                                                        {item.date}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <ExternalLink size={16} className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
-                                        <ExternalLink size={16} className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </GlassCard>
                                 </motion.div>
                             ))
