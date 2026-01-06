@@ -256,13 +256,14 @@ const Settings: React.FC = () => {
 
     const handleExportData = async () => {
         try {
-            const data = await attendanceService.exportData();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const blob = await attendanceService.exportData();
+            // Blob already contains JSON from backend, use it directly
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `acadhub-data-${new Date().toISOString().split('T')[0]}.json`;
             a.click();
+            URL.revokeObjectURL(url); // Clean up
             showToast('success', 'Data exported successfully');
         } catch (error) {
             showToast('error', 'Failed to export data');
@@ -285,8 +286,18 @@ const Settings: React.FC = () => {
     };
 
     const handleDeleteAllData = async () => {
-        if (!confirm('⚠️ This will DELETE ALL your attendance data. This action CANNOT be undone. Are you absolutely sure?')) return;
-        if (!confirm('⚠️ Last chance! Really delete everything?')) return;
+        // First confirmation
+        if (!confirm('⚠️ WARNING: This will permanently DELETE ALL your attendance data. This action CANNOT be undone. Are you absolutely sure?')) return;
+
+        // Second confirmation
+        if (!confirm('⚠️ FINAL WARNING: All subjects, attendance logs, timetable, semester results, and settings will be deleted. Continue?')) return;
+
+        // Third confirmation - require typing 'DELETE'
+        const userInput = prompt('To confirm deletion, type DELETE in all caps:');
+        if (userInput !== 'DELETE') {
+            showToast('error', 'Deletion cancelled - confirmation text did not match');
+            return;
+        }
 
         try {
             const res: any = await attendanceService.deleteAllData();

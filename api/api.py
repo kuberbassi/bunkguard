@@ -154,6 +154,7 @@ users_collection = db.get_collection('users')
 manual_courses_collection = db.get_collection('manual_courses')
 semester_results_collection = db.get_collection('semester_results')
 skills_collection = db.get_collection('skills')
+deadlines_collection = db.get_collection('deadlines')
 
 
 # --- Helper Functions ---
@@ -1165,29 +1166,184 @@ def handle_preferences():
 
 @api_bp.route('/import_data', methods=['POST'])
 def import_data():
+    """Import user data from exported JSON with comprehensive support for all data types."""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     user_email = session['user']['email']
     data = request.json
-    subjects_upserted = 0
     
-    if 'subjects' in data:
-        for subject in data['subjects']:
-            subjects_collection.update_one(
-                {'owner_email': user_email, 'name': subject['name'], 'semester': subject['semester']},
-                {'$set': subject},
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    counts = {}
+    errors = []
+    
+    try:
+        # Import subjects
+        if 'subjects' in data and data['subjects']:
+            subject_count = 0
+            for subject in data['subjects']:
+                try:
+                    subject['owner_email'] = user_email  # Ensure ownership
+                    subjects_collection.update_one(
+                        {'owner_email': user_email, 'name': subject.get('name'), 'semester': subject.get('semester')},
+                        {'$set': subject},
+                        upsert=True
+                    )
+                    subject_count += 1
+                except Exception as e:
+                    errors.append(f"Subject '{subject.get('name', 'unknown')}': {str(e)}")
+            counts['subjects'] = subject_count
+        
+        # Import attendance logs
+        # Note: Attendance logs will be skipped as they reference subject_ids from the old account
+        # This is intentional - importing logs without proper subject mapping would create broken references
+        # Users should use the export primarily for subjects and semester results
+        if 'attendance_logs' in data and data['attendance_logs']:
+            log_count = 0
+            # We skip attendance logs as they contain subject_id references that won't exist in the new account
+            # To properly import logs, subjects must be imported first and IDs would need to be remapped
+            # For now, we skip this to avoid data corruption
+            counts['attendance_logs'] = 0  # Indicate logs were skipped
+            errors.append("Attendance logs skipped: subject_id references cannot be mapped to new account")
+        
+        # Import schedule, timetable periods, and preferences
+        timetable_update = {}
+        if 'schedule' in data and data['schedule']:
+            timetable_update['schedule'] = data['schedule']
+        if 'timetable_periods' in data and data['timetable_periods']:
+            timetable_update['periods'] = data['timetable_periods']
+        if 'preferences' in data and data['preferences']:
+            timetable_update['preferences'] = data['preferences']
+        
+        if timetable_update:
+            timetable_collection.update_one(
+                {'owner_email': user_email},
+                {'$set': timetable_update},
                 upsert=True
             )
-            subjects_upserted += 1
-
-    if 'schedule' in data and 'schedule' in data.get('schedule', {}):
-        timetable_collection.update_one(
-            {'owner_email': user_email},
-            {'$set': {'schedule': data['schedule']['schedule']}},
-            upsert=True
-        )
-    
-    log_user_action(user_email, "Data Imported", f"Imported {subjects_upserted} subjects.")
-    return jsonify({"success": True, "message": f"Processed {subjects_upserted} subjects."})
+            counts['timetable'] = 1
+        
+        # Import semester results
+        if 'semester_results' in data and data['semester_results']:
+            result_count = 0
+            for result in data['semester_results']:
+                try:
+                    result['owner_email'] = user_email
+                    semester_results_collection.update_one(
+                        {'owner_email': user_email, 'semester': result.get('semester')},
+                        {'$set': result},
+                        upsert=True
+                    )
+                    result_count += 1
+                except Exception as e:
+                    errors.append(f"Semester result {result.get('semester', 'unknown')}: {str(e)}")
+            counts['semester_results'] = result_count
+        
+        # Import academic records
+        if 'academic_records' in data and data['academic_records']:
+            record_count = 0
+            for record in data['academic_records']:
+                try:
+                    record['owner_email'] = user_email
+                    academic_records_collection.update_one(
+                        {'owner_email': user_email, 'semester': record.get('semester')},
+                        {'$set': record},
+                        upsert=True
+                    )
+                    record_count += 1
+                except Exception as e:
+                    errors.append(f"Academic record: {str(e)}")
+            counts['academic_records'] = record_count
+        
+        # Import holidays
+        if 'holidays' in data and data['holidays']:
+            holiday_count = 0
+            for holiday in data['holidays']:
+                try:
+                    holiday['owner_email'] = user_email
+                    holidays_collection.update_one(
+                        {'owner_email': user_email, 'date': holiday.get('date')},
+                        {'$set': holiday},
+                        upsert=True
+                    )
+                    holiday_count += 1
+                except Exception as e:
+                    errors.append(f"Holiday: {str(e)}")
+            counts['holidays'] = holiday_count
+        
+        # Import deadlines (insert as new to avoid duplicates)
+        if 'deadlines' in data and data['deadlines']:
+            deadline_count = 0
+            for deadline in data['deadlines']:
+                try:
+                    deadline['owner_email'] = user_email
+                    deadline.pop('_id', None)  # Remove _id if present
+                    deadlines_collection.insert_one(deadline)
+                    deadline_count += 1
+                except Exception as e:
+                    errors.append(f"Deadline: {str(e)}")
+            counts['deadlines'] = deadline_count
+        
+        # Import manual courses
+        if 'manual_courses' in data and data['manual_courses']:
+            try:
+                manual_courses_collection.update_one(
+                    {'owner_email': user_email},
+                    {'$set': {'courses': data['manual_courses'], 'updated_at': datetime.utcnow()}},
+                    upsert=True
+                )
+                counts['manual_courses'] = len(data['manual_courses'])
+            except Exception as e:
+                errors.append(f"Manual courses: {str(e)}")
+        
+        # Import skills
+        if 'skills' in data and data['skills']:
+            skill_count = 0
+            for skill in data['skills']:
+                try:
+                    skill['owner_email'] = user_email
+                    skill.pop('_id', None)  # Remove _id if present
+                    # Upsert by name to avoid duplicates
+                    skills_collection.update_one(
+                        {'owner_email': user_email, 'name': skill.get('name')},
+                        {'$set': skill},
+                        upsert=True
+                    )
+                    skill_count += 1
+                except Exception as e:
+                    errors.append(f"Skill: {str(e)}")
+            counts['skills'] = skill_count
+        
+        # Update user profile if included
+        if 'user_profile' in data and data['user_profile']:
+            try:
+                profile_update = {k: v for k, v in data['user_profile'].items() if v is not None and v != ''}
+                if profile_update:
+                    users_collection.update_one(
+                        {'email': user_email},
+                        {'$set': profile_update}
+                    )
+                    counts['user_profile'] = 1
+            except Exception as e:
+                errors.append(f"User profile: {str(e)}")
+        
+        # Log the import action
+        log_user_action(user_email, "Data Imported", f"Successfully imported: {counts}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Data imported successfully",
+            "counts": counts,
+            "errors": errors if errors else None
+        })
+        
+    except Exception as e:
+        print(f"Import error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": f"Import failed: {str(e)}"
+        }), 500
 
 @api_bp.route('/add_subject', methods=['POST'])
 def add_subject():
@@ -1422,14 +1578,65 @@ def get_subject_details(subject_id):
 
 @api_bp.route('/export_data')
 def export_data():
+    """Export all user data for complete backup."""
     if 'user' not in session: return "Unauthorized", 401
     user_email = session['user']['email']
+    
+    # Get user profile
+    user_doc = users_collection.find_one({'email': user_email}, {'_id': 0, 'password': 0, 'google_token': 0})
+    
+    # Get timetable document (contains schedule, periods, and preferences)
+    timetable_doc = timetable_collection.find_one({'owner_email': user_email}, {'_id': 0})
+    
+    # Get manual courses document
+    manual_courses_doc = manual_courses_collection.find_one({'owner_email': user_email}, {'_id': 0})
+    
     data_to_export = {
+        "version": "1.0",
+        "exported_at": datetime.utcnow().isoformat(),
+        "user_email": user_email,
+        
+        # Core attendance data
         "subjects": list(subjects_collection.find({"owner_email": user_email}, {'_id': 0})),
         "attendance_logs": list(attendance_log_collection.find({"owner_email": user_email}, {'_id': 0})),
-        "schedule": timetable_collection.find_one({"owner_email": user_email}, {'_id': 0, 'schedule': 1})
+        
+        # Timetable
+        "schedule": timetable_doc.get('schedule') if timetable_doc else {},
+        "timetable_periods": timetable_doc.get('periods') if timetable_doc else [],
+        
+        # Preferences & Settings
+        "preferences": timetable_doc.get('preferences') if timetable_doc else {},
+        
+        # Academic records
+        "semester_results": list(semester_results_collection.find({"owner_email": user_email}, {'_id': 0})),
+        "academic_records": list(academic_records_collection.find({"owner_email": user_email}, {'_id': 0})),
+        
+        # Other data
+        "holidays": list(holidays_collection.find({"owner_email": user_email}, {'_id': 0})),
+        "deadlines": list(deadlines_collection.find({"owner_email": user_email}, {'_id': 0})),
+        
+        # Manual courses
+        "manual_courses": manual_courses_doc.get('courses', []) if manual_courses_doc else [],
+        
+        # Skills (portfolio/resume data)
+        "skills": list(skills_collection.find({"owner_email": user_email}, {'_id': 0})),
+        
+        # User profile
+        "user_profile": {
+            "name": user_doc.get('name', '') if user_doc else '',
+            "branch": user_doc.get('branch', '') if user_doc else '',
+            "college": user_doc.get('college', '') if user_doc else '',
+            "semester": user_doc.get('semester', 1) if user_doc else 1,
+            "batch": user_doc.get('batch', '') if user_doc else '',
+            "picture": user_doc.get('picture', '') if user_doc else ''
+        }
     }
-    return Response(json_util.dumps(data_to_export, indent=4), mimetype="application/json", headers={"Content-Disposition": "attachment;filename=acadhub_data.json"})
+    
+    return Response(
+        json_util.dumps(data_to_export, indent=4), 
+        mimetype="application/json", 
+        headers={"Content-Disposition": "attachment;filename=acadhub_data.json"}
+    )
 
 @api_bp.route('/deadlines', methods=['GET'])
 def get_deadlines():

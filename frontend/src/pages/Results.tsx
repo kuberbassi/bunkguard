@@ -343,7 +343,7 @@ const Results: React.FC = () => {
         <p class="subtitle">Academic Performance Summary</p>
         
         <div class="period">
-            <strong>Period:</strong> ${startDate} → ${endDate}
+            <strong>Period:</strong> ${semester === 1 ? '27 Aug 2025 → 26 Dec 2025' : `${startDate} → ${endDate}`}
         </div>
         
         <div class="stats">
@@ -398,8 +398,6 @@ const Results: React.FC = () => {
             <thead>
                 <tr>
                     <th>Subject</th>
-                    <th>Present</th>
-                    <th>Total</th>
                     <th>Percentage</th>
                 </tr>
             </thead>
@@ -407,8 +405,6 @@ const Results: React.FC = () => {
                 ${attendanceData.subjects.map((s: any) => `
                     <tr>
                         <td>${s.name}</td>
-                        <td>${s.present || 0}</td>
-                        <td>${s.total || 0}</td>
                         <td>${s.attendance_percentage?.toFixed(1) || 0}%</td>
                     </tr>
                 `).join('')}

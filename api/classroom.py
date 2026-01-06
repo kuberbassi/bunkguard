@@ -10,7 +10,88 @@ classroom_bp = Blueprint('classroom', __name__, url_prefix='/api/classroom')
 
 # Simple in-memory cache for courses (per user session)
 _courses_cache = {}
-_cache_ttl = 300  # 5 minutes
+_cache_ttl = 120  # 2 minutes (reduced for serverless)
+
+def is_token_valid(user_data):
+    """Check if Google token is still valid."""
+    if not user_data or 'google_token' not in user_data:
+        return False
+    
+    # Check token expiry if available
+    token_expiry = user_data.get('google_token_expiry')
+    if token_expiry:
+        current_time = time.time()
+        # Consider token expired if less than 5 minutes remaining
+        if current_time >= (token_expiry - 300):
+            return False
+    
+    return True
+
+def make_google_api_request(url, headers, params=None, timeout=10, max_retries=3):
+    """
+    Make a request to Google API with retry logic and exponential backoff.
+    
+    Args:
+        url: API endpoint URL
+        headers: Request headers
+        params: Query parameters
+        timeout: Request timeout in seconds
+        max_retries: Maximum number of retry attempts
+    
+    Returns:
+        tuple: (success: bool, response_data: dict, status_code: int, error_message: str)
+    """
+    for attempt in range(max_retries):
+        try:
+            resp = requests.get(
+                url,
+                headers=headers,
+                params=params,
+                timeout=timeout
+            )
+            
+            # Success
+            if resp.status_code == 200:
+                return (True, resp.json(), 200, None)
+            
+            # Auth errors - don't retry
+            if resp.status_code in [401, 403]:
+                error_msg = f"Authentication failed: {resp.text}"
+                return (False, None, resp.status_code, error_msg)
+            
+            # Rate limiting or server errors - retry with backoff
+            if resp.status_code in [429, 500, 502, 503]:
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 1s, 2s, 4s
+                    wait_time = 2 ** attempt
+                    print(f"Google API returned {resp.status_code}, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    error_msg = f"Google API error after {max_retries} attempts: {resp.status_code}"
+                    return (False, None, resp.status_code, error_msg)
+            
+            # Other errors
+            return (False, None, resp.status_code, f"Unexpected error: {resp.status_code}")
+            
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                print(f"Request timeout, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait_time)
+                continue
+            return (False, None, 408, "Request timeout after multiple attempts")
+        
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt
+                print(f"Network error: {e}, retrying in {wait_time}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait_time)
+                continue
+            return (False, None, 500, f"Network error: {str(e)}")
+    
+    return (False, None, 500, "Max retries exceeded")
+
 
 def get_cached_courses(token, user_email):
     """Get courses from cache or fetch from API."""
@@ -56,27 +137,41 @@ def fetch_course_data(course, token, endpoint, params, key):
 
 @classroom_bp.route('/courses', methods=['GET'])
 def list_courses():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    token = session['user'].get('google_token')
-    if not token: return jsonify({"error": "No Google Token found. Please re-login."}), 403
+    if 'user' not in session: 
+        return jsonify({"error": "Unauthorized", "code": "NO_SESSION"}), 401
+    
+    user_data = session['user']
+    
+    # Validate token
+    if not is_token_valid(user_data):
+        return jsonify({
+            "error": "Your Google session has expired. Please login again.",
+            "code": "TOKEN_EXPIRED"
+        }), 401
+    
+    token = user_data.get('google_token')
+    if not token: 
+        return jsonify({"error": "No Google Token found", "code": "NO_TOKEN"}), 403
 
     try:
-        resp = requests.get(
+        success, data, status, error = make_google_api_request(
             'https://classroom.googleapis.com/v1/courses',
-            headers={'Authorization': f'Bearer {token}'},
-            params={'courseStates': 'ACTIVE'}
+            {'Authorization': f'Bearer {token}'},
+            {'courseStates': 'ACTIVE'}
         )
-        if resp.status_code != 200:
-             print(f"Classroom API Error: {resp.text}")
-             return jsonify({"error": "Failed to fetch courses from Google"}), resp.status_code
         
-        data = resp.json()
+        if not success:
+            print(f"Classroom API Error: {error}")
+            if status in [401, 403]:
+                return jsonify({"error": error, "code": "AUTH_FAILED"}), status
+            return jsonify({"error": error or "Failed to fetch courses", "code": "API_ERROR"}), status or 500
+        
         courses = data.get('courses', [])
         return jsonify(courses)
     except Exception as e:
         print(f"Classroom Error: {e}")
         traceback.print_exc()
-        return jsonify({"error": "Internal error"}), 500
+        return jsonify({"error": "Internal error", "code": "SERVER_ERROR"}), 500
 
 @classroom_bp.route('/courses/<course_id>/coursework', methods=['GET'])
 def list_coursework(course_id):
@@ -148,37 +243,69 @@ def get_all_assignments():
 @classroom_bp.route('/announcements', methods=['GET'])
 def get_announcements():
     """Fetch announcements from all courses with caching and parallel requests."""
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    token = session['user'].get('google_token')
-    user_email = session['user'].get('email', 'unknown')
-    if not token: return jsonify({"error": "No Google Token found"}), 403
+    if 'user' not in session: 
+        return jsonify({"error": "Unauthorized", "code": "NO_SESSION"}), 401
+    
+    user_data = session['user']
+    
+    # Validate token
+    if not is_token_valid(user_data):
+        return jsonify({
+            "error": "Your Google session has expired. Please login again.", 
+            "code": "TOKEN_EXPIRED"
+        }), 401
+    
+    token = user_data.get('google_token')
+    user_email = user_data.get('email', 'unknown')
+    
+    if not token: 
+        return jsonify({"error": "No Google Token found", "code": "NO_TOKEN"}), 403
     
     try:
         # 1. Get Courses (cached)
         courses = get_cached_courses(token, user_email)
         
         if not courses:
+            # Try to fetch without cache  
+            success, data, status, error = make_google_api_request(
+                'https://classroom.googleapis.com/v1/courses',
+                {'Authorization': f'Bearer {token}'},
+                {'courseStates': 'ACTIVE'}
+            )
+            
+            if not success:
+                if status in [401, 403]:
+                    return jsonify({"error": error, "code": "AUTH_FAILED"}), status
+                return jsonify({"error": error or "Failed to fetch courses", "code": "API_ERROR"}), status or 500
+            
+            courses = data.get('courses', [])
+        
+        if not courses:
             return jsonify([])
         
         all_announcements = []
         
-        # 2. Fetch announcements in parallel
+        # 2. Fetch announcements in parallel with error tolerance
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {
-                executor.submit(
-                    fetch_course_data, 
-                    course, 
-                    token, 
-                    'announcements', 
-                    {'pageSize': 5},
-                    'announcements'
-                ): course for course in courses[:10]  # Up to 10 courses
-            }
+            futures = {}
+            for course in courses[:10]:  # Up to 10 courses
+                future = executor.submit(
+                    fetch_course_announcements_with_retry,
+                    course,
+                    token
+                )
+                futures[future] = course
             
             for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    all_announcements.extend(result)
+                try:
+                    result = future.result(timeout=15)
+                    if result:
+                        all_announcements.extend(result)
+                except Exception as e:
+                    course = futures[future]
+                    print(f"Failed to fetch announcements for {course.get('name', 'Unknown')}: {e}")
+                    # Continue with other courses even if one fails
+                    continue
         
         # Sort by creationTime (newest first)
         all_announcements.sort(key=lambda x: x.get('creationTime', ''), reverse=True)
@@ -187,24 +314,57 @@ def get_announcements():
     except Exception as e:
         print(f"Announcements Error: {e}")
         traceback.print_exc()
-        return jsonify({"error": "Internal error"}), 500
+        return jsonify({"error": "Internal error", "code": "SERVER_ERROR"}), 500
+
+def fetch_course_announcements_with_retry(course, token):
+    """Helper to fetch announcements for a single course with retry logic."""
+    success, data, status, error = make_google_api_request(
+        f'https://classroom.googleapis.com/v1/courses/{course["id"]}/announcements',
+        {'Authorization': f'Bearer {token}'},
+        {'pageSize': 5},
+        timeout=10
+    )
+    
+    if success:
+        items = data.get('announcements', [])
+        for item in items:
+            item['courseName'] = course['name']
+        return items
+    else:
+        print(f"Error fetching announcements for {course['name']}: {error}")
+        return []
 
 @classroom_bp.route('/materials', methods=['GET'])
 def get_materials():
     """Fetch course materials."""
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    token = session['user'].get('google_token')
-    if not token: return jsonify({"error": "No Google Token found"}), 403
+    if 'user' not in session: 
+        return jsonify({"error": "Unauthorized", "code": "NO_SESSION"}), 401
+    
+    user_data = session['user']
+    
+    # Validate token
+    if not is_token_valid(user_data):
+        return jsonify({
+            "error": "Your Google session has expired. Please login again.",
+            "code": "TOKEN_EXPIRED"
+        }), 401
+    
+    token = user_data.get('google_token')
+    if not token: 
+        return jsonify({"error": "No Google Token found", "code": "NO_TOKEN"}), 403
     
     try:
-        # Get courses
-        courses_resp = requests.get(
+        # Get courses with retry logic
+        success, data, status, error = make_google_api_request(
             'https://classroom.googleapis.com/v1/courses',
-            headers={'Authorization': f'Bearer {token}'},
-            params={'courseStates': 'ACTIVE'}
+            {'Authorization': f'Bearer {token}'},
+            {'courseStates': 'ACTIVE'}
         )
-        courses = courses_resp.json().get('courses', [])
         
+        if not success:
+            return jsonify({"error": error or "Failed to fetch courses", "code": "API_ERROR"}), status or 500
+        
+        courses = data.get('courses', [])
         all_materials = []
         
         for course in courses[:5]:

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Info, Megaphone, ExternalLink, Calendar } from 'lucide-react';
+import { Bell, Info, Megaphone, ExternalLink, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -21,30 +21,110 @@ interface Notice {
     date: string;
 }
 
+interface ErrorState {
+    hasError: boolean;
+    message: string;
+    isTokenExpired: boolean;
+}
+
 const Notifications: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'classroom' | 'notices'>('classroom');
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<ErrorState>({ hasError: false, message: '', isTokenExpired: false });
+    const [retryCount, setRetryCount] = useState(0);
 
     useEffect(() => {
         loadData();
     }, []);
 
-    const loadData = async () => {
+    const loadData = async (isRetry = false) => {
         try {
             setLoading(true);
+            setError({ hasError: false, message: '', isTokenExpired: false });
+
+            if (isRetry) {
+                setRetryCount(prev => prev + 1);
+            }
+
+            // Try to load from cache first for faster display
+            const cachedAnnouncements = localStorage.getItem('cached_announcements');
+            if (cachedAnnouncements && !isRetry) {
+                try {
+                    const parsed = JSON.parse(cachedAnnouncements);
+                    if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000) { // 5 min cache
+                        setAnnouncements(parsed.data || []);
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse cached announcements');
+                }
+            }
+
             const [annResp, notResp] = await Promise.all([
-                api.get('/api/classroom/announcements').catch(() => ({ data: [] })),
-                api.get('/api/notices').catch(() => ({ data: [] }))
+                api.get('/api/classroom/announcements').catch((err) => {
+                    console.error('Announcements error:', err);
+                    return { data: [], error: err };
+                }),
+                api.get('/api/notices').catch((err) => {
+                    console.error('Notices error:', err);
+                    return { data: [], error: err };
+                })
             ]);
-            setAnnouncements(annResp.data || []);
+
+            // Check for token expiry
+            const annError = (annResp as any).error;
+            if (annError?.response?.data?.code === 'TOKEN_EXPIRED') {
+                setError({
+                    hasError: true,
+                    message: 'Your session has expired. Please login again to view classroom notifications.',
+                    isTokenExpired: true
+                });
+                setLoading(false);
+                return;
+            }
+
+            // Set data
+            const annData = annResp.data || [];
+            setAnnouncements(annData);
             setNotices(notResp.data || []);
-        } catch (error) {
+
+            // Cache announcements
+            if (annData.length > 0) {
+                localStorage.setItem('cached_announcements', JSON.stringify({
+                    data: annData,
+                    timestamp: Date.now()
+                }));
+            }
+
+        } catch (error: any) {
             console.error('Failed to load notifications', error);
+
+            // Check if it's a token expiry error
+            if (error?.response?.data?.code === 'TOKEN_EXPIRED' || error?.response?.status === 401) {
+                setError({
+                    hasError: true,
+                    message: 'Your session has expired. Please login again to view notifications.',
+                    isTokenExpired: true
+                });
+            } else {
+                setError({
+                    hasError: true,
+                    message: 'Failed to load notifications. Please try again.',
+                    isTokenExpired: false
+                });
+            }
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleRetry = () => {
+        loadData(true);
+    };
+
+    const handleLogin = () => {
+        window.location.href = '/login';
     };
 
     return (
@@ -103,6 +183,30 @@ const Notifications: React.FC = () => {
                 </button>
             </div>
 
+            {/* Error State */}
+            {error.hasError && (
+                <GlassCard className="p-6 mb-6 border-l-4 border-error">
+                    <div className="flex items-start gap-4">
+                        <AlertCircle className="text-error flex-shrink-0 mt-1" size={24} />
+                        <div className="flex-1">
+                            <h3 className="font-bold text-on-surface mb-2">
+                                {error.isTokenExpired ? 'Session Expired' : 'Error Loading Notifications'}
+                            </h3>
+                            <p className="text-sm text-on-surface-variant mb-4">{error.message}</p>
+                            {error.isTokenExpired ? (
+                                <Button variant="primary" onClick={handleLogin}>
+                                    Login Again
+                                </Button>
+                            ) : (
+                                <Button variant="primary" icon={<RefreshCw size={16} />} onClick={handleRetry}>
+                                    Retry {retryCount > 0 && `(Attempt ${retryCount + 1})`}
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </GlassCard>
+            )}
+
             {loading ? (
                 <LoadingSpinner />
             ) : (
@@ -157,6 +261,11 @@ const Notifications: React.FC = () => {
                             <div className="text-center py-12 text-on-surface-variant">
                                 <Megaphone className="w-12 h-12 mx-auto mb-3 opacity-20" />
                                 <p>No recent announcements found.</p>
+                                {!error.hasError && (
+                                    <Button variant="ghost" icon={<RefreshCw size={16} />} onClick={handleRetry} className="mt-4">
+                                        Refresh
+                                    </Button>
+                                )}
                             </div>
                         )
                     )}

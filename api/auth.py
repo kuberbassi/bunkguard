@@ -36,6 +36,11 @@ def google_auth():
         user_info = resp.json()
         email = user_info.get("email")
         
+        # Calculate token expiry (Google tokens typically last 3600 seconds = 1 hour)
+        # We'll set expiry to current time + 3600 seconds
+        import time
+        token_expiry = time.time() + 3600  # 1 hour from now
+        
         # 1. Get existing user data from DB
         db_user = users_collection.find_one({'email': email}) or {}
         
@@ -46,6 +51,7 @@ def google_auth():
             "picture": user_info.get("picture"),
             "sub": user_info.get("sub"),
             "google_token": access_token,
+            "google_token_expiry": token_expiry,  # Store expiry timestamp
             # Merge profile fields from DB
             "branch": db_user.get("branch", ""),
             "college": db_user.get("college", ""),
