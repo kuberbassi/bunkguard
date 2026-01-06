@@ -246,38 +246,38 @@ const Dashboard: React.FC = () => {
                 <div className="flex flex-col gap-3 md:gap-4">
                     {/* Quick Stats Row - Stack on very small, grid on mobile */}
                     <div className="flex flex-wrap md:grid md:grid-cols-3 gap-2 md:gap-3">
-                        <GlassCard className="flex-1 min-w-[100px] flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3 text-center md:text-left">
-                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                    <BookOpen className="w-4 h-4 md:w-5 md:h-5" />
+                        <GlassCard className="flex-1 min-w-[110px] flex flex-col justify-center p-2 md:p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex flex-row items-center gap-1.5 md:gap-1 text-left">
+                                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <BookOpen className="w-3 h-3 md:w-5 md:h-5" />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-wider truncate">Subjects</p>
-                                    <p className="text-lg md:text-2xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
-                                </div>
-                            </div>
-                        </GlassCard>
-
-                        <GlassCard className="flex-1 min-w-[100px] flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3 text-center md:text-left">
-                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                    <Target className="w-4 h-4 md:w-5 md:h-5" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-wider truncate">Target</p>
-                                    <p className="text-lg md:text-2xl font-bold font-display text-on-surface">{targetThreshold}%</p>
+                                <div className="flex-1">
+                                    <p className="text-[8px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight">Subjects</p>
+                                    <p className="text-base md:text-2xl font-bold font-display text-on-surface leading-tight">{dashboardData?.total_subjects || 0}</p>
                                 </div>
                             </div>
                         </GlassCard>
 
-                        <GlassCard className="flex-1 min-w-[100px] flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3 text-center md:text-left">
-                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
-                                    <Trophy className="w-4 h-4 md:w-5 md:h-5" />
+                        <GlassCard className="flex-1 min-w-[110px] flex flex-col justify-center p-2 md:p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex flex-row items-center gap-1.5 md:gap-1 text-left">
+                                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <Target className="w-3 h-3 md:w-5 md:h-5" />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-wider truncate">CGPA</p>
-                                    <p className="text-lg md:text-2xl font-bold font-display text-secondary">
+                                <div className="flex-1">
+                                    <p className="text-[8px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight">Target</p>
+                                    <p className="text-base md:text-2xl font-bold font-display text-on-surface leading-tight">{targetThreshold}%</p>
+                                </div>
+                            </div>
+                        </GlassCard>
+
+                        <GlassCard className="flex-1 min-w-[110px] flex flex-col justify-center p-2 md:p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex flex-row items-center gap-1.5 md:gap-1 text-left">
+                                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                                    <Trophy className="w-3 h-3 md:w-5 md:h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[8px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight">CGPA</p>
+                                    <p className="text-base md:text-2xl font-bold font-display text-secondary leading-tight">
                                         {cgpa !== null ? cgpa.toFixed(2) : '—'}
                                     </p>
                                 </div>
