@@ -32,14 +32,14 @@ interface SidebarProps {
 // Navigation groups
 const navigationGroups = [
     {
-        name: 'Overview',
+        name: 'Main',
         items: [
             { name: 'Dashboard', href: '/', icon: LayoutDashboard },
             { name: 'Analytics', href: '/analytics', icon: PieChart },
         ]
     },
     {
-        name: 'Academics',
+        name: 'Academic',
         items: [
             { name: 'Courses', href: '/courses', icon: GraduationCap },
             { name: 'Results', href: '/results', icon: Trophy },
@@ -48,9 +48,9 @@ const navigationGroups = [
         ]
     },
     {
-        name: 'Planning',
+        name: 'Schedule',
         items: [
-            { name: 'Schedule', href: '/timetable', icon: CalendarClock },
+            { name: 'Timetable', href: '/timetable', icon: CalendarClock },
             { name: 'Calendar', href: '/calendar', icon: CalendarDays },
         ]
     },
@@ -62,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
     const location = useLocation();
 
     // Track expanded groups
-    const [expandedGroups, setExpandedGroups] = useState<string[]>(['Overview', 'Academics', 'Planning']);
+    const [expandedGroups, setExpandedGroups] = useState<string[]>(['Main', 'Academic', 'Schedule']);
 
     const toggleGroup = (groupName: string) => {
         setExpandedGroups(prev =>

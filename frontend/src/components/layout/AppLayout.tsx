@@ -4,7 +4,7 @@ import { GraduationCap, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import BottomNav from './BottomNav';
+import FloatingBubble from './FloatingBubble';
 import { attendanceService } from '@/services/attendance.service';
 
 const AppLayout: React.FC = () => {
@@ -47,12 +47,12 @@ const AppLayout: React.FC = () => {
 
                 {/* Mobile Header */}
                 <div className="lg:hidden sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant/10 px-4 py-3 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
+                    <Link to="/" className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                             <GraduationCap className="w-5 h-5" />
                         </div>
                         <span className="font-bold text-lg font-display text-on-surface">AcadHub</span>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-2">
                         {/* Mobile Notification Bell */}
                         <Link
@@ -70,13 +70,13 @@ const AppLayout: React.FC = () => {
                 </div>
 
                 {/* Content Container */}
-                <div className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full animate-fade-in pb-24 lg:pb-8">
+                <div className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full animate-fade-in pb-8">
                     <Outlet />
                 </div>
             </main>
 
-            {/* Mobile Bottom Navigation */}
-            <BottomNav />
+            {/* Floating Bubble Navigation (Mobile Only) */}
+            <FloatingBubble notificationCount={notificationCount} />
         </div>
     );
 };

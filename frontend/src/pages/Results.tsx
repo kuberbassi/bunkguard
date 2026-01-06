@@ -522,6 +522,7 @@ const Results: React.FC = () => {
                     <GlassCard className="p-4 md:p-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                             {/* Marks Distribution */}
+                            {/* Marks Distribution */}
                             <div>
                                 <h4 className="font-semibold text-on-surface mb-2 md:mb-3 text-xs md:text-sm uppercase tracking-wide">Marks Distribution</h4>
                                 <div className="space-y-2 text-[10px] md:text-sm">
@@ -544,50 +545,26 @@ const Results: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Grade Scale - Full List */}
+                            {/* Grade Scale - Full List - Responsive Grid */}
                             <div>
                                 <h4 className="font-semibold text-on-surface mb-2 md:mb-3 text-xs md:text-sm uppercase tracking-wide">Grade Scale</h4>
-                                <div className="grid grid-cols-2 gap-2 text-[10px] md:text-sm">
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-emerald-500/10 rounded-lg">
-                                        <span className="font-bold text-emerald-500 w-4 md:w-6">O</span>
-                                        <span className="text-on-surface-variant">90-100</span>
-                                        <span className="ml-auto font-medium text-on-surface">10</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-green-500/10 rounded-lg">
-                                        <span className="font-bold text-green-500 w-4 md:w-6">A+</span>
-                                        <span className="text-on-surface-variant">75-89</span>
-                                        <span className="ml-auto font-medium text-on-surface">9</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-lime-500/10 rounded-lg">
-                                        <span className="font-bold text-lime-500 w-4 md:w-6">A</span>
-                                        <span className="text-on-surface-variant">65-74</span>
-                                        <span className="ml-auto font-medium text-on-surface">8</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-yellow-500/10 rounded-lg">
-                                        <span className="font-bold text-yellow-500 w-4 md:w-6">B+</span>
-                                        <span className="text-on-surface-variant">55-64</span>
-                                        <span className="ml-auto font-medium text-on-surface">7</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-orange-500/10 rounded-lg">
-                                        <span className="font-bold text-orange-500 w-4 md:w-6">B</span>
-                                        <span className="text-on-surface-variant">50-54</span>
-                                        <span className="ml-auto font-medium text-on-surface">6</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-amber-600/10 rounded-lg">
-                                        <span className="font-bold text-amber-600 w-4 md:w-6">C</span>
-                                        <span className="text-on-surface-variant">45-49</span>
-                                        <span className="ml-auto font-medium text-on-surface">5</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-orange-600/10 rounded-lg">
-                                        <span className="font-bold text-orange-600 w-4 md:w-6">P</span>
-                                        <span className="text-on-surface-variant">40-44</span>
-                                        <span className="ml-auto font-medium text-on-surface">4</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 py-1.5 px-3 bg-red-500/10 rounded-lg">
-                                        <span className="font-bold text-red-500 w-4 md:w-6">F</span>
-                                        <span className="text-on-surface-variant">&lt;40</span>
-                                        <span className="ml-auto font-medium text-on-surface">0</span>
-                                    </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] md:text-sm">
+                                    {[
+                                        { g: 'O', r: '90-100', p: 10, c: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                                        { g: 'A+', r: '75-89', p: 9, c: 'text-green-500', bg: 'bg-green-500/10' },
+                                        { g: 'A', r: '65-74', p: 8, c: 'text-lime-500', bg: 'bg-lime-500/10' },
+                                        { g: 'B+', r: '55-64', p: 7, c: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+                                        { g: 'B', r: '50-54', p: 6, c: 'text-orange-500', bg: 'bg-orange-500/10' },
+                                        { g: 'C', r: '45-49', p: 5, c: 'text-amber-600', bg: 'bg-amber-600/10' },
+                                        { g: 'P', r: '40-44', p: 4, c: 'text-orange-600', bg: 'bg-orange-600/10' },
+                                        { g: 'F', r: '<40', p: 0, c: 'text-red-500', bg: 'bg-red-500/10' },
+                                    ].map((item, idx) => (
+                                        <div key={idx} className={`flex items-center gap-1.5 py-1 px-2 ${item.bg} rounded-md md:rounded-lg`}>
+                                            <span className={`font-bold ${item.c} text-xs md:text-sm w-4 md:w-6`}>{item.g}</span>
+                                            <span className="text-[10px] md:text-xs text-on-surface-variant">{item.r}</span>
+                                            <span className="ml-auto font-medium text-[10px] md:text-sm text-on-surface">{item.p}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -619,24 +596,24 @@ const Results: React.FC = () => {
                         {subjects.map((subject, index) => {
                             const result = calculateLocalResult(subject);
                             return (
-                                <div key={index} className="flex items-center justify-between p-3 md:p-4 bg-surface-container/30 rounded-xl border border-outline-variant/10">
-                                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
-                                        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-bold text-sm md:text-lg bg-surface-container border border-outline-variant/20 ${getGradeColor(result.grade)} shrink-0`}>
+                                <div key={index} className="flex items-center justify-between p-2.5 md:p-4 bg-surface-container/30 rounded-xl border border-outline-variant/10">
+                                    <div className="flex items-center gap-2.5 md:gap-4 min-w-0">
+                                        <div className={`w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center font-bold text-xs md:text-lg bg-surface-container border border-outline-variant/20 ${getGradeColor(result.grade)} shrink-0`}>
                                             {result.grade}
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-semibold text-sm md:text-base text-on-surface truncate">{subject.name}</p>
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${subject.credits >= 4 ? 'bg-primary/10 text-primary border-primary/20' : 'bg-surface-container-high text-on-surface-variant border-outline-variant/30'}`}>
+                                            <div className="flex items-center gap-1.5 md:gap-2">
+                                                <p className="font-semibold text-xs md:text-base text-on-surface truncate leading-tight">{subject.name}</p>
+                                                <span className={`text-[9px] md:text-[10px] px-1 md:px-1.5 py-0.5 rounded border ${subject.credits >= 4 ? 'bg-primary/10 text-primary border-primary/20' : 'bg-surface-container-high text-on-surface-variant border-outline-variant/30'}`}>
                                                     {subject.credits}C
                                                 </span>
                                             </div>
 
                                             {/* Detailed Marks Breakdown */}
-                                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] md:text-xs text-on-surface-variant/80">
+                                            <div className="flex flex-wrap gap-x-2 md:gap-x-3 gap-y-0.5 mt-0.5 md:mt-1 text-[9px] md:text-xs text-on-surface-variant/80">
                                                 {(subject.type === 'theory' || subject.type === 'both') && (
                                                     <span className="flex items-center gap-1">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                                        <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-blue-400" />
                                                         Th: <strong className="text-on-surface-variant">{subject.internal_theory || 0}</strong>+<strong className="text-on-surface-variant">{subject.external_theory || 0}</strong>
                                                     </span>
                                                 )}

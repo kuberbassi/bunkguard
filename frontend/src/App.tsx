@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -208,12 +209,10 @@ const AppRoutes: React.FC = () => {
 
 // Main App Component
 const AppContent: React.FC = () => {
-
-
-
   return (
     <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
       <AppRoutes />
+      <VercelAnalytics />
     </div>
   );
 };

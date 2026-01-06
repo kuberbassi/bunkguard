@@ -249,6 +249,18 @@
   animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
+/* Badge pulse animation for mobile nav */
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+}
+
 /* Modern Sleek Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;

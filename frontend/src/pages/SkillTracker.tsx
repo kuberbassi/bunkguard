@@ -181,7 +181,9 @@ const SkillTracker: React.FC = () => {
                     <AnimatePresence>
                         {filteredSkills.map((skill, index) => {
                             const levelColor = getLevelColor(skill.level);
-                            const skillId = skill._id || `skill-${index}`;
+                            // Ensure ID is a string; handle potential Mongo ObjectId objects
+                            const skillId = (typeof skill._id === 'string' ? skill._id : null)
+                                || (skill.name ? `${skill.name}-${index}` : `skill-${index}`);
 
                             return (
                                 <motion.div
@@ -193,41 +195,41 @@ const SkillTracker: React.FC = () => {
                                     transition={{ duration: 0.2 }}
                                 >
                                     <GlassCard hover className="relative overflow-hidden group h-full flex flex-col p-3 md:p-5">
-                                        <div className="flex justify-between items-start mb-3 md:mb-4">
+                                        <div className="flex justify-between items-start mb-2 md:mb-4">
                                             <div>
-                                                <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
                                                     <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${levelColor}`}>
                                                         {skill.level}
                                                     </span>
-                                                    <span className="text-[10px] md:text-xs text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
+                                                    <span className="text-[9px] md:text-xs text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
                                                         {skill.category}
                                                     </span>
                                                 </div>
-                                                <h3 className="text-base md:text-xl font-bold text-on-surface">{skill.name}</h3>
+                                                <h3 className="text-sm md:text-xl font-bold text-on-surface leading-tight">{skill.name}</h3>
                                             </div>
                                             <div className="flex gap-1 md:gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => handleEditSkill(skill)}
                                                     className="p-1.5 md:p-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant"
                                                 >
-                                                    <Edit2 size={14} className="md:w-4 md:h-4" />
+                                                    <Edit2 size={12} className="md:w-4 md:h-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteSkill(skillId)}
                                                     className="p-1.5 md:p-2 rounded-lg hover:bg-error/10 text-error"
                                                 >
-                                                    <Trash2 size={14} className="md:w-4 md:h-4" />
+                                                    <Trash2 size={12} className="md:w-4 md:h-4" />
                                                 </button>
                                             </div>
                                         </div>
 
-                                        <p className="text-xs md:text-sm text-on-surface-variant mb-4 md:mb-6 line-clamp-2 min-h-[2.5em]">
+                                        <p className="text-xs md:text-sm text-on-surface-variant mb-3 md:mb-6 line-clamp-2 min-h-[2.5em] leading-snug">
                                             {skill.notes || "No description provided."}
                                         </p>
 
                                         <div className="mt-auto">
-                                            <div className="flex justify-between items-center mb-1.5 md:mb-2">
-                                                <span className="text-[10px] md:text-xs font-medium text-on-surface-variant">Progress</span>
+                                            <div className="flex justify-between items-center mb-1 md:mb-2">
+                                                <span className="text-[9px] md:text-xs font-medium text-on-surface-variant">Progress</span>
                                                 <span className="text-[10px] md:text-xs font-bold text-primary">{skill.progress}%</span>
                                             </div>
                                             <div className="h-1.5 md:h-2 bg-surface-container-high rounded-full overflow-hidden">
@@ -238,7 +240,7 @@ const SkillTracker: React.FC = () => {
                                                     className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
                                                 />
                                             </div>
-                                            <div className="flex justify-between mt-1 text-[9px] md:text-[10px] text-on-surface-variant/70">
+                                            <div className="flex justify-between mt-0.5 md:mt-1 text-[8px] md:text-[10px] text-on-surface-variant/70">
                                                 <span>Beginner</span>
                                                 <span>Expert</span>
                                             </div>
@@ -266,7 +268,7 @@ const SkillTracker: React.FC = () => {
                         placeholder="e.g. React Native"
                     />
 
-                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                         <Select
                             label="Category"
                             value={formData.category}
