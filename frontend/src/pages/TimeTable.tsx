@@ -183,7 +183,7 @@ const TimeTable: React.FC = () => {
     );
 
     return (
-        <div className="pb-32 space-y-8">
+        <div className="pb-32 space-y-6 md:space-y-8">
             {/* Header */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -191,8 +191,8 @@ const TimeTable: React.FC = () => {
                 className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
             >
                 <div>
-                    <h1 className="text-display-md text-on-surface dark:text-dark-surface-on">Weekly Schedule</h1>
-                    <p className="text-on-surface-variant text-lg">Manage your classes and timing</p>
+                    <h1 className="text-3xl md:text-4xl font-bold font-display text-on-surface dark:text-dark-surface-on mb-1 md:mb-0">Weekly Schedule</h1>
+                    <p className="text-sm md:text-lg text-on-surface-variant">Manage your classes and timing</p>
                 </div>
 
                 {/* Settings / Structure Button */}
@@ -218,12 +218,8 @@ const TimeTable: React.FC = () => {
                 />
             </div>
 
-            {/* Mobile/Tablet Card View - Logic tailored for periods ?? Or keep simple list? 
-                Keeping simple list of slots is safer for mobile as "grid" is hard to show.
-                The logic below already just iterates timetable entries, so it keeps working regardless of grid definition!
-                We just need to ensure the slot filter still works.
-            */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-6">
+            {/* Mobile/Tablet Card View */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4 md:gap-6">
                 {DAYS.map((day, index) => {
                     const daySchedule = timetable[day] || [];
                     const rawSlots = Array.isArray(daySchedule) ? daySchedule : [];
@@ -243,23 +239,23 @@ const TimeTable: React.FC = () => {
                             transition={{ delay: index * 0.05 }}
                         >
                             <GlassCard className="h-full p-0 overflow-hidden flex flex-col">
-                                <div className="p-4 border-b border-outline-variant/10 bg-surface-container-low/50 backdrop-blur-sm flex justify-between items-center">
-                                    <h3 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                                        <CalendarIcon className="w-5 h-5 text-primary" />
+                                <div className="p-3 md:p-4 border-b border-outline-variant/10 bg-surface-container-low/50 backdrop-blur-sm flex justify-between items-center">
+                                    <h3 className="text-base md:text-lg font-bold text-on-surface flex items-center gap-2">
+                                        <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                         {day}
                                     </h3>
-                                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-surface-container text-on-surface-variant">
+                                    <span className="text-[10px] md:text-xs font-medium px-2 py-0.5 md:py-1 rounded-full bg-surface-container text-on-surface-variant">
                                         {classSlots.length} Classes
                                     </span>
                                 </div>
 
-                                <div className="p-4 space-y-3 flex-1 min-h-[150px]">
+                                <div className="p-3 md:p-4 space-y-2 md:space-y-3 flex-1 min-h-[100px] md:min-h-[150px]">
                                     {slots.length === 0 ? (
-                                        <div className="h-full flex flex-col items-center justify-center py-8 text-on-surface-variant/50 gap-2 opacity-60">
-                                            <div className="p-3 rounded-full bg-surface-container-high/30">
-                                                <Clock size={20} />
+                                        <div className="h-full flex flex-col items-center justify-center py-6 md:py-8 text-on-surface-variant/50 gap-2 opacity-60">
+                                            <div className="p-2 md:p-3 rounded-full bg-surface-container-high/30">
+                                                <Clock size={16} className="md:w-5 md:h-5" />
                                             </div>
-                                            <span className="text-sm font-medium">No classes scheduled</span>
+                                            <span className="text-xs md:text-sm font-medium">No classes scheduled</span>
                                         </div>
                                     ) : (
                                         <AnimatePresence>
@@ -271,32 +267,32 @@ const TimeTable: React.FC = () => {
                                                         initial={{ opacity: 0, scale: 0.95 }}
                                                         animate={{ opacity: 1, scale: 1 }}
                                                         exit={{ opacity: 0, scale: 0.95 }}
-                                                        className="group relative p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
+                                                        className="group relative p-2 md:p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
                                                     >
                                                         <div className="flex justify-between items-start">
                                                             <div>
-                                                                <h4 className="font-bold text-sm text-on-surface mb-1">
+                                                                <h4 className="font-bold text-xs md:text-sm text-on-surface mb-0.5 md:mb-1">
                                                                     {slot.type === 'break' ? 'Break' :
                                                                         slot.type === 'free' ? 'Free Period' :
                                                                             (getSubjectName(slot.subject_id) || slot.label || 'Class')}
                                                                 </h4>
-                                                                <div className="flex items-center gap-1.5 text-xs font-medium text-on-surface-variant">
-                                                                    <Clock size={12} />
+                                                                <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-medium text-on-surface-variant">
+                                                                    <Clock size={10} className="md:w-3 md:h-3" />
                                                                     {slot.start_time} - {slot.end_time}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                                 <button
                                                                     onClick={() => handleOpenEditModal(slot)}
                                                                     className="p-1.5 rounded-lg hover:bg-surface-container text-primary hover:text-primary-dark transition-colors"
                                                                 >
-                                                                    <Edit2 size={14} />
+                                                                    <Edit2 size={12} className="md:w-[14px] md:h-[14px]" />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => slot._id && handleDeleteSlot(slot._id)}
                                                                     className="p-1.5 rounded-lg hover:bg-error-container text-error hover:text-on-error-container transition-colors"
                                                                 >
-                                                                    <Trash2 size={14} />
+                                                                    <Trash2 size={12} className="md:w-[14px] md:h-[14px]" />
                                                                 </button>
                                                             </div>
                                                         </div>

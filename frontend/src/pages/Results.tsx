@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Trophy, Plus, Trash2, Save, ChevronDown, ChevronUp,
-    BookOpen, GraduationCap, AlertCircle, CheckCircle, Download,
-    Edit2
+    Trophy, Plus, Trash2, Save, ChevronDown,
+    BookOpen, AlertCircle, Download, Edit2
 } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
@@ -12,6 +11,7 @@ import Select from '@/components/ui/Select';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
+import { useSemester } from '@/contexts/SemesterContext';
 import type { SemesterResult, SubjectResult } from '@/types';
 
 // IPU Grade calculation helper (for local preview)
@@ -81,16 +81,20 @@ const getGradeColor = (grade: string) => {
 
 const Results: React.FC = () => {
     const { showToast } = useToast();
+    const { currentSemester, setCurrentSemester } = useSemester();
 
     // State
     const [allResults, setAllResults] = useState<SemesterResult[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [selectedSemester, setSelectedSemester] = useState(1);
+    // Removed local selectedSemester state
     const [subjects, setSubjects] = useState<SubjectResult[]>([createEmptySubject()]);
-    const [expandedSemesters, setExpandedSemesters] = useState<number[]>([]);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [semesterToDelete, setSemesterToDelete] = useState<number | null>(null);
+
+    // Derived state determining if the selected semester is saved in history
+    // We use this to decide whether to show VIEW mode or EDIT/ADD mode headers
+    const isSaved = useMemo(() => allResults.some(r => r.semester === currentSemester), [allResults, currentSemester]);
+
     const [isEditing, setIsEditing] = useState(false);
 
     // Load all results on mount
@@ -105,7 +109,7 @@ const Results: React.FC = () => {
             setAllResults(results);
 
             // If current semester has data, load it
-            const currentSemResult = results.find(r => r.semester === selectedSemester);
+            const currentSemResult = results.find(r => r.semester === currentSemester);
             if (currentSemResult) {
                 setSubjects(currentSemResult.subjects);
             } else {
@@ -121,15 +125,15 @@ const Results: React.FC = () => {
 
     // When semester changes, load its data
     useEffect(() => {
-        const semResult = allResults.find(r => r.semester === selectedSemester);
+        const semResult = allResults.find(r => r.semester === currentSemester);
         if (semResult) {
             setSubjects(semResult.subjects);
             setIsEditing(false);
         } else {
             setSubjects([createEmptySubject()]);
-            setIsEditing(true);
+            setIsEditing(true); // Default to edit mode for new semesters
         }
-    }, [selectedSemester, allResults]);
+    }, [currentSemester, allResults]);
 
     // Calculate live SGPA and stats
     const liveStats = useMemo(() => {
@@ -162,7 +166,7 @@ const Results: React.FC = () => {
 
         // Add all subjects from other semesters
         allResults.forEach(r => {
-            if (r.semester !== selectedSemester && r.subjects) {
+            if (r.semester !== currentSemester && r.subjects) {
                 r.subjects.forEach(sub => {
                     const credits = sub.credits || 0;
                     const gradePoint = sub.grade_point || 0;
@@ -184,7 +188,7 @@ const Results: React.FC = () => {
         const cgpa = allCredits > 0 ? Math.round((allWeighted / allCredits) * 100) / 100 : 0;
 
         return { sgpa, cgpa, totalCredits, validSubjects };
-    }, [subjects, allResults, selectedSemester]);
+    }, [subjects, allResults, currentSemester]);
 
     // Add subject
     const addSubject = () => {
@@ -209,15 +213,12 @@ const Results: React.FC = () => {
 
     // Cancel editing
     const handleCancel = () => {
-        const semResult = allResults.find(r => r.semester === selectedSemester);
+        const semResult = allResults.find(r => r.semester === currentSemester);
         if (semResult) {
             setSubjects(semResult.subjects);
             setIsEditing(false);
         } else {
-            // New semester
             setSubjects([createEmptySubject()]);
-            // Keep in edit mode? Or maybe valid?
-            // If they haven't saved anything, we can stay in edit mode
         }
     };
 
@@ -233,12 +234,12 @@ const Results: React.FC = () => {
         try {
             setSaving(true);
             await attendanceService.saveSemesterResult({
-                semester: selectedSemester,
+                semester: currentSemester,
                 subjects: validSubjects,
                 total_credits: liveStats.totalCredits,
                 sgpa: liveStats.sgpa,
             });
-            showToast('success', `Semester ${selectedSemester} results saved!`);
+            showToast('success', `Semester ${currentSemester} results saved!`);
             loadResults();
         } catch (error) {
             console.error('Failed to save:', error);
@@ -250,24 +251,23 @@ const Results: React.FC = () => {
 
     // Delete semester result
     const handleDelete = async () => {
-        if (semesterToDelete === null) return;
-
         try {
-            await attendanceService.deleteSemesterResult(semesterToDelete);
-            showToast('success', `Semester ${semesterToDelete} result deleted`);
+            await attendanceService.deleteSemesterResult(currentSemester);
+            showToast('success', `Semester ${currentSemester} result deleted`);
             setDeleteModalOpen(false);
-            setSemesterToDelete(null);
-            loadResults();
+
+            // Refresh results and reset view
+            const results = await attendanceService.getSemesterResults();
+            setAllResults(results);
+
+            // Reset to empty state for this semester since it's deleted
+            setSubjects([createEmptySubject()]);
+            setIsEditing(true); // Switch to edit mode for the now-empty semester
+
         } catch (error) {
+            console.error("Delete error:", error);
             showToast('error', 'Failed to delete result');
         }
-    };
-
-    // Toggle expanded semester in history
-    const toggleExpanded = (semester: number) => {
-        setExpandedSemesters(prev =>
-            prev.includes(semester) ? prev.filter(s => s !== semester) : [...prev, semester]
-        );
     };
 
     // Download semester summary report
@@ -445,41 +445,39 @@ const Results: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6 pb-8">
+        <div className="space-y-4 md:space-y-6 pb-20 md:pb-8">
             {/* Header */}
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 md:gap-4">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-display font-bold text-on-surface flex items-center gap-3">
-                        <Trophy className="w-8 h-8 text-primary" />
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-on-surface flex items-center gap-2 md:gap-3">
+                        <Trophy className="w-6 h-6 md:w-8 md:h-8 text-primary" />
                         Results
                     </h1>
-                    <p className="text-on-surface-variant mt-1">
+                    <p className="text-sm md:text-base text-on-surface-variant mt-1">
                         Track your IPU semester results & CGPA
                     </p>
                 </div>
 
-                {/* Semester Tabs */}
-                <div className="flex flex-wrap gap-2">
+                {/* Semester Tabs - Using global context */}
+                <div className="flex self-start bg-surface-container-high/50 p-1 rounded-full border border-outline-variant/50 overflow-x-auto no-scrollbar max-w-full">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => {
                         const hasSaved = allResults.some(r => r.semester === sem);
-                        const isActive = selectedSemester === sem;
+                        const isActive = currentSemester === sem;
                         return (
                             <button
                                 key={sem}
-                                onClick={() => setSelectedSemester(sem)}
+                                onClick={() => setCurrentSemester(sem)}
                                 className={`
-                                    relative px-4 py-2 rounded-xl font-medium text-sm transition-all
+                                    relative px-3 py-1 md:px-4 md:py-1.5 rounded-full font-bold text-xs md:text-sm transition-all duration-200 whitespace-nowrap
                                     ${isActive
-                                        ? 'bg-primary text-on-primary shadow-lg shadow-primary/30'
-                                        : hasSaved
-                                            ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                                            : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                                        ? 'bg-primary text-on-primary shadow-sm'
+                                        : 'text-on-surface-variant hover:bg-on-surface/5 hover:text-on-surface'
                                     }
                                 `}
                             >
                                 Sem {sem}
                                 {hasSaved && !isActive && (
-                                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full" />
+                                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-green-500 rounded-full" />
                                 )}
                             </button>
                         );
@@ -488,109 +486,105 @@ const Results: React.FC = () => {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <GlassCard className="p-4 text-center">
-                    <p className="text-xs uppercase tracking-wider text-on-surface-variant font-semibold">SGPA</p>
-                    <p className="text-3xl font-bold text-primary mt-1">{liveStats.sgpa.toFixed(2)}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                <GlassCard className="p-3 md:p-4 text-center">
+                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">SGPA</p>
+                    <p className="text-xl md:text-3xl font-bold text-primary mt-1">{liveStats.sgpa.toFixed(2)}</p>
                 </GlassCard>
-                <GlassCard className="p-4 text-center">
-                    <p className="text-xs uppercase tracking-wider text-on-surface-variant font-semibold">CGPA</p>
-                    <p className="text-3xl font-bold text-secondary mt-1">{liveStats.cgpa.toFixed(2)}</p>
+                <GlassCard className="p-3 md:p-4 text-center">
+                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">CGPA</p>
+                    <p className="text-xl md:text-3xl font-bold text-secondary mt-1">{liveStats.cgpa.toFixed(2)}</p>
                 </GlassCard>
-                <GlassCard className="p-4 text-center">
-                    <p className="text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Total Credits</p>
-                    <p className="text-3xl font-bold text-on-surface mt-1">{liveStats.totalCredits}</p>
+                <GlassCard className="p-3 md:p-4 text-center">
+                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Total Credits</p>
+                    <p className="text-xl md:text-3xl font-bold text-on-surface mt-1">{liveStats.totalCredits}</p>
                 </GlassCard>
-                <GlassCard className="p-4 text-center">
-                    <p className="text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Subjects</p>
-                    <p className="text-3xl font-bold text-on-surface mt-1">{liveStats.validSubjects}</p>
+                <GlassCard className="p-3 md:p-4 text-center">
+                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Subjects</p>
+                    <p className="text-xl md:text-3xl font-bold text-on-surface mt-1">{liveStats.validSubjects}</p>
                 </GlassCard>
             </div>
 
             {/* IPU Grading Info - Collapsible */}
             <details className="group">
-                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden w-full relative overflow-hidden bg-surface dark:bg-surface-container border border-outline-variant/60 rounded-2xl shadow-sm transition-all duration-300 backdrop-blur-sm hover:shadow-md hover:border-outline-variant hover:bg-surface-container-high/50 p-4">
+                <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden w-full relative overflow-hidden bg-surface dark:bg-surface-container border border-outline-variant/60 rounded-2xl shadow-sm transition-all duration-300 backdrop-blur-sm hover:shadow-md hover:border-outline-variant hover:bg-surface-container-high/50 p-3 md:p-4">
                     <div className="grid grid-cols-[1fr_auto] items-center gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                <AlertCircle className="w-4 h-4 text-primary" />
+                        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
                             </div>
-                            <span className="font-semibold text-on-surface truncate">IPU Grading Reference</span>
+                            <span className="font-semibold text-sm md:text-base text-on-surface truncate">IPU Grading Reference</span>
                         </div>
-                        <ChevronDown className="w-5 h-5 text-on-surface-variant group-open:rotate-180 transition-transform" />
+                        <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-on-surface-variant group-open:rotate-180 transition-transform" />
                     </div>
                 </summary>
                 <div className="mt-2">
-                    <GlassCard className="p-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <GlassCard className="p-4 md:p-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                             {/* Marks Distribution */}
                             <div>
-                                <h4 className="font-semibold text-on-surface mb-3 text-sm uppercase tracking-wide">Marks Distribution</h4>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
+                                <h4 className="font-semibold text-on-surface mb-2 md:mb-3 text-xs md:text-sm uppercase tracking-wide">Marks Distribution</h4>
+                                <div className="space-y-2 text-[10px] md:text-sm">
+                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Theory Internal</span>
                                         <span className="font-medium text-on-surface">40 marks</span>
                                     </div>
-                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
+                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Theory External</span>
                                         <span className="font-medium text-on-surface">60 marks</span>
                                     </div>
-                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
+                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Practical Internal</span>
                                         <span className="font-medium text-on-surface">40 marks</span>
                                     </div>
-                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
+                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Practical External</span>
                                         <span className="font-medium text-on-surface">60 marks</span>
-                                    </div>
-                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
-                                        <span className="text-on-surface-variant">NUES / Internal</span>
-                                        <span className="font-medium text-on-surface">100 marks</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Grade Scale */}
+                            {/* Grade Scale - Full List */}
                             <div>
-                                <h4 className="font-semibold text-on-surface mb-3 text-sm uppercase tracking-wide">Grade Scale</h4>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                <h4 className="font-semibold text-on-surface mb-2 md:mb-3 text-xs md:text-sm uppercase tracking-wide">Grade Scale</h4>
+                                <div className="grid grid-cols-2 gap-2 text-[10px] md:text-sm">
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-emerald-500/10 rounded-lg">
-                                        <span className="font-bold text-emerald-500 w-6">O</span>
+                                        <span className="font-bold text-emerald-500 w-4 md:w-6">O</span>
                                         <span className="text-on-surface-variant">90-100</span>
                                         <span className="ml-auto font-medium text-on-surface">10</span>
                                     </div>
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-green-500/10 rounded-lg">
-                                        <span className="font-bold text-green-500 w-6">A+</span>
+                                        <span className="font-bold text-green-500 w-4 md:w-6">A+</span>
                                         <span className="text-on-surface-variant">75-89</span>
                                         <span className="ml-auto font-medium text-on-surface">9</span>
                                     </div>
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-lime-500/10 rounded-lg">
-                                        <span className="font-bold text-lime-500 w-6">A</span>
+                                        <span className="font-bold text-lime-500 w-4 md:w-6">A</span>
                                         <span className="text-on-surface-variant">65-74</span>
                                         <span className="ml-auto font-medium text-on-surface">8</span>
                                     </div>
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-yellow-500/10 rounded-lg">
-                                        <span className="font-bold text-yellow-500 w-6">B+</span>
+                                        <span className="font-bold text-yellow-500 w-4 md:w-6">B+</span>
                                         <span className="text-on-surface-variant">55-64</span>
                                         <span className="ml-auto font-medium text-on-surface">7</span>
                                     </div>
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-orange-500/10 rounded-lg">
-                                        <span className="font-bold text-orange-500 w-6">B</span>
+                                        <span className="font-bold text-orange-500 w-4 md:w-6">B</span>
                                         <span className="text-on-surface-variant">50-54</span>
                                         <span className="ml-auto font-medium text-on-surface">6</span>
                                     </div>
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-amber-600/10 rounded-lg">
-                                        <span className="font-bold text-amber-600 w-6">C</span>
+                                        <span className="font-bold text-amber-600 w-4 md:w-6">C</span>
                                         <span className="text-on-surface-variant">45-49</span>
                                         <span className="ml-auto font-medium text-on-surface">5</span>
                                     </div>
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-orange-600/10 rounded-lg">
-                                        <span className="font-bold text-orange-600 w-6">P</span>
+                                        <span className="font-bold text-orange-600 w-4 md:w-6">P</span>
                                         <span className="text-on-surface-variant">40-44</span>
                                         <span className="ml-auto font-medium text-on-surface">4</span>
                                     </div>
                                     <div className="flex items-center gap-2 py-1.5 px-3 bg-red-500/10 rounded-lg">
-                                        <span className="font-bold text-red-500 w-6">F</span>
+                                        <span className="font-bold text-red-500 w-4 md:w-6">F</span>
                                         <span className="text-on-surface-variant">&lt;40</span>
                                         <span className="ml-auto font-medium text-on-surface">0</span>
                                     </div>
@@ -601,39 +595,72 @@ const Results: React.FC = () => {
                 </div>
             </details>
 
-            {(!isEditing && allResults.some(r => r.semester === selectedSemester)) ? (
-                <GlassCard className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
-                            <BookOpen className="w-5 h-5 text-primary" />
-                            Semester {selectedSemester} <span className="text-on-surface">Subjects</span>
+            {(!isEditing && isSaved) ? (
+                <GlassCard className="p-3 md:p-6">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <h2 className="text-base md:text-lg font-bold text-on-surface flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                            Semester {currentSemester} <span className="text-on-surface hidden md:inline">Subjects</span>
                         </h2>
-                        <Button variant="tonal" icon={<Edit2 size={16} />} onClick={() => setIsEditing(true)}>
-                            Edit Results
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="ghost" size="sm" className="text-error hover:bg-error/10" icon={<Trash2 size={14} />} onClick={() => setDeleteModalOpen(true)}>
+                                Delete
+                            </Button>
+                            <Button variant="tonal" size="sm" icon={<Download size={14} />} onClick={() => downloadSemesterReport(currentSemester)}>
+                                Report
+                            </Button>
+                            <Button variant="tonal" size="sm" icon={<Edit2 size={14} />} onClick={() => setIsEditing(true)}>
+                                Edit
+                            </Button>
+                        </div>
                     </div>
 
-                    <div className="space-y-8">
+                    <div className="space-y-3 md:space-y-4">
                         {subjects.map((subject, index) => {
                             const result = calculateLocalResult(subject);
                             return (
-                                <div key={index} className="flex items-center justify-between p-4 bg-surface-container/30 rounded-xl border border-outline-variant/10">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-surface-container border border-outline-variant/20 ${getGradeColor(result.grade)}`}>
+                                <div key={index} className="flex items-center justify-between p-3 md:p-4 bg-surface-container/30 rounded-xl border border-outline-variant/10">
+                                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                                        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-bold text-sm md:text-lg bg-surface-container border border-outline-variant/20 ${getGradeColor(result.grade)} shrink-0`}>
                                             {result.grade}
                                         </div>
-                                        <div>
-                                            <p className="font-semibold text-on-surface">{subject.name}</p>
-                                            <div className="text-xs text-on-surface-variant flex gap-2">
-                                                <span>{subject.credits} Credits</span>
-                                                <span>•</span>
-                                                <span className="capitalize">{subject.type === 'nues' ? 'NUES' : (subject.type || 'Theory').replace('_', ' + ')}</span>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-semibold text-sm md:text-base text-on-surface truncate">{subject.name}</p>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${subject.credits >= 4 ? 'bg-primary/10 text-primary border-primary/20' : 'bg-surface-container-high text-on-surface-variant border-outline-variant/30'}`}>
+                                                    {subject.credits}C
+                                                </span>
+                                            </div>
+
+                                            {/* Detailed Marks Breakdown */}
+                                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] md:text-xs text-on-surface-variant/80">
+                                                {(subject.type === 'theory' || subject.type === 'both') && (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                                        Th: <strong className="text-on-surface-variant">{subject.internal_theory || 0}</strong>+<strong className="text-on-surface-variant">{subject.external_theory || 0}</strong>
+                                                    </span>
+                                                )}
+                                                {(subject.type === 'practical' || subject.type === 'both') && (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                                                        Pr: <strong className="text-on-surface-variant">{subject.internal_practical || 0}</strong>+<strong className="text-on-surface-variant">{subject.external_practical || 0}</strong>
+                                                    </span>
+                                                )}
+                                                {subject.type === 'nues' && (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                                                        NUES: <strong className="text-on-surface-variant">{subject.internal_theory || 0}</strong>
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-on-surface">{result.percentage}%</p>
-                                        <p className="text-xs text-on-surface-variant">{result.totalMarks}/{result.maxMarks}</p>
+                                    <div className="text-right whitespace-nowrap pl-2 shrink-0">
+                                        <div className="flex flex-col items-end">
+                                            {/* Show Grade Point Explicitly */}
+                                            <p className="text-xs md:text-sm font-bold text-primary mb-0.5">GP: {result.gradePoint}</p>
+                                            <p className="font-bold text-sm md:text-base text-on-surface">{result.percentage}% <span className="text-[10px] font-normal text-on-surface-variant">({result.totalMarks}/{result.maxMarks})</span></p>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -641,18 +668,18 @@ const Results: React.FC = () => {
                     </div>
                 </GlassCard>
             ) : (
-                <GlassCard className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-lg font-bold text-on-surface flex items-center gap-2">
+                <GlassCard className="p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-4 md:mb-6">
+                        <h2 className="text-base md:text-lg font-bold text-on-surface flex items-center gap-2">
                             <BookOpen className="w-5 h-5 text-primary" />
-                            {isEditing ? 'Editing Results' : `Add Semester ${selectedSemester} Subjects`}
+                            {isEditing ? 'Editing' : 'Add'} Sem {currentSemester}
                         </h2>
                         <div className="flex items-center gap-2">
                             {isEditing && (
-                                <Button variant="ghost" onClick={handleCancel}>Cancel</Button>
+                                <Button variant="ghost" size="sm" onClick={handleCancel}>Cancel</Button>
                             )}
-                            <Button variant="tonal" icon={<Plus size={16} />} onClick={addSubject}>
-                                Add Subject
+                            <Button variant="tonal" size="sm" icon={<Plus size={16} />} onClick={addSubject}>
+                                Add
                             </Button>
                         </div>
                     </div>
@@ -667,10 +694,19 @@ const Results: React.FC = () => {
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, x: -20 }}
-                                        className="bg-surface-container/50 rounded-2xl p-4 border border-outline-variant/20"
+                                        className="bg-surface-container/50 rounded-2xl p-3 md:p-4 border border-outline-variant/20 relative"
                                     >
-                                        {/* Subject Header */}
-                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                        {/* Remove Button - Top Right on Mobile */}
+                                        <button
+                                            onClick={() => removeSubject(index)}
+                                            className="absolute top-2 right-2 p-2 rounded-full text-error hover:bg-error-container/30 transition-colors md:hidden"
+                                            disabled={subjects.length === 1}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+
+                                        {/* Subject Inputs */}
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end">
                                             <div className="md:col-span-4">
                                                 <Input
                                                     label="Subject Name"
@@ -679,15 +715,13 @@ const Results: React.FC = () => {
                                                     placeholder="e.g. Data Structures"
                                                 />
                                             </div>
-                                            <div className="md:col-span-2">
+                                            <div className="grid grid-cols-2 gap-3 md:col-span-4">
                                                 <Input
                                                     label="Code"
                                                     value={subject.code || ''}
                                                     onChange={(e) => updateSubject(index, 'code', e.target.value)}
                                                     placeholder="CS201"
                                                 />
-                                            </div>
-                                            <div className="md:col-span-2">
                                                 <Input
                                                     label="Credits"
                                                     type="number"
@@ -706,11 +740,11 @@ const Results: React.FC = () => {
                                                         { value: 'theory', label: 'Theory Only' },
                                                         { value: 'practical', label: 'Practical Only' },
                                                         { value: 'both', label: 'Theory + Practical' },
-                                                        { value: 'nues', label: 'NUES (100 Internal)' },
+                                                        { value: 'nues', label: 'NUES' },
                                                     ]}
                                                 />
                                             </div>
-                                            <div className="md:col-span-1 flex justify-end">
+                                            <div className="md:col-span-1 hidden md:flex justify-end">
                                                 <button
                                                     onClick={() => removeSubject(index)}
                                                     className="p-2 rounded-full text-error hover:bg-error-container/30 transition-colors"
@@ -722,23 +756,19 @@ const Results: React.FC = () => {
                                         </div>
 
                                         {/* Marks Input */}
-                                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="mt-3 md:mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                                             {(subject.type === 'theory' || subject.type === 'both') && (
                                                 <>
                                                     <Input
-                                                        label="Theory Internal (40)"
+                                                        label="Th. Int (40)"
                                                         type="number"
-                                                        min={0}
-                                                        max={40}
                                                         value={subject.internal_theory ?? ''}
                                                         onChange={(e) => updateSubject(index, 'internal_theory', e.target.value ? parseInt(e.target.value) : undefined)}
                                                         placeholder="0-40"
                                                     />
                                                     <Input
-                                                        label="Theory External (60)"
+                                                        label="Th. Ext (60)"
                                                         type="number"
-                                                        min={0}
-                                                        max={60}
                                                         value={subject.external_theory ?? ''}
                                                         onChange={(e) => updateSubject(index, 'external_theory', e.target.value ? parseInt(e.target.value) : undefined)}
                                                         placeholder="0-60"
@@ -748,19 +778,15 @@ const Results: React.FC = () => {
                                             {(subject.type === 'practical' || subject.type === 'both') && (
                                                 <>
                                                     <Input
-                                                        label="Practical Internal (40)"
+                                                        label="Pr. Int (40)"
                                                         type="number"
-                                                        min={0}
-                                                        max={40}
                                                         value={subject.internal_practical ?? ''}
                                                         onChange={(e) => updateSubject(index, 'internal_practical', e.target.value ? parseInt(e.target.value) : undefined)}
                                                         placeholder="0-40"
                                                     />
                                                     <Input
-                                                        label="Practical External (60)"
+                                                        label="Pr. Ext (60)"
                                                         type="number"
-                                                        min={0}
-                                                        max={60}
                                                         value={subject.external_practical ?? ''}
                                                         onChange={(e) => updateSubject(index, 'external_practical', e.target.value ? parseInt(e.target.value) : undefined)}
                                                         placeholder="0-60"
@@ -772,8 +798,6 @@ const Results: React.FC = () => {
                                                     <Input
                                                         label="NUES Internal (100)"
                                                         type="number"
-                                                        min={0}
-                                                        max={100}
                                                         value={subject.internal_theory ?? ''}
                                                         onChange={(e) => updateSubject(index, 'internal_theory', e.target.value ? parseInt(e.target.value) : undefined)}
                                                         placeholder="0-100"
@@ -783,35 +807,23 @@ const Results: React.FC = () => {
                                         </div>
 
                                         {/* Live Result Preview */}
-                                        <div className="mt-4 pt-4 border-t border-outline-variant/20 flex flex-wrap items-center gap-6 text-sm">
+                                        <div className="mt-3 pt-3 border-t border-outline-variant/20 flex flex-wrap items-center gap-4 text-xs md:text-sm">
                                             <div>
                                                 <span className="text-on-surface-variant">Total:</span>
-                                                <span className="ml-2 font-bold text-on-surface">{result.totalMarks}/{result.maxMarks}</span>
+                                                <span className="ml-1 font-bold text-on-surface">{result.totalMarks}/{result.maxMarks}</span>
                                             </div>
                                             <div>
                                                 <span className="text-on-surface-variant">Percentage:</span>
-                                                <span className="ml-2 font-bold text-on-surface">{result.percentage}%</span>
+                                                <span className="ml-1 font-bold text-on-surface">{result.percentage}%</span>
                                             </div>
                                             <div>
                                                 <span className="text-on-surface-variant">Grade:</span>
-                                                <span className={`ml-2 font-bold text-lg ${getGradeColor(result.grade)}`}>{result.grade}</span>
+                                                <span className={`ml-1 font-bold text-base ${getGradeColor(result.grade)}`}>{result.grade}</span>
                                             </div>
                                             <div>
-                                                <span className="text-on-surface-variant">Grade Point:</span>
-                                                <span className="ml-2 font-bold text-primary">{result.gradePoint}</span>
+                                                <span className="text-on-surface-variant">GP:</span>
+                                                <span className="ml-1 font-bold text-on-surface">{result.gradePoint}</span>
                                             </div>
-                                            {result.grade === 'F' && (
-                                                <div className="flex items-center gap-1 text-error">
-                                                    <AlertCircle size={14} />
-                                                    <span className="text-xs font-medium">Below passing</span>
-                                                </div>
-                                            )}
-                                            {result.grade !== 'F' && result.percentage >= 40 && (
-                                                <div className="flex items-center gap-1 text-green-500">
-                                                    <CheckCircle size={14} />
-                                                    <span className="text-xs font-medium">Pass</span>
-                                                </div>
-                                            )}
                                         </div>
                                     </motion.div>
                                 );
@@ -819,146 +831,28 @@ const Results: React.FC = () => {
                         </AnimatePresence>
                     </div>
 
-                    {/* Save Button */}
-                    <div className="mt-6 flex justify-end">
-                        <Button
-                            variant="filled"
-                            icon={<Save size={18} />}
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
-                            {saving ? 'Saving...' : 'Save Results'}
+                    <div className="flex justify-end gap-2 mt-4 md:mt-6">
+                        <Button variant="outlined" onClick={() => setIsEditing(false)}>Cancel</Button>
+                        <Button onClick={handleSave} disabled={saving} isLoading={saving} icon={<Save size={18} />}>
+                            Save Results
                         </Button>
                     </div>
                 </GlassCard>
             )}
 
-            {/* Previous Semesters */}
-            {allResults.length > 0 && (
-                <GlassCard className="p-6">
-                    <h2 className="text-lg font-bold text-on-surface flex items-center gap-2 mb-4">
-                        <GraduationCap className="w-5 h-5 text-primary" />
-                        All Semester Results
-                    </h2>
-
-                    <div className="space-y-3">
-                        {allResults.map((result) => (
-                            <div
-                                key={result.semester}
-                                className="bg-surface-container/50 rounded-xl border border-outline-variant/20 overflow-hidden"
-                            >
-                                {/* Semester Header */}
-                                <div className="w-full px-4 py-3 flex items-center justify-between">
-                                    <button
-                                        onClick={() => toggleExpanded(result.semester)}
-                                        className="flex items-center gap-4 flex-1 hover:opacity-80 transition-opacity"
-                                    >
-                                        <span className="font-bold text-on-surface">Semester {result.semester}</span>
-                                        <span className="text-sm text-on-surface-variant">
-                                            {result.subjects.length} subjects • {result.total_credits} credits
-                                        </span>
-                                    </button>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-primary font-bold">SGPA: {result.sgpa}</span>
-                                        {result.cgpa && (
-                                            <span className="text-secondary font-bold">CGPA: {result.cgpa}</span>
-                                        )}
-                                        {/* Download Report Button */}
-                                        <button
-                                            onClick={() => downloadSemesterReport(result.semester)}
-                                            className="p-2 rounded-full hover:bg-primary/10 text-primary transition-colors"
-                                            title="Download Semester Report"
-                                        >
-                                            <Download size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => toggleExpanded(result.semester)}
-                                            className="p-1 hover:bg-surface-container-high rounded-full transition-colors"
-                                        >
-                                            {expandedSemesters.includes(result.semester) ? (
-                                                <ChevronUp size={20} className="text-on-surface-variant" />
-                                            ) : (
-                                                <ChevronDown size={20} className="text-on-surface-variant" />
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Expanded Details */}
-                                <AnimatePresence>
-                                    {expandedSemesters.includes(result.semester) && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="border-t border-outline-variant/20"
-                                        >
-                                            <div className="p-4">
-                                                <table className="w-full text-sm">
-                                                    <thead>
-                                                        <tr className="text-left text-on-surface-variant">
-                                                            <th className="pb-2">Subject</th>
-                                                            <th className="pb-2">Credits</th>
-                                                            <th className="pb-2">Marks</th>
-                                                            <th className="pb-2">%</th>
-                                                            <th className="pb-2">Grade</th>
-                                                            <th className="pb-2">GP</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-outline-variant/10">
-                                                        {result.subjects.map((sub, i) => (
-                                                            <tr key={i} className="text-on-surface">
-                                                                <td className="py-2 font-medium">{sub.name}</td>
-                                                                <td className="py-2">{sub.credits}</td>
-                                                                <td className="py-2">{sub.total_marks}/{sub.max_marks}</td>
-                                                                <td className="py-2">{sub.percentage}%</td>
-                                                                <td className={`py-2 font-bold ${getGradeColor(sub.grade || 'F')}`}>{sub.grade}</td>
-                                                                <td className="py-2 font-bold text-primary">{sub.grade_point}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-
-                                                <div className="mt-4 flex justify-between items-center">
-
-                                                    <Button
-                                                        variant="text"
-                                                        className="text-error"
-                                                        icon={<Trash2 size={16} />}
-                                                        onClick={() => {
-                                                            setSemesterToDelete(result.semester);
-                                                            setDeleteModalOpen(true);
-                                                        }}
-                                                    >
-                                                        Delete
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        ))}
-                    </div>
-                </GlassCard>
-            )}
-
-            {/* Delete Confirmation Modal */}
             <Modal
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
-                title="Delete Semester Result"
+                title="Delete Result?"
             >
-                <p className="text-on-surface-variant mb-6">
-                    Are you sure you want to delete the results for Semester {semesterToDelete}? This action cannot be undone.
-                </p>
-                <div className="flex justify-end gap-3">
-                    <Button variant="text" onClick={() => setDeleteModalOpen(false)}>
-                        Cancel
-                    </Button>
-                    <Button variant="filled" className="bg-error" onClick={handleDelete}>
-                        Delete
-                    </Button>
+                <div className="space-y-4">
+                    <p className="text-on-surface-variant">
+                        Are you sure you want to delete the results for Semester {currentSemester}? This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outlined" onClick={() => setDeleteModalOpen(false)}>Cancel</Button>
+                        <Button className="bg-error text-on-error hover:bg-error-dark" onClick={handleDelete}>Delete</Button>
+                    </div>
                 </div>
             </Modal>
         </div>

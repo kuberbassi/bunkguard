@@ -110,18 +110,18 @@ const Practicals: React.FC = () => {
     if (loading) return <LoadingSpinner fullScreen />;
 
     return (
-        <div className="pb-32 space-y-8">
+        <div className="pb-32 space-y-4 md:space-y-8">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-4 md:gap-6"
             >
                 {/* Header ... */}
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-                        <Beaker size={24} />
+                    <div className="p-2 md:p-2.5 rounded-xl bg-primary/10 text-primary">
+                        <Beaker size={20} className="md:w-6 md:h-6" />
                     </div>
-                    <h1 className="text-3xl font-display font-bold text-on-surface">Assignments & Practicals Manager</h1>
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-on-surface">Assignments & Practicals Manager</h1>
                 </div>
 
                 {/* Filter Chips */}
@@ -130,7 +130,7 @@ const Practicals: React.FC = () => {
                         <button
                             key={cat}
                             onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors whitespace-nowrap
+                            className={`px-3 md:px-4 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-bold transition-colors whitespace-nowrap
                                 ${selectedCategory === cat
                                     ? 'bg-primary text-on-primary'
                                     : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
@@ -143,7 +143,7 @@ const Practicals: React.FC = () => {
                 </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 <AnimatePresence mode="popLayout">
                     {filteredSubjects.map((subject, index) => {
                         const cats = subject.categories || (subject.category ? [subject.category] : ['Theory']);
@@ -173,15 +173,15 @@ const Practicals: React.FC = () => {
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ delay: index * 0.05 }}
                             >
-                                <GlassCard className="h-full p-6 pt-8 flex flex-col relative overflow-hidden group">
+                                <GlassCard className="h-full p-4 md:p-6 pt-6 md:pt-8 flex flex-col relative overflow-hidden group">
                                     {/* Progress Background */}
                                     <div className="absolute top-0 left-0 h-1 bg-primary/20 w-full">
                                         <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
                                     </div>
 
-                                    <div className="flex justify-between items-start mb-6 mt-4">
+                                    <div className="flex justify-between items-start mb-4 md:mb-6 mt-2 md:mt-4">
                                         <div>
-                                            <h3 className="text-xl font-bold text-on-surface line-clamp-1" title={subject.name}>
+                                            <h3 className="text-lg md:text-xl font-bold text-on-surface line-clamp-1" title={subject.name}>
                                                 {subject.name}
                                             </h3>
                                             <div className="flex flex-wrap gap-2 mt-1.5">
@@ -195,44 +195,44 @@ const Practicals: React.FC = () => {
                                         <Button
                                             variant="text"
                                             onClick={() => setEditingSubject(subject)}
-                                            className="!p-2 -mr-2 -mt-2 text-on-surface-variant/50 hover:text-primary"
+                                            className="!p-1.5 md:!p-2 -mr-2 -mt-2 text-on-surface-variant/50 hover:text-primary"
                                         >
                                             <Edit2 size={16} />
                                         </Button>
                                     </div>
 
-                                    <div className="space-y-6 flex-1">
+                                    <div className="space-y-4 md:space-y-6 flex-1">
 
                                         {/* PRACTICALS SECTION */}
                                         {hasPracticals && (
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center text-sm font-bold text-on-surface-variant/80 uppercase tracking-wide">
+                                            <div className="space-y-2 md:space-y-3">
+                                                <div className="flex justify-between items-center text-xs md:text-sm font-bold text-on-surface-variant/80 uppercase tracking-wide">
                                                     <span>Practicals</span>
                                                     <span className="text-primary">{practicals.completed}/{practicals.total}</span>
                                                 </div>
-                                                <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center justify-between gap-2 md:gap-3">
                                                     <Button
                                                         variant="outlined"
-                                                        className="flex-1 h-10"
+                                                        className="flex-1 h-8 md:h-10"
                                                         disabled={practicals.completed <= 0}
                                                         onClick={() => handleUpdate(subject._id, { completed: Math.max(0, practicals.completed - 1) })}
                                                     >
-                                                        <Minus size={16} />
+                                                        <Minus size={14} className="md:w-4 md:h-4" />
                                                     </Button>
                                                     <Button
                                                         variant="primary"
-                                                        className="flex-1 h-10"
+                                                        className="flex-1 h-8 md:h-10"
                                                         disabled={practicals.completed >= practicals.total}
                                                         onClick={() => handleUpdate(subject._id, { completed: Math.min(practicals.total, practicals.completed + 1) })}
                                                     >
-                                                        <Plus size={16} />
+                                                        <Plus size={14} className="md:w-4 md:h-4" />
                                                     </Button>
                                                 </div>
                                                 {/* Hardcopy */}
 
                                                 <Button
                                                     variant={practicals.hardcopy ? "filled" : "outlined"}
-                                                    className={`w-full justify-center h-10 text-xs font-bold tracking-wide transition-all
+                                                    className={`w-full justify-center h-8 md:h-10 text-[10px] md:text-xs font-bold tracking-wide transition-all
                                                         ${practicals.hardcopy
                                                             ? '!bg-emerald-500 hover:!bg-emerald-600 !text-white border-transparent shadow-md shadow-emerald-500/20'
                                                             : 'border-outline-variant/40 text-on-surface-variant/80 hover:border-primary hover:text-primary hover:bg-primary/5'
@@ -240,8 +240,8 @@ const Practicals: React.FC = () => {
                                                     `}
                                                     onClick={() => handleUpdate(subject._id, { hardcopy: !practicals.hardcopy })}
                                                 >
-                                                    <div className="flex items-center gap-2">
-                                                        {practicals.hardcopy ? <><CheckCircle size={14} strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={14} className="opacity-50" /> MARK SUBMITTED</>}
+                                                    <div className="flex items-center gap-1.5 md:gap-2">
+                                                        {practicals.hardcopy ? <><CheckCircle size={12} className="md:w-[14px] md:h-[14px]" strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={12} className="md:w-[14px] md:h-[14px] opacity-50" /> MARK SUBMITTED</>}
                                                     </div>
                                                 </Button>
                                             </div>
@@ -251,33 +251,33 @@ const Practicals: React.FC = () => {
 
                                         {/* ASSIGNMENTS SECTION */}
                                         {hasAssignments && (
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between items-center text-sm font-bold text-on-surface-variant/80 uppercase tracking-wide">
+                                            <div className="space-y-2 md:space-y-3">
+                                                <div className="flex justify-between items-center text-xs md:text-sm font-bold text-on-surface-variant/80 uppercase tracking-wide">
                                                     <span>Assignments</span>
                                                     <span className="text-tertiary">{assignments.completed}/{assignments.total}</span>
                                                 </div>
-                                                <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center justify-between gap-2 md:gap-3">
                                                     <Button
                                                         variant="outlined"
-                                                        className="flex-1 h-10"
+                                                        className="flex-1 h-8 md:h-10"
                                                         disabled={assignments.completed <= 0}
                                                         onClick={() => handleAssignmentUpdate(subject._id, { completed: Math.max(0, assignments.completed - 1) })}
                                                     >
-                                                        <Minus size={16} />
+                                                        <Minus size={14} className="md:w-4 md:h-4" />
                                                     </Button>
                                                     <Button
                                                         variant="filled" // Use different variant for visual distinction
-                                                        className="flex-1 h-10 !bg-tertiary text-on-tertiary"
+                                                        className="flex-1 h-8 md:h-10 !bg-tertiary text-on-tertiary"
                                                         disabled={assignments.completed >= assignments.total}
                                                         onClick={() => handleAssignmentUpdate(subject._id, { completed: Math.min(assignments.total, assignments.completed + 1) })}
                                                     >
-                                                        <Plus size={16} />
+                                                        <Plus size={14} className="md:w-4 md:h-4" />
                                                     </Button>
                                                 </div>
                                                 {/* Hardcopy for Assignments */}
                                                 <Button
                                                     variant={assignments.hardcopy ? "filled" : "outlined"}
-                                                    className={`w-full justify-center h-10 text-xs font-bold tracking-wide transition-all
+                                                    className={`w-full justify-center h-8 md:h-10 text-[10px] md:text-xs font-bold tracking-wide transition-all
                                                         ${assignments.hardcopy
                                                             ? '!bg-emerald-500 hover:!bg-emerald-600 !text-white border-transparent shadow-md shadow-emerald-500/20'
                                                             : 'border-outline-variant/40 text-on-surface-variant/80 hover:border-primary hover:text-primary hover:bg-primary/5'
@@ -285,8 +285,8 @@ const Practicals: React.FC = () => {
                                                     `}
                                                     onClick={() => handleAssignmentUpdate(subject._id, { hardcopy: !assignments.hardcopy })}
                                                 >
-                                                    <div className="flex items-center gap-2">
-                                                        {assignments.hardcopy ? <><CheckCircle size={14} strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={14} className="opacity-50" /> MARK SUBMITTED</>}
+                                                    <div className="flex items-center gap-1.5 md:gap-2">
+                                                        {assignments.hardcopy ? <><CheckCircle size={12} className="md:w-[14px] md:h-[14px]" strokeWidth={2.5} /> SUBMITTED</> : <><CheckCircle size={12} className="md:w-[14px] md:h-[14px] opacity-50" /> MARK SUBMITTED</>}
                                                     </div>
                                                 </Button>
                                             </div>

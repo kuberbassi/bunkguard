@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, GraduationCap, Bell } from 'lucide-react';
+import { GraduationCap, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -66,12 +66,6 @@ const AppLayout: React.FC = () => {
                                 </span>
                             )}
                         </Link>
-                        <button
-                            onClick={() => setIsMobileMenuOpen(true)}
-                            className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
-                        >
-                            <Menu size={24} />
-                        </button>
                     </div>
                 </div>
 

@@ -147,32 +147,32 @@ const Courses: React.FC = () => {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4"
             >
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-on-surface mb-2">
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-on-surface mb-1 md:mb-2">
                         Course Manager
                     </h1>
-                    <p className="text-on-surface-variant">
+                    <p className="text-sm md:text-base text-on-surface-variant">
                         Track all your learning across platforms
                     </p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex gap-4 text-sm">
+                <div className="flex flex-col-reverse md:flex-row items-stretch md:items-center gap-4">
+                    <div className="flex gap-4 text-xs md:text-sm justify-between md:justify-start bg-surface-container/50 md:bg-transparent p-2 md:p-0 rounded-lg">
                         <div className="flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-primary" />
-                            <span className="text-on-surface-variant">
+                            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                            <span className="text-on-surface-variant font-medium">
                                 {activeCourses.length} Active
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Award className="w-4 h-4 text-green-600" />
-                            <span className="text-on-surface-variant">
+                            <Award className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-600" />
+                            <span className="text-on-surface-variant font-medium">
                                 {completedCourses.length} Completed
                             </span>
                         </div>
                     </div>
-                    <Button icon={<Plus size={18} />} onClick={handleAddCourse}>
+                    <Button icon={<Plus size={16} />} size="md" onClick={handleAddCourse} className="w-full md:w-auto">
                         Add Course
                     </Button>
                 </div>
@@ -180,9 +180,9 @@ const Courses: React.FC = () => {
 
             {/* Active Courses */}
             {activeCourses.length > 0 && (
-                <section className="mb-8">
-                    <h2 className="text-xl font-bold text-on-surface mb-4">Active Courses</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <section className="mb-6 md:mb-8">
+                    <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4">Active Courses</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <AnimatePresence>
                             {activeCourses.map((course, index) => {
                                 const platform = getPlatformConfig(course.platform);
@@ -196,36 +196,36 @@ const Courses: React.FC = () => {
                                         exit={{ opacity: 0, scale: 0.9 }}
                                         transition={{ delay: index * 0.05 }}
                                     >
-                                        <GlassCard hover className="group h-full flex flex-col p-5">
+                                        <GlassCard hover className="group h-full flex flex-col p-4 md:p-5">
                                             {/* Platform Badge */}
                                             <div className="flex items-center justify-between mb-3">
-                                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${platform.color} text-white text-xs font-bold`}>
-                                                    <Icon className="w-3.5 h-3.5" />
+                                                <div className={`flex items-center gap-1.5 md:gap-2 px-2.5 py-0.5 md:py-1 rounded-full ${platform.color} text-white text-[10px] md:text-xs font-bold`}>
+                                                    <Icon className="w-3 h-3 md:w-3.5 md:h-3.5" />
                                                     {platform.label}
                                                 </div>
-                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => handleEditCourse(course)}
                                                         className="p-1.5 rounded-md hover:bg-surface-container transition-colors"
                                                     >
-                                                        <Edit2 className="w-3.5 h-3.5 text-on-surface-variant" />
+                                                        <Edit2 className="w-3 h-3 md:w-3.5 md:h-3.5 text-on-surface-variant" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteCourse(course._id!.$oid)}
                                                         className="p-1.5 rounded-md hover:bg-surface-container transition-colors"
                                                     >
-                                                        <Trash2 className="w-3.5 h-3.5 text-error" />
+                                                        <Trash2 className="w-3 h-3 md:w-3.5 md:h-3.5 text-error" />
                                                     </button>
                                                 </div>
                                             </div>
 
                                             {/* Course Info */}
-                                            <h3 className="text-lg font-bold text-on-surface mb-2 line-clamp-2">
+                                            <h3 className="text-base md:text-lg font-bold text-on-surface mb-1 md:mb-2 line-clamp-2 leading-tight">
                                                 {course.title}
                                             </h3>
 
                                             {course.instructor && (
-                                                <p className="text-sm text-on-surface-variant mb-3">
+                                                <p className="text-xs md:text-sm text-on-surface-variant mb-2 md:mb-3">
                                                     by {course.instructor}
                                                 </p>
                                             )}
@@ -233,10 +233,10 @@ const Courses: React.FC = () => {
                                             {/* Progress Bar */}
                                             <div className="mb-3">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-xs text-on-surface-variant">Progress</span>
-                                                    <span className="text-sm font-bold text-on-surface">{course.progress}%</span>
+                                                    <span className="text-[10px] md:text-xs text-on-surface-variant">Progress</span>
+                                                    <span className="text-xs md:text-sm font-bold text-on-surface">{course.progress}%</span>
                                                 </div>
-                                                <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+                                                <div className="w-full h-1.5 md:h-2 bg-surface-container rounded-full overflow-hidden">
                                                     <div
                                                         className={`h-full ${getProgressColor(course.progress)} transition-all duration-300`}
                                                         style={{ width: `${course.progress}%` }}
@@ -246,8 +246,8 @@ const Courses: React.FC = () => {
 
                                             {/* Target Date */}
                                             {course.targetCompletionDate && (
-                                                <div className="flex items-center gap-2 text-xs text-on-surface-variant mb-3">
-                                                    <Calendar className="w-3.5 h-3.5" />
+                                                <div className="flex items-center gap-2 text-[10px] md:text-xs text-on-surface-variant mb-3">
+                                                    <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5" />
                                                     Target: {new Date(course.targetCompletionDate).toLocaleDateString()}
                                                 </div>
                                             )}
@@ -257,15 +257,16 @@ const Courses: React.FC = () => {
                                                 <Button
                                                     variant="outlined"
                                                     size="sm"
-                                                    icon={<ExternalLink size={14} />}
+                                                    icon={<ExternalLink size={12} className="md:w-3.5 md:h-3.5" />}
                                                     onClick={() => window.open(course.url, '_blank')}
-                                                    className="flex-1"
+                                                    className="flex-1 h-8 md:h-9 text-xs md:text-sm"
                                                 >
                                                     Open
                                                 </Button>
                                                 <Button
                                                     variant="tonal"
                                                     size="sm"
+                                                    className="h-8 md:h-9 text-xs md:text-sm"
                                                     onClick={() => {
                                                         const updated = courses.map(c =>
                                                             c._id?.$oid === course._id?.$oid

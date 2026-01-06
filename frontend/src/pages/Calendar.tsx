@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
-import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AttendanceModal from '@/components/modals/AttendanceModal';
 import { attendanceService } from '@/services/attendance.service';
@@ -99,55 +98,56 @@ const Calendar: React.FC = () => {
     };
 
     const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate);
-
-
-    const days = [];
-    for (let i = 0; i < startingDayOfWeek; i++) {
-        days.push(<div key={`empty-${i}`} className="aspect-square" />);
-    }
-    for (let day = 1; day <= daysInMonth; day++) {
-        days.push(day);
-    }
+    const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     if (loading) return <LoadingSpinner fullScreen />;
 
     return (
-        <div className="pb-32 space-y-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="pb-20 space-y-4 md:space-y-6">
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
                 <div>
-                    <h1 className="text-display-md text-on-surface dark:text-dark-surface-on">Calendar</h1>
-                    <p className="text-on-surface-variant text-lg">Track your attendance history</p>
+                    <h1 className="text-2xl md:text-3xl font-bold font-display text-on-surface tracking-tight mb-1">Calendar</h1>
+                    <p className="text-xs md:text-base text-on-surface-variant">Manage your academic schedule</p>
                 </div>
-
-                <div className="flex items-center gap-3 bg-surface-container-low rounded-xl p-1 border border-outline-variant/20">
-                    <Button variant="ghost" onClick={handlePrevMonth} className="!p-2">
-                        <ChevronLeft size={20} />
-                    </Button>
-                    <span className="font-bold min-w-[140px] text-center text-lg text-on-surface">
+                <div className="flex items-center gap-1 md:gap-2 bg-surface-container rounded-xl p-1 border border-outline-variant/30 self-start md:self-auto">
+                    <button
+                        onClick={handlePrevMonth}
+                        className="p-1.5 md:p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors"
+                    >
+                        <ChevronLeft size={16} className="md:w-5 md:h-5" />
+                    </button>
+                    <span className="font-semibold text-sm md:text-base min-w-[100px] md:min-w-[120px] text-center">
                         {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                     </span>
-                    <Button variant="ghost" onClick={handleNextMonth} className="!p-2">
-                        <ChevronRight size={20} />
-                    </Button>
+                    <button
+                        onClick={handleNextMonth}
+                        className="p-1.5 md:p-2 hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors"
+                    >
+                        <ChevronRight size={16} className="md:w-5 md:h-5" />
+                    </button>
                 </div>
-            </div>
+            </header>
 
-            <GlassCard className="p-6">
-                {/* Weekday Headers - Monday first */}
-                <div className="grid grid-cols-7 gap-4 mb-4">
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                        <div key={day} className="text-center text-sm font-medium text-on-surface-variant">
+            <GlassCard className="p-3 md:p-6">
+                {/* Weekday Headers */}
+                <div className="grid grid-cols-7 mb-2 md:mb-4">
+                    {weekDays.map(day => (
+                        <div key={day} className="text-center text-xs md:text-sm font-bold text-on-surface-variant uppercase tracking-wider py-1 md:py-2">
                             {day}
                         </div>
                     ))}
                 </div>
 
                 {/* Calendar Grid */}
-                <div className="grid grid-cols-7 gap-4 flex-1">
-                    {days.map((day, index) => {
-                        if (typeof day !== 'number') return day;
+                <div className="grid grid-cols-7 gap-1 md:gap-3">
+                    {/* Empty Slots */}
+                    {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                        <div key={`empty-${i}`} className="aspect-square" />
+                    ))}
 
+                    {/* Days */}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const day = i + 1;
                         const date = new Date(year, month, day);
                         const attendance = getAttendanceForDate(date);
                         const isToday = new Date().toDateString() === date.toDateString();
@@ -157,28 +157,29 @@ const Calendar: React.FC = () => {
 
                         return (
                             <motion.button
-                                key={index}
+                                key={day}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleDayClick(day)}
-                                className={`aspect-square rounded-2xl p-2 relative flex flex-col items-center justify-start transition-all border ${isToday
-                                    ? 'border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary),0.3)]'
+                                className={`aspect-square rounded-xl md:rounded-2xl p-1 md:p-2 relative flex flex-col items-center justify-start transition-all border ${isToday
+                                    ? 'border-primary bg-primary/10 shadow-[0_0_10px_rgba(var(--primary),0.2)] md:shadow-[0_0_20px_rgba(var(--primary),0.3)]'
                                     : totalClasses > 0
                                         ? 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'
                                         : 'border-transparent hover:bg-surface-dim'
                                     }`}
                             >
-                                <span className={`text-base font-medium mt-1 ${isToday ? 'text-primary font-bold' : 'text-on-surface'}`}>
+                                <span className={`text-xs md:text-base font-medium mt-0.5 md:mt-1 ${isToday ? 'text-primary font-bold' : 'text-on-surface'}`}>
                                     {day}
                                 </span>
 
-                                <div className="mt-auto mb-2 flex gap-1 flex-wrap justify-center max-w-full">
-                                    {new Array(Math.min(presentCount, 4)).fill(0).map((_, i) => (
-                                        <div key={`p-${i}`} className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-sm" />
+                                <div className="mt-auto mb-1 md:mb-2 flex gap-0.5 md:gap-1 flex-wrap justify-center max-w-full px-0.5">
+                                    {new Array(Math.min(presentCount, 4)).fill(0).map((_, idx) => (
+                                        <div key={`p-${idx}`} className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-green-500 shadow-sm" />
                                     ))}
-                                    {new Array(Math.min(absentCount, 4)).fill(0).map((_, i) => (
-                                        <div key={`a-${i}`} className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-sm" />
+                                    {new Array(Math.min(absentCount, 4)).fill(0).map((_, idx) => (
+                                        <div key={`a-${idx}`} className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-red-500 shadow-sm" />
                                     ))}
+                                    {totalClasses > 8 && <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-on-surface-variant/30" />}
                                 </div>
                             </motion.button>
                         );
@@ -186,17 +187,17 @@ const Calendar: React.FC = () => {
                 </div>
 
                 {/* Legend */}
-                <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-wrap justify-center gap-8 text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-green-500 shadow-sm" />
+                <div className="mt-4 md:mt-8 pt-4 md:pt-6 border-t border-outline-variant/10 flex flex-wrap justify-center gap-4 md:gap-8 text-xs md:text-sm font-medium">
+                    <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-green-500 shadow-sm" />
                         <span className="text-on-surface-variant">Present</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500 shadow-sm" />
+                    <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-red-500 shadow-sm" />
                         <span className="text-on-surface-variant">Absent</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded border-2 border-primary bg-primary/10" />
+                    <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="w-2 h-2 md:w-3 md:h-3 rounded border md:border-2 border-primary bg-primary/10" />
                         <span className="text-primary font-bold">Today</span>
                     </div>
                 </div>

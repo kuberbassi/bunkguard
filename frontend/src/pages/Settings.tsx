@@ -317,55 +317,54 @@ const Settings: React.FC = () => {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8"
+                className="mb-6 md:mb-8"
             >
-                <h1 className="text-3xl font-display font-bold text-on-surface mb-2">Settings</h1>
-                <p className="text-on-surface-variant">Customize your AcadHub experience</p>
+                <h1 className="text-2xl md:text-3xl font-display font-bold text-on-surface mb-1 md:mb-2">Settings</h1>
+                <p className="text-sm md:text-base text-on-surface-variant">Customize your AcadHub experience</p>
             </motion.div>
 
             {/* Tabs for Mobile/Desktop */}
-            <div className="flex gap-2 mb-6 border-b border-outline-variant/30 pb-1">
+            <div className="flex gap-2 mb-4 md:mb-6 border-b border-outline-variant/30 pb-1 overflow-x-auto no-scrollbar">
                 <button
                     onClick={() => setActiveTab('profile')}
-                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'profile' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+                    className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'profile' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
                 >
                     Profile & Preferences
                 </button>
                 <button
                     onClick={() => setActiveTab('academics')}
-                    className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'academics' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
+                    className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'academics' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}
                 >
                     Activity Log
                 </button>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
                 {activeTab === 'profile' ? (
                     <>
                         {/* Profile Section */}
                         <section>
-                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                                <User className="w-5 h-5 text-primary" />
+                            <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4 flex items-center gap-2">
+                                <User className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                 Profile
                             </h2>
-                            <GlassCard className="p-6">
-                                <div className="flex flex-col md:flex-row gap-6 items-start">
+                            <GlassCard className="p-4 md:p-6">
+                                <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
                                     {/* Profile Picture */}
                                     {profileForm.picture || user?.picture ? (
                                         <img
                                             src={profileForm.picture || user?.picture}
                                             alt={user?.name || 'Profile'}
-                                            className="w-20 h-20 rounded-full object-cover border-2 border-primary/20"
+                                            className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-primary/20"
                                         />
                                     ) : (
-                                        <div className="w-20 h-20 rounded-full bg-primary-container text-primary text-3xl flex items-center justify-center font-bold shrink-0">
+                                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary-container text-primary text-2xl md:text-3xl flex items-center justify-center font-bold shrink-0">
                                             {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                                         </div>
                                     )}
-                                    <div className="flex-1 w-full space-y-4">
+                                    <div className="flex-1 w-full space-y-3 md:space-y-4">
                                         {/* PFP File Upload */}
                                         <div>
-                                            <label className="block text-sm font-medium text-on-surface mb-2">Profile Picture</label>
                                             <div className="flex items-center gap-4">
                                                 {isEditingProfile ? (
                                                     <div className="relative">
@@ -391,9 +390,9 @@ const Settings: React.FC = () => {
                                                         />
                                                         <label
                                                             htmlFor="pfp-upload"
-                                                            className="flex items-center gap-2 cursor-pointer px-4 py-2 bg-primary/10 text-primary font-medium rounded-lg hover:bg-primary/20 transition-colors"
+                                                            className="flex items-center gap-2 cursor-pointer px-3 md:px-4 py-1.5 md:py-2 bg-primary/10 text-primary text-xs md:text-sm font-medium rounded-lg hover:bg-primary/20 transition-colors"
                                                         >
-                                                            <Upload size={16} />
+                                                            <Upload size={14} className="md:w-4 md:h-4" />
                                                             Upload Photo
                                                         </label>
                                                     </div>
@@ -407,7 +406,7 @@ const Settings: React.FC = () => {
                                             onChange={(e) => setName(e.target.value)}
                                             disabled={!isEditingProfile}
                                         />
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                             <Input
                                                 label="Course/Branch"
                                                 placeholder="e.g. B.Tech CSE"
@@ -423,7 +422,7 @@ const Settings: React.FC = () => {
                                                 onChange={(e) => setProfileForm({ ...profileForm, college: e.target.value })}
                                             />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-3 md:gap-4">
                                             <Select
                                                 label="Semester"
                                                 value={isEditingProfile ? profileForm.semester : (user?.semester || 1)}
@@ -446,16 +445,16 @@ const Settings: React.FC = () => {
                                         />
                                     </div>
                                 </div>
-                                <div className="mt-6 flex justify-end gap-2">
+                                <div className="mt-4 md:mt-6 flex justify-end gap-2">
                                     {isEditingProfile ? (
                                         <>
-                                            <Button variant="text" onClick={() => setIsEditingProfile(false)}>Cancel</Button>
-                                            <Button onClick={handleProfileSave}>
+                                            <Button variant="text" size="sm" onClick={() => setIsEditingProfile(false)}>Cancel</Button>
+                                            <Button size="sm" onClick={handleProfileSave}>
                                                 Save Changes
                                             </Button>
                                         </>
                                     ) : (
-                                        <Button variant="outlined" onClick={() => setIsEditingProfile(true)}>Edit Profile</Button>
+                                        <Button variant="outlined" size="sm" onClick={() => setIsEditingProfile(true)}>Edit Profile</Button>
                                     )}
                                 </div>
                             </GlassCard>
@@ -463,35 +462,35 @@ const Settings: React.FC = () => {
 
                         {/* Appearance */}
                         <section>
-                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                                <Palette className="w-5 h-5 text-primary" />
+                            <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4 flex items-center gap-2">
+                                <Palette className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                 Appearance
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <GlassCard className="p-6 cursor-pointer hover:bg-surface-container-low transition-colors" onClick={toggleTheme}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                <GlassCard className="p-4 md:p-6 cursor-pointer hover:bg-surface-container-low transition-colors" onClick={toggleTheme}>
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-secondary-container text-secondary flex items-center justify-center">
-                                                {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                                        <div className="flex items-center gap-3 md:gap-4">
+                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary-container text-secondary flex items-center justify-center">
+                                                {theme === 'dark' ? <Moon className="w-4 h-4 md:w-5 md:h-5" /> : <Sun className="w-4 h-4 md:w-5 md:h-5" />}
                                             </div>
                                             <div>
-                                                <h3 className="font-medium text-on-surface">Theme</h3>
-                                                <p className="text-sm text-on-surface-variant">{theme === 'dark' ? 'Dark' : 'Light'} Mode</p>
+                                                <h3 className="font-medium text-sm md:text-base text-on-surface">Theme</h3>
+                                                <p className="text-xs md:text-sm text-on-surface-variant">{theme === 'dark' ? 'Dark' : 'Light'} Mode</p>
                                             </div>
                                         </div>
-                                        <div className={`w-12 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-outline-variant'}`}>
-                                            <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${theme === 'dark' ? 'translate-x-6' : ''}`} />
+                                        <div className={`w-10 h-5 md:w-12 md:h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-outline-variant'}`}>
+                                            <div className={`absolute top-0.5 left-0.5 md:top-1 md:left-1 bg-white w-4 h-4 rounded-full transition-transform ${theme === 'dark' ? 'translate-x-5 md:translate-x-6' : ''}`} />
                                         </div>
                                     </div>
                                 </GlassCard>
 
-                                <GlassCard className="p-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="font-medium text-on-surface">Accent Color</h3>
+                                <GlassCard className="p-4 md:p-6">
+                                    <div className="flex items-center justify-between mb-3 md:mb-4">
+                                        <h3 className="font-medium text-sm md:text-base text-on-surface">Accent Color</h3>
                                         {/* Custom Color Picker */}
-                                        <div className="relative group flex items-center gap-2 bg-surface-container-high/50 pl-1 pr-3 py-1 rounded-full border border-outline-variant/20 hover:border-primary/30 transition-colors">
-                                            <div className="relative w-8 h-8 shrink-0">
-                                                <div className="w-8 h-8 rounded-full shadow-sm ring-2 ring-white/20 overflow-hidden bg-surface-container">
+                                        <div className="relative group flex items-center gap-2 bg-surface-container-high/50 pl-1 pr-2 md:pr-3 py-1 rounded-full border border-outline-variant/20 hover:border-primary/30 transition-colors">
+                                            <div className="relative w-6 h-6 md:w-8 md:h-8 shrink-0">
+                                                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full shadow-sm ring-2 ring-white/20 overflow-hidden bg-surface-container">
                                                     <div
                                                         className="w-full h-full transition-colors"
                                                         style={{ backgroundColor: preferences.accent_color }}
@@ -512,10 +511,10 @@ const Settings: React.FC = () => {
                                                     <Edit2 size={8} className="text-on-surface-variant" />
                                                 </div>
                                             </div>
-                                            <span className="text-xs font-medium text-on-surface-variant">Custom</span>
+                                            <span className="text-[10px] md:text-xs font-medium text-on-surface-variant">Custom</span>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-6 gap-3">
+                                    <div className="grid grid-cols-6 gap-2 md:gap-3">
                                         {ACCENT_COLORS.map((color) => (
                                             <button
                                                 key={color.value}
@@ -523,8 +522,8 @@ const Settings: React.FC = () => {
                                                     setAccentColor(color.value);
                                                     savePreferences({ accent_color: color.value });
                                                 }}
-                                                className={`w-10 h-10 rounded-full transition-all hover:scale-110 ${preferences.accent_color === color.value
-                                                    ? 'ring-4 ring-white/30 scale-110 shadow-lg'
+                                                className={`w-8 h-8 md:w-10 md:h-10 rounded-full transition-all hover:scale-110 ${preferences.accent_color === color.value
+                                                    ? 'ring-3 md:ring-4 ring-white/30 scale-110 shadow-lg'
                                                     : 'hover:ring-2 hover:ring-white/20'
                                                     }`}
                                                 style={{ backgroundColor: color.value }}
@@ -538,16 +537,16 @@ const Settings: React.FC = () => {
 
                         {/* Attendance Preferences */}
                         <section>
-                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                                <SettingsIcon className="w-5 h-5 text-primary" />
+                            <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4 flex items-center gap-2">
+                                <SettingsIcon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                 Attendance Preferences
                             </h2>
-                            <GlassCard className="p-6">
-                                <div className="space-y-6">
+                            <GlassCard className="p-4 md:p-6">
+                                <div className="space-y-4 md:space-y-6">
                                     {/* Threshold Settings */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-xl bg-surface-container/50 border border-outline-variant/20">
-                                            <label className="block text-sm font-medium text-on-surface mb-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                                        <div className="p-3 md:p-4 rounded-xl bg-surface-container/50 border border-outline-variant/20">
+                                            <label className="block text-xs md:text-sm font-medium text-on-surface mb-2 md:mb-3">
                                                 Minimum Attendance
                                             </label>
                                             <div className="flex items-center gap-3">
@@ -558,17 +557,17 @@ const Settings: React.FC = () => {
                                                     value={preferences.attendance_threshold}
                                                     onChange={(e) => debouncedSave({ attendance_threshold: Math.min(100, Math.max(50, parseInt(e.target.value) || 75)) })}
                                                     onBlur={() => savePreferencesToAPI(preferences)}
-                                                    className="w-20 px-3 py-2 text-center text-lg font-bold rounded-lg bg-primary/10 text-primary border-2 border-primary/30 focus:border-primary outline-none"
+                                                    className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-primary/10 text-primary border-2 border-primary/30 focus:border-primary outline-none"
                                                 />
                                                 <span className="text-on-surface-variant">%</span>
                                             </div>
-                                            <p className="text-xs text-on-surface-variant mt-2">
+                                            <p className="text-[10px] md:text-xs text-on-surface-variant mt-2">
                                                 Below this, subjects are "at risk"
                                             </p>
                                         </div>
 
-                                        <div className="p-4 rounded-xl bg-surface-container/50 border border-outline-variant/20">
-                                            <label className="block text-sm font-medium text-on-surface mb-3">
+                                        <div className="p-3 md:p-4 rounded-xl bg-surface-container/50 border border-outline-variant/20">
+                                            <label className="block text-xs md:text-sm font-medium text-on-surface mb-2 md:mb-3">
                                                 Warning Threshold
                                             </label>
                                             <div className="flex items-center gap-3">
@@ -579,29 +578,25 @@ const Settings: React.FC = () => {
                                                     value={preferences.warning_threshold}
                                                     onChange={(e) => debouncedSave({ warning_threshold: Math.min(100, Math.max(preferences.attendance_threshold, parseInt(e.target.value) || 76)) })}
                                                     onBlur={() => savePreferencesToAPI(preferences)}
-                                                    className="w-20 px-3 py-2 text-center text-lg font-bold rounded-lg bg-orange-500/10 text-orange-500 border-2 border-orange-500/30 focus:border-orange-500 outline-none"
+                                                    className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-orange-500/10 text-orange-500 border-2 border-orange-500/30 focus:border-orange-500 outline-none"
                                                 />
                                                 <span className="text-on-surface-variant">%</span>
                                             </div>
-                                            <p className="text-xs text-on-surface-variant mt-2">
+                                            <p className="text-[10px] md:text-xs text-on-surface-variant mt-2">
                                                 Warning when below this
                                             </p>
                                         </div>
                                     </div>
-
-
                                 </div>
                             </GlassCard>
                         </section>
                     </>
                 ) : (
                     <>
-
-
                         {/* System Logs */}
                         <section>
-                            <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-primary" />
+                            <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4 flex items-center gap-2">
+                                <FileText className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                 Activity Log
                             </h2>
                             <SystemLogsSection />
@@ -611,25 +606,25 @@ const Settings: React.FC = () => {
 
                 {/* Data Management & Danger Zone (Always Visible at bottom) */}
                 <section>
-                    <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
-                        <Download className="w-5 h-5 text-primary" />
+                    <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4 flex items-center gap-2">
+                        <Download className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                         Data Management
                     </h2>
-                    <GlassCard className="p-6">
+                    <GlassCard className="p-4 md:p-6">
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                             <div>
-                                <h3 className="font-medium text-on-surface mb-1">Export & Import</h3>
-                                <p className="text-sm text-on-surface-variant">Backup or restore your attendance data</p>
+                                <h3 className="font-medium text-sm md:text-base text-on-surface mb-1">Export & Import</h3>
+                                <p className="text-xs md:text-sm text-on-surface-variant">Backup or restore your attendance data</p>
                             </div>
-                            <div className="flex gap-2">
-                                <label>
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <label className="flex-1 md:flex-none">
                                     <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
-                                    <span className="inline-flex items-center justify-center font-medium transition-all duration-200 border-2 border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40 px-5 h-11 text-sm rounded-xl gap-2 cursor-pointer">
-                                        <Upload size={18} />
+                                    <span className="flex items-center justify-center font-medium transition-all duration-200 border-2 border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40 px-4 h-10 md:h-11 text-sm rounded-xl gap-2 cursor-pointer w-full md:w-auto">
+                                        <Upload size={16} className="md:w-[18px]" />
                                         Import
                                     </span>
                                 </label>
-                                <Button icon={<Download size={18} />} onClick={handleExportData}>
+                                <Button className="flex-1 md:flex-none" icon={<Download size={16} className="md:w-[18px]" />} onClick={handleExportData}>
                                     Export JSON
                                 </Button>
                             </div>
@@ -638,18 +633,18 @@ const Settings: React.FC = () => {
                 </section>
 
                 <section>
-                    <h2 className="text-xl font-bold text-error mb-4 flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5" />
+                    <h2 className="text-lg md:text-xl font-bold text-error mb-3 md:mb-4 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 md:w-5 md:h-5" />
                         Danger Zone
                     </h2>
                     <div className="space-y-3">
                         <GlassCard className="p-4 border-error/30 bg-error-container/5">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="font-medium text-on-surface">Sign Out</h3>
-                                    <p className="text-sm text-on-surface-variant">End your current session</p>
+                                    <h3 className="font-medium text-sm md:text-base text-on-surface">Sign Out</h3>
+                                    <p className="text-xs md:text-sm text-on-surface-variant">End your current session</p>
                                 </div>
-                                <Button variant="outlined" icon={<LogOut size={18} />} onClick={logout}>
+                                <Button variant="outlined" size="sm" icon={<LogOut size={16} />} onClick={logout}>
                                     Logout
                                 </Button>
                             </div>
@@ -658,10 +653,10 @@ const Settings: React.FC = () => {
                         <GlassCard className="p-4 border-error/50 bg-error-container/10">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <h3 className="font-medium text-error">Delete All Data</h3>
-                                    <p className="text-sm text-on-surface-variant">Permanently delete all attendance records</p>
+                                    <h3 className="font-medium text-sm md:text-base text-error">Delete All Data</h3>
+                                    <p className="text-xs md:text-sm text-on-surface-variant">Permanently delete all attendance records</p>
                                 </div>
-                                <Button variant="outlined" icon={<Trash2 size={18} />} onClick={handleDeleteAllData} className="!border-error !text-error hover:!bg-error/10">
+                                <Button variant="outlined" size="sm" icon={<Trash2 size={16} />} onClick={handleDeleteAllData} className="!border-error !text-error hover:!bg-error/10">
                                     Delete All
                                 </Button>
                             </div>

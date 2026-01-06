@@ -1,44 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Plus, Edit2, Trash2, TrendingUp, Target, Award,
-    Code, Palette, Languages, Brain, Zap
-} from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
 import { skillsService, type Skill } from '@/services/skills.service';
 
-const categories = [
-    { name: 'Programming', icon: Code, color: 'bg-blue-500' },
-    { name: 'Design', icon: Palette, color: 'bg-purple-500' },
-    { name: 'Languages', icon: Languages, color: 'bg-green-500' },
-    { name: 'Business', icon: TrendingUp, color: 'bg-orange-500' },
-    { name: 'Creative', icon: Brain, color: 'bg-pink-500' },
-    { name: 'Other', icon: Zap, color: 'bg-yellow-500' },
-];
+const SKILL_CATEGORIES = ['Development', 'Design', 'Data Science', 'Soft Skills', 'Other'];
+const SKILL_LEVELS: Skill['level'][] = ['beginner', 'intermediate', 'advanced', 'expert'];
 
-const levels = [
-    { value: 'beginner', label: 'Beginner', color: 'bg-gray-400' },
-    { value: 'intermediate', label: 'Intermediate', color: 'bg-blue-400' },
-    { value: 'advanced', label: 'Advanced', color: 'bg-purple-400' },
-    { value: 'expert', label: 'Expert', color: 'bg-gradient-to-r from-yellow-400 to-orange-500' },
-];
+const getLevelColor = (level: string) => {
+    switch (level) {
+        case 'beginner': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+        case 'intermediate': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
+        case 'advanced': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300';
+        case 'expert': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+        default: return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+    }
+};
 
 const SkillTracker: React.FC = () => {
     const { showToast } = useToast();
-    const [loading, setLoading] = useState(true);
     const [skills, setSkills] = useState<Skill[]>([]);
-    const [filter, setFilter] = useState<string>('all');
-
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
-    const [formData, setFormData] = useState({
+    const [isSaving, setIsSaving] = useState(false);
+    const [filter, setFilter] = useState('all');
+
+    const [formData, setFormData] = useState<Omit<Skill, '_id'>>({
         name: '',
-        category: 'Programming',
-        level: 'beginner' as 'beginner' | 'intermediate' | 'advanced' | 'expert',
+        category: 'Development',
+        level: 'beginner',
         progress: 0,
         notes: ''
     });
@@ -48,10 +44,11 @@ const SkillTracker: React.FC = () => {
     }, []);
 
     const loadSkills = async () => {
-        setLoading(true);
         try {
+            setLoading(true);
             const data = await skillsService.getSkills();
-            setSkills(data);
+            const skillsList = Array.isArray(data) ? data : (data as any).skills || [];
+            setSkills(skillsList);
         } catch (error) {
             console.error('Failed to load skills:', error);
             showToast('error', 'Failed to load skills');
@@ -64,7 +61,7 @@ const SkillTracker: React.FC = () => {
         setEditingSkill(null);
         setFormData({
             name: '',
-            category: 'Programming',
+            category: 'Development',
             level: 'beginner',
             progress: 0,
             notes: ''
@@ -84,177 +81,170 @@ const SkillTracker: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSave = async () => {
+        if (!formData.name) {
+            showToast('error', 'Skill name is required');
+            return;
+        }
+
         try {
+            setIsSaving(true);
             if (editingSkill && editingSkill._id) {
-                const skillId = typeof editingSkill._id === 'object'
-                    ? (editingSkill._id as any).$oid
-                    : String(editingSkill._id);
-                await skillsService.updateSkill(skillId, formData);
+                await skillsService.updateSkill(editingSkill._id, formData);
                 showToast('success', 'Skill updated successfully');
             } else {
                 await skillsService.addSkill(formData);
-                showToast('success', 'Skill added successfully');
+                showToast('success', 'Skill created successfully');
             }
             setIsModalOpen(false);
             loadSkills();
         } catch (error) {
             console.error('Failed to save skill:', error);
             showToast('error', 'Failed to save skill');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleDeleteSkill = async (id: string) => {
-        if (!confirm('Delete this skill?')) return;
+        if (!confirm('Are you sure you want to delete this skill?')) return;
         try {
             await skillsService.deleteSkill(id);
             showToast('success', 'Skill deleted');
             loadSkills();
         } catch (error) {
-            console.error('Failed to delete skill:', error);
             showToast('error', 'Failed to delete skill');
         }
     };
 
-    const filteredSkills = skills.filter(skill =>
-        filter === 'all' || skill.category === filter
-    );
+    const filteredSkills = filter === 'all'
+        ? skills
+        : skills.filter(s => s.category === filter);
 
-    const getLevelDetails = (level: string) => {
-        return levels.find(l => l.value === level) || levels[0];
-    };
-
-    const getCategoryIcon = (category: string) => {
-        const cat = categories.find(c => c.name === category);
-        return cat || categories[categories.length - 1];
-    };
-
-    if (loading) return <LoadingSpinner fullScreen />;
+    if (loading) {
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="h-48 bg-surface-container/50 rounded-3xl" />
+                ))}
+            </div>
+        );
+    }
 
     return (
-        <div className="pb-20">
+        <div className="pb-24 max-w-7xl mx-auto">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="mb-4 md:mb-6 flex flex-col md:flex-row md:items-end justify-between gap-3 md:gap-4"
             >
                 <div>
-                    <h1 className="text-3xl font-display font-bold text-on-surface mb-2">Skill Tracker</h1>
-                    <p className="text-on-surface-variant">Track and improve your skills across different domains</p>
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-on-surface mb-1 md:mb-2">Skill Tracker</h1>
+                    <p className="text-sm md:text-base text-on-surface-variant">Track and improve your skills across different domains</p>
                 </div>
-                <Button icon={<Plus size={18} />} onClick={handleAddSkill}>Add Skill</Button>
+                <Button icon={<Plus size={16} />} size="md" onClick={handleAddSkill} className="w-full md:w-auto justify-center">Add Skill</Button>
             </motion.div>
 
             {/* Category Filter */}
-            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <div className="mb-4 md:mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 <button
                     onClick={() => setFilter('all')}
-                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === 'all'
+                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${filter === 'all'
                         ? 'bg-primary text-on-primary shadow-sm'
                         : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                         }`}
                 >
                     All
                 </button>
-                {categories.map((cat) => (
+                {SKILL_CATEGORIES.map((cat) => (
                     <button
-                        key={cat.name}
-                        onClick={() => setFilter(cat.name)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === cat.name
+                        key={cat}
+                        onClick={() => setFilter(cat)}
+                        className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${filter === cat
                             ? 'bg-primary text-on-primary shadow-sm'
                             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                             }`}
                     >
-                        <cat.icon size={16} />
-                        {cat.name}
+                        {cat}
                     </button>
                 ))}
             </div>
 
             {/* Skills Grid */}
             {filteredSkills.length === 0 ? (
-                <GlassCard className="p-12 text-center border-dashed border-2 border-outline/30">
-                    <Target className="w-12 h-12 text-primary/50 mx-auto mb-4" />
-                    <h3 className="text-xl font-medium text-on-surface mb-2">No Skills Yet</h3>
-                    <p className="text-on-surface-variant">Start tracking your skills and monitor your progress!</p>
-                </GlassCard>
+                <div className="text-center py-12 md:py-20 bg-surface-container-low rounded-3xl border border-dashed border-outline-variant">
+                    <p className="text-on-surface-variant mb-4">No skills found. Start adding some!</p>
+                    <Button variant="tonal" onClick={handleAddSkill}>Create First Skill</Button>
+                </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                     <AnimatePresence>
                         {filteredSkills.map((skill, index) => {
-                            const levelDetails = getLevelDetails(skill.level);
-                            const categoryData = getCategoryIcon(skill.category);
-                            const CategoryIcon = categoryData.icon;
-                            const skillId = typeof skill._id === 'object'
-                                ? (skill._id as any).$oid
-                                : String(skill._id || index);
+                            const levelColor = getLevelColor(skill.level);
+                            const skillId = skill._id || `skill-${index}`;
 
                             return (
                                 <motion.div
                                     key={skillId}
-                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
-                                    layout
+                                    transition={{ duration: 0.2 }}
                                 >
-                                    <GlassCard hover className="relative overflow-hidden group h-full flex flex-col p-5">
-                                        {/* Category Badge */}
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${categoryData.color} bg-opacity-10`}>
-                                                <CategoryIcon size={14} className={categoryData.color.replace('bg-', 'text-')} />
-                                                <span className={`text-xs font-bold ${categoryData.color.replace('bg-', 'text-')}`}>
-                                                    {skill.category}
-                                                </span>
+                                    <GlassCard hover className="relative overflow-hidden group h-full flex flex-col p-3 md:p-5">
+                                        <div className="flex justify-between items-start mb-3 md:mb-4">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${levelColor}`}>
+                                                        {skill.level}
+                                                    </span>
+                                                    <span className="text-[10px] md:text-xs text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
+                                                        {skill.category}
+                                                    </span>
+                                                </div>
+                                                <h3 className="text-base md:text-xl font-bold text-on-surface">{skill.name}</h3>
                                             </div>
-                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex gap-1 md:gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => handleEditSkill(skill)}
-                                                    className="p-1.5 rounded-full hover:bg-surface-container-high text-on-surface-variant"
+                                                    className="p-1.5 md:p-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant"
                                                 >
-                                                    <Edit2 size={14} />
+                                                    <Edit2 size={14} className="md:w-4 md:h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => skillId && handleDeleteSkill(skillId)}
-                                                    className="p-1.5 rounded-full hover:bg-error/10 text-error"
+                                                    onClick={() => handleDeleteSkill(skillId)}
+                                                    className="p-1.5 md:p-2 rounded-lg hover:bg-error/10 text-error"
                                                 >
-                                                    <Trash2 size={14} />
+                                                    <Trash2 size={14} className="md:w-4 md:h-4" />
                                                 </button>
                                             </div>
                                         </div>
 
-                                        {/* Skill Name */}
-                                        <h3 className="text-lg font-bold text-on-surface mb-2 line-clamp-2">
-                                            {skill.name}
-                                        </h3>
+                                        <p className="text-xs md:text-sm text-on-surface-variant mb-4 md:mb-6 line-clamp-2 min-h-[2.5em]">
+                                            {skill.notes || "No description provided."}
+                                        </p>
 
-                                        {/* Level Badge */}
-                                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${levelDetails.color} text-white text-xs font-bold mb-4`}>
-                                            <Award size={12} />
-                                            {levelDetails.label}
-                                        </div>
-
-                                        {/* Progress Bar */}
                                         <div className="mt-auto">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-xs font-medium text-on-surface-variant">Progress</span>
-                                                <span className="text-xs font-bold text-primary">{skill.progress}%</span>
+                                            <div className="flex justify-between items-center mb-1.5 md:mb-2">
+                                                <span className="text-[10px] md:text-xs font-medium text-on-surface-variant">Progress</span>
+                                                <span className="text-[10px] md:text-xs font-bold text-primary">{skill.progress}%</span>
                                             </div>
-                                            <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
+                                            <div className="h-1.5 md:h-2 bg-surface-container-high rounded-full overflow-hidden">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${skill.progress}%` }}
-                                                    transition={{ duration: 1, ease: 'easeOut' }}
-                                                    className="h-full bg-gradient-to-r from-primary to-primary-dark rounded-full"
+                                                    transition={{ duration: 0.8, ease: "easeOut" }}
+                                                    className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
                                                 />
+                                            </div>
+                                            <div className="flex justify-between mt-1 text-[9px] md:text-[10px] text-on-surface-variant/70">
+                                                <span>Beginner</span>
+                                                <span>Expert</span>
                                             </div>
                                         </div>
 
-                                        {skill.notes && (
-                                            <p className="text-xs text-on-surface-variant mt-3 line-clamp-2">
-                                                {skill.notes}
-                                            </p>
-                                        )}
+                                        <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
                                     </GlassCard>
                                 </motion.div>
                             );
@@ -263,100 +253,64 @@ const SkillTracker: React.FC = () => {
                 </div>
             )}
 
-            {/* Add/Edit Modal */}
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={editingSkill ? 'Edit Skill' : 'Add New Skill'}
             >
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">
-                            Skill Name *
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                            placeholder="e.g., React Development"
-                            required
+                <div className="space-y-3 md:space-y-4">
+                    <Input
+                        label="Skill Name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="e.g. React Native"
+                    />
+
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                        <Select
+                            label="Category"
+                            value={formData.category}
+                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                            options={SKILL_CATEGORIES.map(c => ({ value: c, label: c }))}
+                        />
+                        <Select
+                            label="Level"
+                            value={formData.level}
+                            onChange={(e) => setFormData({ ...formData, level: e.target.value as Skill['level'] })}
+                            options={SKILL_LEVELS.map(l => ({ value: l, label: l.charAt(0).toUpperCase() + l.slice(1) }))}
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-on-surface mb-2">
-                                Category *
-                            </label>
-                            <select
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                                {categories.map(cat => (
-                                    <option key={cat.name} value={cat.name}>{cat.name}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-on-surface mb-2">
-                                Level *
-                            </label>
-                            <select
-                                value={formData.level}
-                                onChange={(e) => setFormData({ ...formData, level: e.target.value as any })}
-                                className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                            >
-                                {levels.map(level => (
-                                    <option key={level.value} value={level.value}>{level.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
                     <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">
-                            Progress: {formData.progress}%
-                        </label>
+                        <label className="block text-xs font-medium text-on-surface-variant mb-1.5">Progress ({formData.progress}%)</label>
                         <input
                             type="range"
                             min="0"
                             max="100"
+                            step="5"
                             value={formData.progress}
                             onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
-                            className="w-full"
+                            className="w-full h-2 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary"
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-on-surface mb-2">
-                            Notes (Optional)
-                        </label>
+                    <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-on-surface-variant">Notes</label>
                         <textarea
-                            value={formData.notes}
+                            className="w-full px-3 py-2 md:px-4 md:py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/50 text-xs md:text-sm resize-none h-20 md:h-24"
+                            placeholder="Briefly describe your goals..."
+                            value={formData.notes || ''}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
-                            rows={3}
-                            placeholder="Add any notes or resources..."
                         />
                     </div>
 
-                    <div className="flex gap-3 pt-4">
-                        <Button
-                            type="button"
-                            variant="outlined"
-                            onClick={() => setIsModalOpen(false)}
-                            className="flex-1"
-                        >
-                            Cancel
-                        </Button>
-                        <Button type="submit" className="flex-1">
-                            {editingSkill ? 'Update' : 'Add'} Skill
+                    <div className="flex justify-end gap-2 mt-4 pt-2 border-t border-outline-variant/10">
+                        <Button variant="outlined" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSave} disabled={isSaving} isLoading={isSaving}>
+                            {editingSkill ? 'Update Skill' : 'Add Skill'}
                         </Button>
                     </div>
-                </form>
+                </div>
             </Modal>
         </div>
     );

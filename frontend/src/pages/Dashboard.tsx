@@ -173,11 +173,11 @@ const Dashboard: React.FC = () => {
     const isAtRisk = overallAttendance < 75;
 
     return (
-        <div className="pb-32 space-y-10">
+        <div className="pb-24 space-y-6 md:space-y-10">
             {/* Header Section */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
                 <div>
-                    <h1 className="text-4xl md:text-5xl font-bold font-display text-on-surface mb-2 tracking-tight">
+                    <h1 className="text-2xl md:text-5xl font-bold font-display text-on-surface mb-1 md:mb-2 tracking-tight flex items-center gap-2">
                         Good {(() => {
                             const hour = new Date().getHours();
                             if (hour >= 5 && hour < 12) return 'Morning';
@@ -185,21 +185,21 @@ const Dashboard: React.FC = () => {
                             if (hour >= 17 && hour < 21) return 'Evening';
                             return 'Night';
                         })()}!
-                        <span className="ml-3 inline-block animate-bounce">👋</span>
+                        <span className="inline-block animate-bounce text-xl md:text-4xl">👋</span>
                     </h1>
-                    <p className="text-lg text-on-surface-variant font-medium">
+                    <p className="text-sm md:text-lg text-on-surface-variant font-medium">
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                     </p>
                 </div>
 
                 {/* Semester Selector Chips */}
-                <div className="flex bg-surface-container-high/50 p-1.5 rounded-full border border-outline-variant/50 overflow-x-auto no-scrollbar max-w-full">
+                <div className="flex bg-surface-container-high/50 p-1 rounded-full border border-outline-variant/50 overflow-x-auto no-scrollbar max-w-full">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
                         <button
                             key={sem}
                             onClick={() => setCurrentSemester(sem)}
                             className={`
-                                whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200
+                                whitespace-nowrap px-3 py-1 md:px-4 md:py-1.5 rounded-full text-xs md:text-sm font-bold transition-all duration-200
                                 ${currentSemester === sem
                                     ? 'bg-primary text-on-primary shadow-sm'
                                     : 'text-on-surface-variant hover:bg-on-surface/5 hover:text-on-surface'
@@ -213,72 +213,71 @@ const Dashboard: React.FC = () => {
             </header>
 
             {/* Hero Stats */}
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                 {/* Main Metric Card */}
-                <div className="lg:col-span-2 relative overflow-hidden rounded-[32px] bg-gradient-to-br from-primary to-tertiary p-8 text-on-primary shadow-lg group">
-                    <div className="absolute top-0 right-0 p-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700" />
+                <div className="lg:col-span-2 relative overflow-hidden rounded-[24px] md:rounded-[32px] bg-gradient-to-br from-primary to-tertiary p-5 md:p-8 text-on-primary shadow-lg group">
+                    <div className="absolute top-0 right-0 p-24 md:p-32 bg-white/5 rounded-full blur-3xl -mr-12 -mt-12 group-hover:scale-110 transition-transform duration-700" />
 
-                    <div className="relative z-10 flex flex-col justify-between h-full min-h-[220px]">
+                    <div className="relative z-10 flex flex-col justify-between h-full min-h-[160px] md:min-h-[220px]">
                         <div className="flex justify-between items-start">
-                            <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl inline-flex">
-                                <TrendingUp className="w-6 h-6 text-white" />
+                            <div className="p-2 md:p-3 bg-white/10 backdrop-blur-md rounded-xl md:rounded-2xl inline-flex">
+                                <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
                             </div>
                             {isAtRisk && (
-                                <div className="px-4 py-1.5 bg-error/90 text-on-error rounded-full text-xs font-bold shadow-sm backdrop-blur-md border border-white/10 flex items-center gap-2">
-                                    <AlertCircle size={14} /> At Risk
+                                <div className="px-2.5 py-1 md:px-4 md:py-1.5 bg-error/90 text-on-error rounded-full text-[10px] md:text-xs font-bold shadow-sm backdrop-blur-md border border-white/10 flex items-center gap-1.5 md:gap-2">
+                                    <AlertCircle size={12} className="md:w-[14px] md:h-[14px]" /> At Risk
                                 </div>
                             )}
                         </div>
 
                         <div>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-7xl font-bold font-display tracking-tighter">
+                            <div className="flex items-baseline gap-1.5 md:gap-2">
+                                <span className="text-4xl md:text-7xl font-bold font-display tracking-tighter">
                                     {overallAttendance.toFixed(1)}
                                 </span>
-                                <span className="text-3xl opacity-80 font-display">%</span>
+                                <span className="text-lg md:text-3xl opacity-80 font-display">%</span>
                             </div>
-                            <p className="opacity-90 font-medium text-lg mt-1">Overall Attendance</p>
+                            <p className="opacity-90 font-medium text-xs md:text-lg mt-1">Overall Attendance</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Secondary Metrics */}
-                <div className="flex flex-col gap-4">
-                    {/* Quick Stats Row */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <GlassCard className="flex flex-col justify-center p-4 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                                    <BookOpen className="w-5 h-5" />
+                <div className="flex flex-col gap-3 md:gap-4">
+                    {/* Quick Stats Row - Stack on very small, grid on mobile */}
+                    <div className="flex flex-wrap md:grid md:grid-cols-3 gap-2 md:gap-3">
+                        <GlassCard className="flex-1 min-w-[100px] flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3 text-center md:text-left">
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <BookOpen className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Subjects</p>
-                                    <p className="text-2xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
-                                </div>
-                            </div>
-                        </GlassCard>
-
-                        <GlassCard className="flex flex-col justify-center p-4 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                                    <Target className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Target</p>
-                                    <p className="text-2xl font-bold font-display text-on-surface">{targetThreshold}%</p>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-wider truncate">Subjects</p>
+                                    <p className="text-lg md:text-2xl font-bold font-display text-on-surface">{dashboardData?.total_subjects || 0}</p>
                                 </div>
                             </div>
                         </GlassCard>
 
-                        {/* CGPA Widget - Not clickable */}
-                        <GlassCard className="flex flex-col justify-center p-4 !bg-surface-container-low !border-outline-variant/30">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                                    <Trophy className="w-5 h-5" />
+                        <GlassCard className="flex-1 min-w-[100px] flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3 text-center md:text-left">
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <Target className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">CGPA</p>
-                                    <p className="text-2xl font-bold font-display text-primary">
+                                <div className="min-w-0">
+                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-wider truncate">Target</p>
+                                    <p className="text-lg md:text-2xl font-bold font-display text-on-surface">{targetThreshold}%</p>
+                                </div>
+                            </div>
+                        </GlassCard>
+
+                        <GlassCard className="flex-1 min-w-[100px] flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30">
+                            <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3 text-center md:text-left">
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                                    <Trophy className="w-4 h-4 md:w-5 md:h-5" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase tracking-wider truncate">CGPA</p>
+                                    <p className="text-lg md:text-2xl font-bold font-display text-secondary">
                                         {cgpa !== null ? cgpa.toFixed(2) : '—'}
                                     </p>
                                 </div>
@@ -290,24 +289,24 @@ const Dashboard: React.FC = () => {
                     <div className="flex gap-2">
                         <Link
                             to="/calendar"
-                            className="flex-1 flex items-center gap-3 py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-sm font-medium text-on-surface"
+                            className="flex-1 flex items-center justify-center md:justify-start gap-2 md:gap-3 py-2.5 px-3 md:py-3 md:px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-xs md:text-sm font-medium text-on-surface"
                         >
-                            <CalendarDays size={18} className="text-primary shrink-0" />
-                            <span className="flex-1">Calendar</span>
-                            <ArrowRight size={14} className="text-on-surface-variant shrink-0" />
+                            <CalendarDays size={16} className="md:w-[18px] md:h-[18px] text-primary shrink-0" />
+                            <span className="truncate">Calendar</span>
+                            <ArrowRight size={14} className="text-on-surface-variant shrink-0 hidden md:block" />
                         </Link>
                         <Link
                             to="/results"
-                            className="flex-1 flex items-center gap-3 py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-sm font-medium text-on-surface"
+                            className="flex-1 flex items-center justify-center md:justify-start gap-2 md:gap-3 py-2.5 px-3 md:py-3 md:px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-xs md:text-sm font-medium text-on-surface"
                         >
-                            <Trophy size={18} className="text-secondary shrink-0" />
-                            <span className="flex-1">Results</span>
-                            <ArrowRight size={14} className="text-on-surface-variant shrink-0" />
+                            <Trophy size={16} className="md:w-[18px] md:h-[18px] text-secondary shrink-0" />
+                            <span className="truncate">Results</span>
+                            <ArrowRight size={14} className="text-on-surface-variant shrink-0 hidden md:block" />
                         </Link>
                     </div>
 
                     {/* Notices Widget */}
-                    <div className="flex-1 min-h-[240px]">
+                    <div className="flex-1 min-h-[200px] md:min-h-[240px] overflow-hidden">
                         <NoticesWidget />
                     </div>
                 </div>
@@ -315,39 +314,39 @@ const Dashboard: React.FC = () => {
 
             {/* Subject List */}
             <section>
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold font-display text-on-surface">Your Subjects</h2>
-                    <Button onClick={() => setIsAddModalOpen(true)} icon={<Plus size={18} />}>
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                    <h2 className="text-xl md:text-2xl font-bold font-display text-on-surface">Your Subjects</h2>
+                    <Button onClick={() => setIsAddModalOpen(true)} icon={<Plus size={16} />} size="sm">
                         Add Subject
                     </Button>
                 </div>
 
                 {(!dashboardData?.subjects || dashboardData.subjects.length === 0) ? (
-                    <div className="flex flex-col items-center justify-center py-20 bg-surface-container-low rounded-[32px] border border-dashed border-outline-variant">
-                        <div className="w-20 h-20 bg-surface-container-high rounded-full flex items-center justify-center mb-6 text-on-surface-variant/50">
-                            <BookOpen size={40} />
+                    <div className="flex flex-col items-center justify-center py-12 md:py-20 bg-surface-container-low rounded-[24px] md:rounded-[32px] border border-dashed border-outline-variant">
+                        <div className="w-16 h-16 md:w-20 md:h-20 bg-surface-container-high rounded-full flex items-center justify-center mb-4 md:mb-6 text-on-surface-variant/50">
+                            <BookOpen size={32} className="md:w-10 md:h-10" />
                         </div>
-                        <h3 className="text-xl font-bold text-on-surface mb-2">No Subjects Added</h3>
+                        <h3 className="text-lg md:text-xl font-bold text-on-surface mb-2">No Subjects Added</h3>
                         {availableSemesters.length > 0 ? (
                             <div className="flex flex-col items-center gap-3 mb-6 p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                                <p className="text-on-surface-variant text-center max-w-sm">
+                                <p className="text-on-surface-variant text-center max-w-sm text-sm">
                                     We found active subjects in <strong>Semester {availableSemesters.join(', ')}</strong>.
                                 </p>
-                                <Button onClick={() => setCurrentSemester(availableSemesters[0])}>
+                                <Button onClick={() => setCurrentSemester(availableSemesters[0])} size="sm">
                                     Switch to Semester {availableSemesters[0]}
                                 </Button>
                             </div>
                         ) : (
-                            <p className="text-on-surface-variant mb-6 text-center max-w-sm">
+                            <p className="text-on-surface-variant mb-6 text-center max-w-sm text-sm md:text-base">
                                 Add subjects to this semester to start tracking your attendance.
                             </p>
                         )}
-                        <Button variant="tonal" onClick={() => setIsAddModalOpen(true)}>
+                        <Button variant="tonal" onClick={() => setIsAddModalOpen(true)} size="sm">
                             Add First Subject
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                         <AnimatePresence>
                             {dashboardData?.subjects?.map((subject) => {
                                 const percentage = subject.attendance_percentage;
@@ -355,26 +354,26 @@ const Dashboard: React.FC = () => {
                                 const config = STATUS_CONFIG[status];
 
                                 return (
-                                    <GlassCard key={subject._id} hover className="flex flex-col justify-between min-h-[280px] p-0 !rounded-[24px] border-outline-variant/40">
-                                        <div className="p-6 pb-2">
+                                    <GlassCard key={subject._id} hover className="flex flex-col justify-between p-0 !rounded-[20px] md:!rounded-[24px] border-outline-variant/40">
+                                        <div className="p-4 pb-2">
                                             {/* Header with Emoji and Actions */}
-                                            <div className="flex items-start justify-between mb-4">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="w-10 h-10 rounded-2xl bg-surface-container-high flex items-center justify-center text-xl shadow-sm border border-outline-variant/20 shrink-0">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="flex items-start gap-3 min-w-0">
+                                                    <div className="w-9 h-9 md:w-10 md:h-10 rounded-2xl bg-surface-container-high flex items-center justify-center text-lg md:text-xl shadow-sm border border-outline-variant/20 shrink-0">
                                                         {getSubjectEmoji(subject.name)}
                                                     </div>
-                                                    <div>
-                                                        <h3 className="text-lg font-bold text-on-surface line-clamp-1 leading-snug">{subject.name}</h3>
+                                                    <div className="min-w-0">
+                                                        <h3 className="text-sm md:text-lg font-bold text-on-surface line-clamp-1 leading-snug" title={subject.name}>{subject.name}</h3>
                                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                             {subject.code && (
-                                                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium border border-outline-variant/30">
+                                                                <span className="text-[9px] md:text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium border border-outline-variant/30">
                                                                     {subject.code}
                                                                 </span>
                                                             )}
                                                             {subject.professor && (
-                                                                <span className="text-xs text-on-surface-variant flex items-center gap-1">
-                                                                    <span className="w-1 h-1 rounded-full bg-on-surface-variant/50" />
-                                                                    <span className="line-clamp-1 max-w-[100px]">{subject.professor}</span>
+                                                                <span className="text-[9px] md:text-xs text-on-surface-variant flex items-center gap-1 min-w-0">
+                                                                    <span className="w-1 h-1 rounded-full bg-on-surface-variant/50 shrink-0" />
+                                                                    <span className="line-clamp-1 max-w-[100px] truncate">{subject.professor}</span>
                                                                 </span>
                                                             )}
                                                         </div>
@@ -382,20 +381,20 @@ const Dashboard: React.FC = () => {
                                                 </div>
                                                 <button
                                                     onClick={() => handleDeleteSubject(subject._id, subject.name)}
-                                                    className="p-2 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-full transition-colors -mr-2 -mt-2"
+                                                    className="p-1.5 md:p-2 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-full transition-colors -mr-2 -mt-2 shrink-0"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
 
-                                            <div className="flex items-end gap-2 mb-6">
-                                                <span className={`text-5xl font-bold font-display tracking-tight ${config.text.split(' ')[0]}`}>
+                                            <div className="flex items-end gap-2 mb-4">
+                                                <span className={`text-3xl md:text-5xl font-bold font-display tracking-tight ${config.text.split(' ')[0]}`}>
                                                     {percentage.toFixed(1)}
                                                 </span>
-                                                <span className="text-xl text-on-surface-variant/70 font-medium mb-1">%</span>
+                                                <span className="text-base md:text-xl text-on-surface-variant/70 font-medium mb-1">%</span>
                                             </div>
 
-                                            <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold border ${config.bg} ${config.text} ${config.border}`}>
+                                            <div className={`inline-flex items-center px-2.5 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold border ${config.bg} ${config.text} ${config.border}`}>
                                                 {subject.status_message}
                                             </div>
                                         </div>
@@ -404,30 +403,30 @@ const Dashboard: React.FC = () => {
                                             <div className="grid grid-cols-2 gap-2 mb-2">
                                                 <button
                                                     onClick={() => handleQuickLog(subject._id, 'present')}
-                                                    className="flex items-center justify-center gap-2 h-10 rounded-xl bg-surface hover:bg-success/10 hover:text-success-dark border border-outline-variant/50 transition-colors font-semibold text-sm shadow-sm"
+                                                    className="flex items-center justify-center gap-2 h-9 md:h-10 rounded-xl bg-surface hover:bg-success/10 hover:text-success-dark border border-outline-variant/50 transition-colors font-semibold text-xs md:text-sm shadow-sm"
                                                 >
-                                                    <Check size={16} /> Present
+                                                    <Check size={14} className="md:w-4 md:h-4" /> Present
                                                 </button>
                                                 <button
                                                     onClick={() => handleQuickLog(subject._id, 'absent')}
-                                                    className="flex items-center justify-center gap-2 h-10 rounded-xl bg-surface hover:bg-error/10 hover:text-error-dark border border-outline-variant/50 transition-colors font-semibold text-sm shadow-sm"
+                                                    className="flex items-center justify-center gap-2 h-9 md:h-10 rounded-xl bg-surface hover:bg-error/10 hover:text-error-dark border border-outline-variant/50 transition-colors font-semibold text-xs md:text-sm shadow-sm"
                                                 >
-                                                    <X size={16} /> Absent
+                                                    <X size={14} className="md:w-4 md:h-4" /> Absent
                                                 </button>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-2">
                                                 <button
                                                     onClick={() => setEditingSubject(subject)}
-                                                    className="flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+                                                    className="flex items-center justify-center gap-2 h-8 md:h-9 rounded-lg text-[10px] md:text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
                                                 >
-                                                    <Edit2 size={14} /> Edit
+                                                    <Edit2 size={12} className="md:w-[14px] md:h-[14px]" /> Edit
                                                 </button>
                                                 <button
                                                     onClick={() => setMarkingSubjectId(subject._id)}
-                                                    className="flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+                                                    className="flex items-center justify-center gap-2 h-8 md:h-9 rounded-lg text-[10px] md:text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
                                                 >
-                                                    <Calendar size={14} /> Advanced
+                                                    <Calendar size={12} className="md:w-[14px] md:h-[14px]" /> Advanced
                                                 </button>
                                             </div>
                                         </div>
