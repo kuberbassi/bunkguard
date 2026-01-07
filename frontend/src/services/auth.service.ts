@@ -9,11 +9,11 @@ export const authService = {
         window.location.href = `${baseUrl}/api/auth/login`;
     },
 
-    loginWithGoogle: async (accessToken: string): Promise<User | null> => {
+    loginWithGoogle: async (authCode: string): Promise<User | null> => {
         try {
-            // Send the access token to backend to verify and get user details
+            // Send the auth code to backend to verify and get tokens
             const response = await api.post('/api/auth/google', {
-                access_token: accessToken
+                code: authCode
             });
 
             const { token, user } = response.data;

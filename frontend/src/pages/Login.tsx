@@ -12,7 +12,7 @@ const Login: React.FC = () => {
         onSuccess: async (codeResponse) => {
 
             try {
-                await loginWithGoogle(codeResponse.access_token);
+                await loginWithGoogle(codeResponse.code);
 
                 // User will be redirected by AuthContext
             } catch (error) {
@@ -24,6 +24,7 @@ const Login: React.FC = () => {
             console.error('❌ Google Login Failed:', error);
             alert(`Google Login Error: ${JSON.stringify(error)}`);
         },
+        flow: 'auth-code',
         scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks'
     });
 

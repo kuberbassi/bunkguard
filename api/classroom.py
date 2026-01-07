@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from functools import lru_cache
 import time
+import os
+from . import db
 
 classroom_bp = Blueprint('classroom', __name__, url_prefix='/api/classroom')
 
@@ -12,20 +14,83 @@ classroom_bp = Blueprint('classroom', __name__, url_prefix='/api/classroom')
 _courses_cache = {}
 _cache_ttl = 120  # 2 minutes (reduced for serverless)
 
-def is_token_valid(user_data):
-    """Check if Google token is still valid."""
-    if not user_data or 'google_token' not in user_data:
+def refresh_google_token_if_needed(user_data):
+    """
+    Checks if token is expired and refreshes it if a refresh token is available.
+    Returns True if token is valid (or successfully refreshed).
+    """
+    if not user_data:
         return False
+        
+    token_expiry = user_data.get('google_token_expiry', 0)
+    current_time = time.time()
     
-    # Check token expiry if available
-    token_expiry = user_data.get('google_token_expiry')
-    if token_expiry:
-        current_time = time.time()
-        # Consider token expired if less than 5 minutes remaining
-        if current_time >= (token_expiry - 300):
+    # buffer of 5 minutes
+    if current_time < (token_expiry - 300):
+        return True
+        
+    # Token is expired or about to expire
+    refresh_token = user_data.get('google_refresh_token')
+    if not refresh_token:
+        print("❌ Token expired and no refresh token available")
+        return False
+        
+    print("🔄 Refreshing expired Google token...")
+    
+    try:
+        # Exchange refresh token for new access token
+        token_url = "https://oauth2.googleapis.com/token"
+        payload = {
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token"
+        }
+        
+        resp = requests.post(token_url, data=payload)
+        
+        if resp.status_code != 200:
+            print(f"❌ Failed to refresh token: {resp.text}")
             return False
-    
-    return True
+            
+        new_tokens = resp.json()
+        new_access_token = new_tokens.get('access_token')
+        new_expires_in = new_tokens.get('expires_in', 3599)
+        
+        if not new_access_token:
+            return False
+            
+        # Update User Data
+        new_expiry = time.time() + new_expires_in
+        
+        user_data['google_token'] = new_access_token
+        user_data['google_token_expiry'] = new_expiry
+        
+        # Update DB
+        if db:
+            users_collection = db.get_collection('users')
+            users_collection.update_one(
+                {'email': user_data['email']},
+                {'$set': {
+                    'google_token': new_access_token,
+                    'google_token_expiry': new_expiry
+                }}
+            )
+            
+        # Update Session
+        session['user'] = user_data
+        session.modified = True
+        
+        print("✅ Token refreshed successfully")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error refreshing token: {e}")
+        return False
+
+def is_token_valid(user_data):
+    """Check if Google token is valid, refreshing if necessary."""
+    return refresh_google_token_if_needed(user_data)
 
 def make_google_api_request(url, headers, params=None, timeout=10, max_retries=3):
     """

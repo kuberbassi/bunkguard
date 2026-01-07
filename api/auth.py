@@ -13,64 +13,98 @@ oauth = OAuth()
 @auth_bp.route('/google', methods=['POST'])
 def google_auth():
     data = request.json
-    access_token = data.get('access_token')
+    code = data.get('code')
     
-    if not access_token:
-        return jsonify({"error": "No access token provided"}), 400
+    if not code:
+        return jsonify({"error": "No authorization code provided"}), 400
         
-    # Verify the user with Google
     try:
         if db is None:
             return jsonify({"error": "Database connection failed"}), 500
 
         users_collection = db.get_collection('users')
+        
+        # 1. Exchange code for tokens
+        token_url = "https://oauth2.googleapis.com/token"
+        token_data = {
+            "code": code,
+            "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+            "redirect_uri": "postmessage",
+            "grant_type": "authorization_code"
+        }
+        
+        # print(f"🔍 Exchanging code for tokens... Client ID: {token_data['client_id'][:5]}...")
+        
+        token_resp = requests.post(token_url, data=token_data)
+        
+        if token_resp.status_code != 200:
+            print(f"❌ Token exchange failed: {token_resp.text}")
+            return jsonify({"error": "Failed to exchange token"}), 401
+            
+        tokens = token_resp.json()
+        access_token = tokens.get("access_token")
+        refresh_token = tokens.get("refresh_token") # might be None if user already approved and we didn't ask for force prompt
+        expires_in = tokens.get("expires_in", 3599)
+        
+        if not access_token:
+            return jsonify({"error": "No access token received"}), 401
 
+        # 2. Get User Info
         resp = requests.get(
             'https://www.googleapis.com/oauth2/v3/userinfo',
             headers={'Authorization': f'Bearer {access_token}'}
         )
         
         if resp.status_code != 200:
-            return jsonify({"error": "Invalid token"}), 401
+            return jsonify({"error": "Failed to fetch user info"}), 401
             
         user_info = resp.json()
         email = user_info.get("email")
         
-        # Calculate token expiry (Google tokens typically last 3600 seconds = 1 hour)
-        # We'll set expiry to current time + 3600 seconds
+        # 3. Calculate Expiry
         import time
-        token_expiry = time.time() + 3600  # 1 hour from now
+        token_expiry = time.time() + expires_in
         
-        # 1. Get existing user data from DB
+        # 4. Get existing user data
         db_user = users_collection.find_one({'email': email}) or {}
         
-        # 2. Prepare user data (Google + DB overrides)
+        # 5. Prepare user data
         user_data = {
             "email": email,
             "name": user_info.get("name"),
             "picture": user_info.get("picture"),
             "sub": user_info.get("sub"),
             "google_token": access_token,
-            "google_token_expiry": token_expiry,  # Store expiry timestamp
-            # Merge profile fields from DB
+            "google_token_expiry": token_expiry,
+            # Merge profile fields
             "branch": db_user.get("branch", ""),
             "college": db_user.get("college", ""),
             "semester": db_user.get("semester", 1),
             "batch": db_user.get("batch", "")
         }
         
-        # 3. Upsert into DB (Store basic info)
+        # IMPORTANT: Only update refresh_token if it was returned
+        # Google only returns refresh_token on the first consent.
+        # If we want it every time, we need prompt='consent' on frontend, 
+        # but better to just save it if we have it, and keep old one if we don't.
+        if refresh_token:
+            user_data["google_refresh_token"] = refresh_token
+        elif db_user.get("google_refresh_token"):
+             user_data["google_refresh_token"] = db_user.get("google_refresh_token")
+            
+        
+        # 6. Upsert into DB
         users_collection.update_one(
             {'email': email},
             {'$set': user_data},
             upsert=True
         )
         
-        # 4. Create Session
+        # 7. Create Session
         session['user'] = user_data
         session.permanent = True
         print(f"✅ SESSION CREATED for {email}")
-        print(f"✅ Session data: {session.get('user', 'NO USER')}")
         
         return jsonify({
             "user": user_data,
