@@ -9,7 +9,25 @@ import Select from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
 import { skillsService, type Skill } from '@/services/skills.service';
 
-const SKILL_CATEGORIES = ['Development', 'Design', 'Data Science', 'Soft Skills', 'Other'];
+const SKILL_CATEGORIES = [
+    'Technical',
+    'Creative',
+    'Language',
+    'Professional',
+    'Life',
+    'Other'
+];
+
+const getCategoryColor = (category: string) => {
+    switch (category) {
+        case 'Technical': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300';
+        case 'Creative': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300';
+        case 'Language': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300';
+        case 'Professional': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+        case 'Life': return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300';
+        default: return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+    }
+};
 const SKILL_LEVELS: Skill['level'][] = ['beginner', 'intermediate', 'advanced', 'expert'];
 
 const getLevelColor = (level: string) => {
@@ -33,11 +51,18 @@ const SkillTracker: React.FC = () => {
 
     const [formData, setFormData] = useState<Omit<Skill, '_id'>>({
         name: '',
-        category: 'Development',
+        category: 'Technical',
         level: 'beginner',
         progress: 0,
         notes: ''
     });
+
+    const normalizeSkill = (skill: any): Skill => {
+        if (skill._id && typeof skill._id === 'object' && skill._id.$oid) {
+            return { ...skill, _id: skill._id.$oid };
+        }
+        return skill;
+    };
 
     useEffect(() => {
         loadSkills();
@@ -48,7 +73,7 @@ const SkillTracker: React.FC = () => {
             setLoading(true);
             const data = await skillsService.getSkills();
             const skillsList = Array.isArray(data) ? data : (data as any).skills || [];
-            setSkills(skillsList);
+            setSkills(skillsList.map(normalizeSkill));
         } catch (error) {
             console.error('Failed to load skills:', error);
             showToast('error', 'Failed to load skills');
@@ -61,7 +86,7 @@ const SkillTracker: React.FC = () => {
         setEditingSkill(null);
         setFormData({
             name: '',
-            category: 'Development',
+            category: 'Technical',
             level: 'beginner',
             progress: 0,
             notes: ''
@@ -201,7 +226,7 @@ const SkillTracker: React.FC = () => {
                                                     <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${levelColor}`}>
                                                         {skill.level}
                                                     </span>
-                                                    <span className="text-[9px] md:text-xs text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
+                                                    <span className={`text-[9px] md:text-xs px-1.5 py-0.5 rounded font-medium ${getCategoryColor(skill.category)}`}>
                                                         {skill.category}
                                                     </span>
                                                 </div>
@@ -299,7 +324,7 @@ const SkillTracker: React.FC = () => {
                     <div className="space-y-1.5">
                         <label className="block text-xs font-medium text-on-surface-variant">Notes</label>
                         <textarea
-                            className="w-full px-3 py-2 md:px-4 md:py-3 rounded-xl bg-surface-container/50 border border-outline-variant/30 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/50 text-xs md:text-sm resize-none h-20 md:h-24"
+                            className="w-full px-4 py-3 rounded-xl bg-surface-container-highest border border-outline-variant/50 text-on-surface placeholder-on-surface-variant/50 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-200 text-xs md:text-sm resize-none h-20 md:h-24"
                             placeholder="Briefly describe your goals..."
                             value={formData.notes || ''}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

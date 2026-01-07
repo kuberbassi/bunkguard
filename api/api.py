@@ -10,6 +10,8 @@ from time import time
 import os
 import json
 from bson import ObjectId, json_util
+
+from .rate_limiter import limiter, RELAXED_LIMIT, MODERATE_LIMIT
 from flask import Flask, Blueprint, jsonify, request, session, send_from_directory, Response
 from itertools import groupby
 from werkzeug.utils import secure_filename
@@ -2520,6 +2522,7 @@ def delete_semester_result(semester):
 # === SKILLS API ROUTES ===
 
 @api_bp.route('/skills', methods=['GET'])
+@limiter.limit(RELAXED_LIMIT)
 def get_skills():
     """Get all skills for the current user."""
     if 'user' not in session:
@@ -2532,6 +2535,7 @@ def get_skills():
 
 
 @api_bp.route('/skills', methods=['POST'])
+@limiter.limit(MODERATE_LIMIT)
 def add_skill():
     """Add a new skill."""
     if 'user' not in session:
@@ -2560,6 +2564,7 @@ def add_skill():
 
 
 @api_bp.route('/skills/<skill_id>', methods=['PUT'])
+@limiter.limit(MODERATE_LIMIT)
 def update_skill(skill_id):
     """Update an existing skill."""
     if 'user' not in session:
@@ -2597,6 +2602,7 @@ def update_skill(skill_id):
 
 
 @api_bp.route('/skills/<skill_id>', methods=['DELETE'])
+@limiter.limit(MODERATE_LIMIT)
 def delete_skill(skill_id):
     """Delete a skill."""
     if 'user' not in session:
