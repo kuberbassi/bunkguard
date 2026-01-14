@@ -67,7 +67,7 @@ def refresh_google_token_if_needed(user_data):
         user_data['google_token_expiry'] = new_expiry
         
         # Update DB
-        if db:
+        if db is not None:
             users_collection = db.get_collection('users')
             users_collection.update_one(
                 {'email': user_data['email']},

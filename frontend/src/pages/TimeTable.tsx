@@ -64,7 +64,7 @@ const TimeTable: React.FC = () => {
         try {
             setLoading(true);
             const [ttData, dashData] = await Promise.all([
-                attendanceService.getTimetable(),
+                attendanceService.getTimetable(currentSemester),
                 attendanceService.getDashboardData(currentSemester)
             ]);
 
@@ -101,7 +101,7 @@ const TimeTable: React.FC = () => {
     const confirmDelete = async () => {
         if (!slotToDelete) return;
         try {
-            await attendanceService.deleteTimetableSlot(slotToDelete);
+            await attendanceService.deleteTimetableSlot(slotToDelete, currentSemester);
             showToast('success', 'Slot removed successfully');
             loadData();
         } catch (error) {
@@ -126,7 +126,7 @@ const TimeTable: React.FC = () => {
     };
 
     const handleQuickSave = async (overrides: Partial<TimetableSlot>) => {
-        const payload = { ...currentSlot, ...overrides };
+        const payload = { ...currentSlot, ...overrides, semester: currentSemester };
         try {
             setIsSaving(true);
             if (isEditing && payload._id) {
@@ -274,7 +274,8 @@ const TimeTable: React.FC = () => {
                                                                 <h4 className="font-bold text-xs md:text-sm text-on-surface mb-0.5 md:mb-1">
                                                                     {slot.type === 'break' ? 'Break' :
                                                                         slot.type === 'free' ? 'Free Period' :
-                                                                            (getSubjectName(slot.subject_id) || slot.label || 'Class')}
+                                                                            slot.type === 'custom' ? (slot.label || 'Custom') :
+                                                                                (getSubjectName(slot.subject_id) || slot.label || 'Class')}
                                                                 </h4>
                                                                 <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-medium text-on-surface-variant">
                                                                     <Clock size={10} className="md:w-3 md:h-3" />
@@ -412,7 +413,7 @@ const TimeTable: React.FC = () => {
                             variant="primary"
                             onClick={async () => {
                                 try {
-                                    await attendanceService.saveTimetableStructure(periods);
+                                    await attendanceService.saveTimetableStructure(periods, currentSemester);
                                     showToast('success', 'Structure saved');
                                     setSettingsOpen(false);
                                 } catch (e) {
@@ -460,7 +461,45 @@ const TimeTable: React.FC = () => {
                             >
                                 🌱 Free
                             </button>
+                            <button
+                                onClick={() => setCurrentSlot({ ...currentSlot, type: 'custom', subject_id: '' })}
+                                disabled={isSaving}
+                                className={`p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all
+                                    ${currentSlot.type === 'custom'
+                                        ? 'bg-purple-500/20 border-purple-500 text-purple-500'
+                                        : 'border-outline hover:bg-surface-container-high text-on-surface-variant'
+                                    }`}
+                            >
+                                ✨ Custom
+                            </button>
                         </div>
+
+                        {currentSlot.type === 'custom' && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                className="mt-3"
+                            >
+                                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1 block">Custom Label</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={currentSlot.label || ''}
+                                        onChange={(e) => setCurrentSlot({ ...currentSlot, label: e.target.value })}
+                                        className="flex-1 bg-surface-container-high border-outline rounded-xl px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary outline-none"
+                                        placeholder="e.g. Library, Sports, Project"
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={() => handleQuickSave({ type: 'custom', label: currentSlot.label, subject_id: '' })}
+                                        disabled={!currentSlot.label || isSaving}
+                                        className="bg-primary text-on-primary font-bold px-6 rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
                     </div>
 
                     <div className="h-px bg-outline-variant/10 w-full" />

@@ -91,7 +91,7 @@ const Calendar: React.FC = () => {
 
 
         try {
-            await attendanceService.getClassesForDate(dateString);
+            await attendanceService.getClassesForDate(dateString, currentSemester);
         } catch (error) {
             console.error("Failed to fetch scheduled classes", error);
         }

@@ -120,14 +120,16 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                                                             className={`absolute inset-0.5 rounded-lg border flex flex-col justify-center px-1 cursor-pointer transition-colors overflow-hidden group/slot
                                                             ${slot.type === 'break' ? 'bg-orange-500/10 border-orange-500/20' :
                                                                     slot.type === 'free' ? 'bg-green-500/10 border-green-500/20' :
-                                                                        'bg-primary/20 hover:bg-primary/30 border-primary/30'}`
+                                                                        slot.type === 'custom' ? 'bg-purple-500/10 border-purple-500/20' :
+                                                                            'bg-primary/20 hover:bg-primary/30 border-primary/30'}`
                                                             }
                                                             onClick={(e) => { e.stopPropagation(); onEdit(slot); }}
                                                         >
                                                             <div className="font-bold text-xs truncate text-center text-on-surface w-full">
                                                                 {slot.type === 'break' ? 'Break' :
                                                                     slot.type === 'free' ? 'Free' :
-                                                                        getSubjectName(slot.subject_id || '')}
+                                                                        slot.type === 'custom' ? (slot.label || 'Custom') :
+                                                                            getSubjectName(slot.subject_id || '')}
                                                             </div>
                                                             {slot.type === 'class' && (
                                                                 <div className="text-[10px] text-on-surface-variant/80 text-center truncate w-full px-1">

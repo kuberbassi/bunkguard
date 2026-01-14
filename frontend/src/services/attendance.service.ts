@@ -200,17 +200,17 @@ export const attendanceService = {
 
     // Timetable
     // Timetable
-    getTimetable: async (): Promise<{ schedule: TimetableSchedule; periods?: any[] }> => {
-        const response = await api.get('/api/timetable');
+    getTimetable: async (semester: number = 1): Promise<{ schedule: TimetableSchedule; periods?: any[] }> => {
+        const response = await api.get(`/api/timetable?semester=${semester}`);
         return response.data;
     },
 
-    saveTimetable: async (schedule: TimetableSchedule): Promise<void> => {
-        await api.post('/api/timetable', { schedule });
+    saveTimetable: async (schedule: TimetableSchedule, semester: number = 1): Promise<void> => {
+        await api.post(`/api/timetable?semester=${semester}`, { schedule });
     },
 
-    saveTimetableStructure: async (periods: any[]): Promise<void> => {
-        await api.post('/api/timetable/structure', periods);
+    saveTimetableStructure: async (periods: any[], semester: number = 1): Promise<void> => {
+        await api.post(`/api/timetable/structure?semester=${semester}`, periods);
     },
 
     // New CRUD methods
@@ -222,8 +222,8 @@ export const attendanceService = {
         await api.put(`/api/timetable/slot/${slotId}`, slotData);
     },
 
-    deleteTimetableSlot: async (slotId: string): Promise<void> => {
-        await api.delete(`/api/timetable/slot/${slotId}`);
+    deleteTimetableSlot: async (slotId: string, semester: number = 1): Promise<void> => {
+        await api.delete(`/api/timetable/slot/${slotId}?semester=${semester}`);
     },
 
 

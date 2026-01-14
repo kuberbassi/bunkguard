@@ -479,7 +479,7 @@ const Settings: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className={`w-10 h-5 md:w-12 md:h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-primary' : 'bg-outline-variant'}`}>
-                                            <div className={`absolute top-0.5 left-0.5 md:top-1 md:left-1 bg-white w-4 h-4 rounded-full transition-transform ${theme === 'dark' ? 'translate-x-5 md:translate-x-6' : ''}`} />
+                                            <div className={`absolute top-0.5 left-0.5 md:top-1 md:left-1 w-4 h-4 rounded-full transition-transform ${theme === 'dark' ? 'translate-x-5 md:translate-x-6 bg-on-primary' : 'bg-white'}`} />
                                         </div>
                                     </div>
                                 </GlassCard>
@@ -557,7 +557,7 @@ const Settings: React.FC = () => {
                                                     value={preferences.attendance_threshold}
                                                     onChange={(e) => debouncedSave({ attendance_threshold: Math.min(100, Math.max(50, parseInt(e.target.value) || 75)) })}
                                                     onBlur={() => savePreferencesToAPI(preferences)}
-                                                    className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-primary/10 text-primary border-2 border-primary/30 focus:border-primary outline-none"
+                                                    className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-surface-container-highest text-on-surface border-2 border-outline-variant focus:border-primary outline-none"
                                                 />
                                                 <span className="text-on-surface-variant">%</span>
                                             </div>
@@ -578,7 +578,7 @@ const Settings: React.FC = () => {
                                                     value={preferences.warning_threshold}
                                                     onChange={(e) => debouncedSave({ warning_threshold: Math.min(100, Math.max(preferences.attendance_threshold, parseInt(e.target.value) || 76)) })}
                                                     onBlur={() => savePreferencesToAPI(preferences)}
-                                                    className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-orange-500/10 text-orange-500 border-2 border-orange-500/30 focus:border-orange-500 outline-none"
+                                                    className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-surface-container-highest text-orange-500 border-2 border-orange-500/30 focus:border-orange-500 outline-none"
                                                 />
                                                 <span className="text-on-surface-variant">%</span>
                                             </div>

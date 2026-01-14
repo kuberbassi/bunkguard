@@ -267,7 +267,7 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                         </div>
 
                         {/* Assignment & Practical Totals Override */}
-                        <div className="p-4 rounded-xl bg-surface-variant/30 border border-outline-variant/30">
+                        <div className="col-span-2 p-4 rounded-xl bg-surface-variant/30 border border-outline-variant/30">
                             <label className="text-xs font-bold text-on-surface-variant uppercase mb-2 block">🎯 Target Totals</label>
                             <div className="grid grid-cols-2 gap-4">
                                 {((formData as any).categories?.includes('Practical')) && (

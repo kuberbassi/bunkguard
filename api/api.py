@@ -169,6 +169,8 @@ def create_system_log(user_email, action, description):
         "timestamp": datetime.utcnow()
     })
 
+log_user_action = create_system_log
+
 def calculate_percent(attended, total):
     """Calculates the attendance percentage."""
     return round((attended / total) * 100, 1) if total > 0 else 0
@@ -683,6 +685,7 @@ def get_classes_for_date():
 
     user_email = session['user']['email']
     user_email = session['user']['email']
+    semester = request.args.get('semester', type=int)
     
     # Python's weekday(): Monday=0, Sunday=6
     # Map Python weekday to day names used in DB
@@ -692,7 +695,11 @@ def get_classes_for_date():
     # Debug log
     print(f"📅 Classes for date: {target_date.strftime('%Y-%m-%d')} → {day_name} (weekday={target_date.weekday()})")
     
-    timetable_doc = timetable_collection.find_one({'owner_email': user_email})
+    timetable_doc = timetable_collection.find_one({'owner_email': user_email, 'semester': semester})
+    if not timetable_doc and semester == 1:
+        # Fallback for migration if not found
+        timetable_doc = timetable_collection.find_one({'owner_email': user_email})
+
     if not timetable_doc:
         return Response(json_util.dumps([]), mimetype='application/json')
 
@@ -719,7 +726,6 @@ def get_classes_for_date():
         return Response(json_util.dumps([]), mimetype='application/json')
     
     # Filter only by subjects of the requested semester (if provided)
-    semester = request.args.get('semester', type=int)
     query = {"owner_email": user_email, "_id": {"$in": subject_ids}}
     if semester:
         query["semester"] = semester
@@ -799,6 +805,11 @@ def update_subject_full_details():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     data = request.json
     subject_id = ObjectId(data.get('subject_id'))
+    user_email = session['user']['email']
+    
+    # Fetch current state first
+    subject = subjects_collection.find_one({'_id': subject_id, 'owner_email': user_email})
+    if not subject: return jsonify({"error": "Subject not found"}), 404
     
     update_fields = {}
     if 'name' in data: update_fields['name'] = data['name']
@@ -809,59 +820,52 @@ def update_subject_full_details():
     if 'classroom' in data: update_fields['classroom'] = data['classroom']
     if 'semester' in data: update_fields['semester'] = int(data['semester'])
     
-    # Update totals if provided
-    if 'practical_total' in data: update_fields['practicals.total'] = int(data['practical_total'])
-    if 'assignment_total' in data: update_fields['assignments.total'] = int(data['assignment_total'])
+    # Handle Totals (Practical/Assignment) safely
+    # Check if object exists or is null
+    current_practicals = subject.get('practicals')
+    current_assignments = subject.get('assignments')
+    
+    # 1. Update Practical Total
+    if 'practical_total' in data:
+        new_total = int(data['practical_total'])
+        if isinstance(current_practicals, dict):
+            update_fields['practicals.total'] = new_total
+        else:
+            # Initialize if null/missing
+            update_fields['practicals'] = {'total': new_total, 'completed': 0, 'hardcopy': False}
+            current_practicals = update_fields['practicals'] # Update local state for subsequent checks
+
+    # 2. Update Assignment Total
+    if 'assignment_total' in data:
+        new_total = int(data['assignment_total'])
+        if isinstance(current_assignments, dict):
+            update_fields['assignments.total'] = new_total
+        else:
+            # Initialize if null/missing
+            update_fields['assignments'] = {'total': new_total, 'completed': 0, 'hardcopy': False}
+            current_assignments = update_fields['assignments']
+
+    # 3. Handle Category Additions (Ensure objects exist if category added)
+    if 'categories' in data:
+        cats = data['categories']
+        
+        # Ensure Practical Object
+        if 'Practical' in cats and not isinstance(current_practicals, dict) and 'practicals' not in update_fields:
+             update_fields['practicals'] = {'total': 10, 'completed': 0, 'hardcopy': False}
+        
+        # Ensure Assignment Object
+        if 'Assignment' in cats and not isinstance(current_assignments, dict) and 'assignments' not in update_fields:
+             update_fields['assignments'] = {'total': 4, 'completed': 0, 'hardcopy': False}
 
     if not update_fields:
-        return jsonify({"success": True}) # Nothing to update
+        return jsonify({"success": True}) 
 
     subjects_collection.update_one(
-        {'_id': subject_id, 'owner_email': session['user']['email']},
+        {'_id': subject_id, 'owner_email': user_email},
         {'$set': update_fields}
     )
 
-    # Initialize sub-objects if categories were added and the fields don't exist OR are null
-    if 'categories' in update_fields:
-        try:
-            # Re-fetch to verify state
-            subject_doc = subjects_collection.find_one({'_id': subject_id})
-            if subject_doc:
-                cats = update_fields['categories']
-                
-                # Check Practical - Ensure it has default structure if missing key parts
-                if 'Practical' in cats:
-                    current_prac = subject_doc.get('practicals')
-                    # If not dict OR missing keys, ensure defaults.
-                    # We use $set with conditional?? No, just safe update.
-                    updates = {}
-                    if not isinstance(current_prac, dict): 
-                         updates['practicals'] = {'total': 10, 'completed': 0, 'hardcopy': False}
-                    else:
-                        if 'completed' not in current_prac: updates['practicals.completed'] = 0
-                        if 'hardcopy' not in current_prac: updates['practicals.hardcopy'] = False
-                        if 'total' not in current_prac: updates['practicals.total'] = 10
-                    
-                    if updates:
-                        subjects_collection.update_one({'_id': subject_id}, {'$set': updates})
-                
-                # Check Assignment
-                if 'Assignment' in cats:
-                    current_assign = subject_doc.get('assignments')
-                    updates = {}
-                    if not isinstance(current_assign, dict):
-                         updates['assignments'] = {'total': 4, 'completed': 0, 'hardcopy': False}
-                    else:
-                        if 'completed' not in current_assign: updates['assignments.completed'] = 0
-                        if 'hardcopy' not in current_assign: updates['assignments.hardcopy'] = False
-                        if 'total' not in current_assign: updates['assignments.total'] = 4
-
-                    if updates:
-                        subjects_collection.update_one({'_id': subject_id}, {'$set': updates})
-                        
-        except Exception as e:
-            print(f"ERROR initializing sub-objects: {e}")
-            traceback.print_exc()
+    return jsonify({"success": True})
 
     return jsonify({"success": True})
 
@@ -1057,18 +1061,7 @@ def handle_manual_courses():
         return jsonify({"success": True})
 
 # 3. Timetable Structure (Periods)
-@api_bp.route('/timetable/structure', methods=['POST'])
-def save_timetable_structure():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    periods = request.json # Array of period objects
 
-    timetable_collection.update_one(
-        {"owner_email": user_email},
-        {"$set": {"periods": periods}},
-        upsert=True
-    )
-    return jsonify({"success": True})
 
 
 @api_bp.route('/batch_update_subjects', methods=['POST'])
@@ -1354,6 +1347,16 @@ def add_subject():
     subject_name, semester = data.get('subject_name'), int(data.get('semester'))
     if not subject_name or not semester: return jsonify({"error": "Subject name and semester are required"}), 400
     
+    # Check for duplicates
+    existing_subject = subjects_collection.find_one({
+        "owner_email": session['user']['email'],
+        "name": subject_name,
+        "semester": semester
+    })
+    
+    if existing_subject:
+        return jsonify({"success": True, "message": "Subject already exists", "id": str(existing_subject['_id'])})
+
     new_subject = {
         "name": subject_name,
         "owner_email": session['user']['email'],
@@ -1437,19 +1440,44 @@ def update_attendance_count():
 def handle_timetable():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     user_email = session['user']['email']
+    
+    # Get semester (default to 1)
+    try:
+        semester = int(request.args.get('semester', 1))
+    except (ValueError, TypeError):
+        semester = 1
+        
     if request.method == 'POST':
         data = request.json.get('schedule', {})
-        timetable_collection.update_one({'owner_email': user_email}, {'$set': {'schedule': data}}, upsert=True)
-        log_user_action(user_email, "Schedule Updated", "User saved changes to the class schedule.")
+        # Update or create document for specific semester
+        # Note: This replaces the entire schedule for that semester
+        timetable_collection.update_one(
+            {'owner_email': user_email, 'semester': semester}, 
+            {'$set': {'schedule': data, 'semester': semester}}, 
+            upsert=True
+        )
+        log_user_action(user_email, "Schedule Updated", f"User saved changes to the class schedule for Semester {semester}.")
         return jsonify({"success": True})
-    timetable_doc = timetable_collection.find_one({'owner_email': user_email})
+        
+    # GET Logic with Migration
+    timetable_doc = timetable_collection.find_one({'owner_email': user_email, 'semester': semester})
+    
+    # Migration: If looking for Sem 1 and not found, check if legacy (non-semester) doc exists
+    if not timetable_doc and semester == 1:
+        legacy_doc = timetable_collection.find_one({'owner_email': user_email, 'semester': {'$exists': False}})
+        if legacy_doc:
+            print(f"⚠️ Migrating legacy timetable for {user_email} to Semester 1")
+            timetable_collection.update_one(
+                {'_id': legacy_doc['_id']},
+                {'$set': {'semester': 1}}
+            )
+            timetable_doc = legacy_doc
+            
     schedule = timetable_doc.get('schedule', {}) if timetable_doc else {}
     periods = timetable_doc.get('periods', []) if timetable_doc else [] # Retrieve periods
     
-    print(f"📅 GET /timetable for {user_email}:")
+    print(f"📅 GET /timetable for {user_email} (Sem {semester}):")
     print(f"   Document exists: {timetable_doc is not None}")
-    print(f"   Schedule days: {list(schedule.keys()) if schedule else []}")
-    print(f"   Total slots: {sum(len(v) if isinstance(v, list) else 0 for v in schedule.values())}")
     
     # Helper to convert ObjectIds to strings recursively
     def serialize_schedule(obj):
@@ -1463,11 +1491,31 @@ def handle_timetable():
             return obj
     
     serialized_schedule = serialize_schedule(schedule)
-    print(f"   ✅ Serialized successfully")
     return jsonify({
         "schedule": serialized_schedule,
         "periods": periods
     })
+
+@api_bp.route('/timetable/structure', methods=['POST'])
+def save_timetable_structure():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    periods = request.json
+    
+    # Check if this is a bulk structure save which might include semester in args or legacy
+    # The frontend usually sends just the array of periods. 
+    # We should support 'semester' query param like GET /timetable
+    try:
+        semester = int(request.args.get('semester', 1))
+    except (ValueError, TypeError):
+        semester = 1
+        
+    timetable_collection.update_one(
+        {'owner_email': user_email, 'semester': semester},
+        {'$set': {'periods': periods, 'semester': semester}}, # Ensure semester is set if upserting
+        upsert=True
+    )
+    return jsonify({"success": True})
 
 
 # --- Timetable CRUD ---
@@ -1481,29 +1529,30 @@ def add_timetable_slot():
     day = data.get('day')
     if not day: return jsonify({"error": "Day is required"}), 400
     
+    semester = data.get('semester', 1) # Expect semester in payload
+    
     # Ensure _id for the slot
     data['_id'] = str(ObjectId())
+    # Remove semester from slot data itself to keep it clean (optional, but good practice)
+    slot_data = {k: v for k, v in data.items() if k != 'semester'}
     
-    print(f"➕ Adding timetable slot for {user_email}:")
+    print(f"➕ Adding timetable slot for {user_email} (Sem {semester}):")
     print(f"   Day: {day}")
-    print(f"   Slot data: {data}")
     
     # Remove any existing slot at the same time to prevent duplicates (Auto-replace)
     timetable_collection.update_one(
-        {'owner_email': user_email},
-        {'$pull': {f'schedule.{day}': {'start_time': data['start_time']}}}
+        {'owner_email': user_email, 'semester': semester},
+        {'$pull': {f'schedule.{day}': {'start_time': slot_data['start_time']}}}
     )
 
     # Push to specific day array within the schedule object
     result = timetable_collection.update_one(
-        {'owner_email': user_email},
-        {'$push': {f'schedule.{day}': data}},
+        {'owner_email': user_email, 'semester': semester},
+        {'$push': {f'schedule.{day}': slot_data}},
         upsert=True
     )
     
-    print(f"   Result: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}")
-    
-    return jsonify({"success": True, "slot": data})
+    return jsonify({"success": True, "slot": slot_data})
 
 @api_bp.route('/timetable/slot/<slot_id>', methods=['PUT'])
 def update_timetable_slot(slot_id):
@@ -1514,13 +1563,16 @@ def update_timetable_slot(slot_id):
     day = data.get('day')
     if not day: return jsonify({"error": "Day is required"}), 400
     
-    # But usually easier to Pull by ID and Push new data.
+    semester = data.get('semester', 1)
     
-    # 1. Pull existing with this ID from ANY day (in case day changed or just to find it)
-    # Actually, we can just search the doc.
-    
-    timetable = timetable_collection.find_one({'owner_email': user_email})
-    schedule = timetable.get('schedule', {})
+    # Pull existing with this ID from ANY day in THIS semester
+    timetable = timetable_collection.find_one({'owner_email': user_email, 'semester': semester})
+    if not timetable and semester == 1:
+         # Fallback check for legacy during transition logic, though mainly handled in GET
+         # If we are Updating, we likely already loaded the GET which did migration.
+         pass
+
+    schedule = timetable.get('schedule', {}) if timetable else {}
     
     # Find which day currently holds this slot
     old_day = None
@@ -1534,15 +1586,22 @@ def update_timetable_slot(slot_id):
     
     if old_day:
         timetable_collection.update_one(
-            {'owner_email': user_email},
+            {'owner_email': user_email, 'semester': semester},
             {'$pull': {f'schedule.{old_day}': {'_id': slot_id}}}
         )
     
     # Push new data to new day
     data['_id'] = slot_id # Ensure ID is preserved
+    slot_data = {k: v for k, v in data.items() if k != 'semester'}
+    
     timetable_collection.update_one(
-        {'owner_email': user_email},
-        {'$push': {f'schedule.{day}': data}}
+        {'owner_email': user_email, 'semester': semester},
+        {'$set': {'semester': semester}}, # Ensure doc exists
+        upsert=True
+    )
+    timetable_collection.update_one(
+         {'owner_email': user_email, 'semester': semester},
+         {'$push': {f'schedule.{day}': slot_data}}
     )
     
     return jsonify({"success": True})
@@ -1552,15 +1611,20 @@ def delete_timetable_slot(slot_id):
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     user_email = session['user']['email']
     
-    # Remove from any day where it exists
-    # We iterate known days to be safe
+    # Get semester from query param
+    try:
+        semester = int(request.args.get('semester', 1))
+    except:
+        semester = 1
+        
+    # Remove from any day where it exists in that semester
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     for day in days:
         timetable_collection.update_one(
-            {'owner_email': user_email},
+            {'owner_email': user_email, 'semester': semester},
             {'$pull': {f'schedule.{day}': {'_id': slot_id}}}
         )
-        
+    
     return jsonify({"success": True})
 
 @api_bp.route('/subjects')

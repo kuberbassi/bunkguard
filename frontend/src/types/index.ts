@@ -151,7 +151,7 @@ export interface TimetableSlot {
     start_time: string; // HH:MM
     end_time: string;   // HH:MM
     subject_id?: string;
-    type?: 'class' | 'break' | 'free';
+    type?: 'class' | 'break' | 'free' | 'custom';
     label?: string;     // Optional override label
 }
 

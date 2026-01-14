@@ -40,6 +40,11 @@ This application showcases **prompt engineering in action**. Every feature, comp
 *   **Categories**: Organize skills by Programming, Design, Languages, Business, Creative, and more.
 *   **Skill Levels**: Track from Beginner to Expert.
 
+### 🗓️ Academic Management
+*   **Semester Isolation**: Seamlessly switch between semesters. Your timetable, attendance logs, and stats are completely isolated for each semester.
+*   **Legacy Data Support**: Old data is automatically migrated and preserved when you switch contexts.
+*   **Custom Slots**: Add non-academic blocks like "Library", "Lunch", or "Gym" to your timetable. These are purely for scheduling and don't affect your attendance analytics.
+
 ### 💾 Data Persistence
 *   All data (Attendance, Skills, Settings) is securely synced to the cloud (MongoDB), linked to your Google Account.
 *   No more data loss on browser refresh.
