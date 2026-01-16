@@ -88,6 +88,10 @@ export const attendanceService = {
         });
     },
 
+    deleteAttendance: async (logId: string): Promise<void> => {
+        await api.delete(`/api/delete_attendance/${logId}`);
+    },
+
     // Classes
     getTodaysClasses: async (): Promise<Subject[]> => {
         const response = await api.get('/api/todays_classes');

@@ -191,7 +191,12 @@ const TimeTable: React.FC = () => {
                 className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
             >
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-bold font-display text-on-surface dark:text-dark-surface-on mb-1 md:mb-0">Weekly Schedule</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold font-display text-on-surface dark:text-dark-surface-on mb-1 md:mb-0 flex items-center gap-3">
+                        Weekly Schedule
+                        <span className="text-sm font-bold bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+                            Sem {currentSemester}
+                        </span>
+                    </h1>
                     <p className="text-sm md:text-lg text-on-surface-variant">Manage your classes and timing</p>
                 </div>
 
@@ -391,6 +396,7 @@ const TimeTable: React.FC = () => {
                         <Button
                             variant="outlined"
                             className="whitespace-nowrap"
+                            icon={<Plus size={16} />}
                             onClick={() => {
                                 const last = periods.length > 0 ? periods[periods.length - 1] : null;
                                 // Default start time is end of last period or 09:00
@@ -406,7 +412,6 @@ const TimeTable: React.FC = () => {
                                 }]);
                             }}
                         >
-                            <Plus size={16} className="mr-2" />
                             Add Period
                         </Button>
                         <Button
@@ -416,6 +421,8 @@ const TimeTable: React.FC = () => {
                                     await attendanceService.saveTimetableStructure(periods, currentSemester);
                                     showToast('success', 'Structure saved');
                                     setSettingsOpen(false);
+                                    // Reload data to confirm sync
+                                    loadData();
                                 } catch (e) {
                                     showToast('error', 'Failed to save structure');
                                 }

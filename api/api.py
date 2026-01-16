@@ -703,9 +703,10 @@ def get_classes_for_date():
     if not timetable_doc:
         return Response(json_util.dumps([]), mimetype='application/json')
 
-    subject_ids = []
+    subject_ids = set()
     schedule = timetable_doc.get('schedule', {})
-    schedule = timetable_doc.get('schedule', {})
+    # Note: duplicate line removed in replacement
+    
     if isinstance(schedule, dict):
         # Support New Format: Day -> List of Slots
         if any(d in schedule for d in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']):
@@ -713,29 +714,42 @@ def get_classes_for_date():
             if isinstance(day_slots, list):
                 for slot in day_slots:
                     if slot.get('subject_id'):
-                        subject_ids.append(ObjectId(slot['subject_id']))
+                        subject_ids.add(ObjectId(slot['subject_id']))
         else:
             # Fallback to Old Format
             for days in schedule.values():
                 if isinstance(days, dict) and day_name in days:
                     slot_data = days[day_name]
                     if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
-                        subject_ids.append(ObjectId(slot_data['subjectId']))
+                        subject_ids.add(ObjectId(slot_data['subjectId']))
     
+    # 2. Get Subjects with Attendance Logs on this Date (to handle extras/phantom marks)
+    logs = list(attendance_log_collection.find({'owner_email': user_email, 'date': date_str}))
+    for log in logs:
+        if 'subject_id' in log:
+            subject_ids.add(log['subject_id'])
+            
     if not subject_ids:
         return Response(json_util.dumps([]), mimetype='application/json')
     
     # Filter only by subjects of the requested semester (if provided)
-    query = {"owner_email": user_email, "_id": {"$in": subject_ids}}
+    query = {"owner_email": user_email, "_id": {"$in": list(subject_ids)}}
     if semester:
         query["semester"] = semester
         
     subjects = list(subjects_collection.find(query))
+    
+    # Attach attendance status to each subject
     for subject in subjects:
-        log = attendance_log_collection.find_one({"subject_id": subject["_id"], "date": date_str})
-        subject["marked_status"] = log["status"] if log else "pending"
+        subject_id = subject['_id']
+        # Find log for this subject on this date
+        log = next((l for l in logs if l.get('subject_id') == subject_id), None)
+        
         if log:
-            subject["log_id"] = str(log["_id"])
+            subject['marked_status'] = log['status']
+            subject['log_id'] = str(log['_id'])
+        else:
+            subject['marked_status'] = 'pending'
 
     return Response(json_util.dumps(subjects), mimetype='application/json')
 
@@ -796,6 +810,65 @@ def edit_attendance(log_id):
 
     subject = subjects_collection.find_one({'_id': subject_id})
     create_system_log(session['user']['email'], "Attendance Edited", f"Changed '{subject.get('name')}' from {old_status} to {new_status}.")
+    
+    return jsonify({"success": True})
+
+
+@api_bp.route('/delete_attendance/<log_id>', methods=['DELETE'])
+def delete_attendance(log_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    log = attendance_log_collection.find_one({'_id': ObjectId(log_id)})
+    if not log:
+        return jsonify({"error": "Log not found"}), 404
+        
+    old_status = log['status']
+    subject_id = log['subject_id'] # ObjectId
+    
+    # 1. Revert Stats for Original Subject
+    revert_query = {}
+    if old_status in ['present', 'approved_medical', 'late']:
+        revert_query['$inc'] = {'total': -1, 'attended': -1}
+    elif old_status == 'absent':
+        revert_query['$inc'] = {'total': -1}
+    
+    if revert_query:
+        subjects_collection.update_one({'_id': subject_id}, revert_query)
+
+    # 2. Handle Substitution Clean-up
+    # If this log says "substituted", there might be a corresponding "substitution_class" log 
+    # for another subject on the same date/owner.
+    if old_status == 'substituted' and 'substituted_by' in log:
+        sub_subject_id = log['substituted_by']
+        date_str = log['date']
+        
+        # Find the Extra Class log
+        # We assume the one with type='substitution_class' and matching date/subject/owner
+        # and notes containing the original subject name is the best match.
+        # Ideally, we should have linked them by ID, but we didn't. 
+        # But 'mark_attendance' creates it immediately.
+        
+        # Heuristic: Find specific sub class log
+        sub_log = attendance_log_collection.find_one({
+            'subject_id': sub_subject_id,
+            'date': date_str,
+            'type': 'substitution_class',
+            'owner_email': session['user']['email']
+        })
+        
+        if sub_log:
+             # Delete it and revert ITS stats
+             attendance_log_collection.delete_one({'_id': sub_log['_id']})
+             # 'substitution_class' counts as Present (total+1, attended+1)
+             subjects_collection.update_one({'_id': sub_subject_id}, {'$inc': {'total': -1, 'attended': -1}})
+
+
+    # 3. Delete the main log
+    attendance_log_collection.delete_one({'_id': ObjectId(log_id)})
+
+    subject = subjects_collection.find_one({'_id': subject_id})
+    subject_name = subject.get('name') if subject else "Unknown Subject"
+    create_system_log(session['user']['email'], "Attendance Deleted", f"Removed attendance record for '{subject_name}' on {log['date']}.")
     
     return jsonify({"success": True})
 

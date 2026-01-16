@@ -5,7 +5,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/components/ui/Toast';
 import { useSemester } from '@/contexts/SemesterContext';
 import { attendanceService } from '@/services/attendance.service';
-import { Check, X, MoreHorizontal, Calendar as CalendarIcon } from 'lucide-react';
+import { Check, X, MoreHorizontal, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 
 
 interface AttendanceModalProps {
@@ -37,8 +37,8 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     }, [isOpen, defaultDate]);
 
-    const loadClassesForDate = async (date: Date) => {
-        setLoading(true);
+    const loadClassesForDate = async (date: Date, silent = false) => {
+        if (!silent) setLoading(true);
         try {
             // Fix timezone issue: Avoid toISOString() which shifts day for regions like India
             const year = date.getFullYear();
@@ -56,7 +56,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             console.error(error);
             showToast('error', 'Failed to load classes');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -68,21 +68,52 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     };
 
+    const getDateStr = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const markSimple = async (subjectId: string, status: 'present' | 'absent') => {
         try {
-            const dateStr = selectedDate.toISOString().split('T')[0];
+            const dateStr = getDateStr(selectedDate);
             await attendanceService.markAttendance(subjectId, status, dateStr);
             showToast('success', `Marked ${status}`);
-            loadClassesForDate(selectedDate);
+            loadClassesForDate(selectedDate, true); // Silent reload
             if (onSuccess) onSuccess();
         } catch (error: any) {
-            showToast('error', error.response?.data?.error || 'Failed to mark');
+            if (error.response?.data?.error?.includes('already been marked')) {
+                // If already marked, try editing? Or just tell user to delete first?
+                // For simple mark, we can just say "Use details or clear first". 
+                // But better UX: The delete button is now available.
+                showToast('error', 'Already marked. Clear it first to change.');
+            } else {
+                showToast('error', error.response?.data?.error || 'Failed to mark');
+            }
+        }
+    };
+
+    const handleDelete = async (subject: any) => {
+        try {
+            // We need the log_id. getClassesForDate returns it.
+            if (!subject.log_id) {
+                showToast('error', 'No attendance record found to delete.');
+                return;
+            }
+
+            await attendanceService.deleteAttendance(subject.log_id);
+            showToast('success', 'Attendance cleared');
+            loadClassesForDate(selectedDate, true);
+            if (onSuccess) onSuccess();
+        } catch (error: any) {
+            showToast('error', error.response?.data?.error || 'Failed to delete');
         }
     };
 
     const submitDetailedMark = async (subjectId: string) => {
         try {
-            const dateStr = selectedDate.toISOString().split('T')[0];
+            const dateStr = getDateStr(selectedDate);
 
             // If substituted, ensure we selected a substitute subject
             if (detailStatus === 'substituted' && !detailSubstitutedBy) {
@@ -101,7 +132,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
             showToast('success', 'Attendance marked successfully');
             setExpandedSubjectId(null);
             resetDetailForm();
-            loadClassesForDate(selectedDate);
+            loadClassesForDate(selectedDate, true);
             if (onSuccess) onSuccess();
         } catch (error: any) {
             showToast('error', error.response?.data?.error || 'Failed to mark');
@@ -172,6 +203,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 status={subject.marked_status}
                                                 expanded={expandedSubjectId === subId}
                                                 onSimpleMark={markSimple}
+                                                onDelete={handleDelete}
                                                 onOpenDetails={openDetails}
                                                 onCloseDetails={() => setExpandedSubjectId(null)}
 
@@ -202,9 +234,11 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
 };
 
 const SubjectRow = ({
-    subject, status, expanded, onSimpleMark, onOpenDetails, onCloseDetails,
+    subject, status, expanded, onSimpleMark, onDelete, onOpenDetails, onCloseDetails,
     detailStatus, setDetailStatus, detailNotes, setDetailNotes, detailSubstitutedBy, setDetailSubstitutedBy, allSubjects, onSubmitDetail
 }: any) => {
+
+    const isMarked = status && status !== 'pending';
 
     if (expanded) {
         return (
@@ -272,9 +306,16 @@ const SubjectRow = ({
                         />
                     </div>
 
-                    <Button className="w-full" onClick={() => onSubmitDetail(subject._id || subject.id)}>
-                        Confirm Mark
-                    </Button>
+                    <div className="flex gap-2">
+                        {isMarked && (
+                            <Button variant="ghost" className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10" onClick={() => onDelete(subject)}>
+                                <Trash2 size={18} className="mr-2" /> Clear Mark
+                            </Button>
+                        )}
+                        <Button className="flex-1" onClick={() => onSubmitDetail(subject._id || subject.id)}>
+                            Confirm Mark
+                        </Button>
+                    </div>
                 </div>
             </div>
         );
@@ -285,22 +326,48 @@ const SubjectRow = ({
         <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors border border-transparent hover:border-outline-variant/20 group">
             <span className="font-bold text-on-surface">{subject.name}</span>
             <div className="flex gap-2">
-                <Button
-                    size="sm"
-                    variant={status === 'present' ? 'filled' : 'ghost'}
-                    onClick={() => onSimpleMark(subject._id || subject.id, 'present')}
-                    className={`h-8 w-8 p-0 rounded-full ${status === 'present' ? 'bg-green-600' : 'text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20'}`}
-                >
-                    <Check size={16} />
-                </Button>
-                <Button
-                    size="sm"
-                    variant={status === 'absent' ? 'filled' : 'ghost'}
-                    onClick={() => onSimpleMark(subject._id || subject.id, 'absent')}
-                    className={`h-8 w-8 p-0 rounded-full ${status === 'absent' ? 'bg-red-600' : 'text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20'}`}
-                >
-                    <X size={16} />
-                </Button>
+                {!isMarked ? (
+                    <>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onSimpleMark(subject._id || subject.id, 'present')}
+                            className="h-8 w-8 p-0 rounded-full text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20"
+                            title="Mark Present"
+                        >
+                            <Check size={16} />
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onSimpleMark(subject._id || subject.id, 'absent')}
+                            className="h-8 w-8 p-0 rounded-full text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20"
+                            title="Mark Absent"
+                        >
+                            <X size={16} />
+                        </Button>
+                    </>
+                ) : (
+                    <div className="flex items-center gap-2 mr-2">
+                        <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${status === 'present' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300' :
+                            status === 'absent' ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300' :
+                                'bg-surface-dim text-on-surface-variant'
+                            }`}>
+                            {status === 'approved_medical' ? 'Medical' : status}
+                        </span>
+
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onDelete(subject)}
+                            className="h-8 w-8 p-0 rounded-full text-on-surface-variant hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10"
+                            title="Delete/Clear"
+                        >
+                            <Trash2 size={16} />
+                        </Button>
+                    </div>
+                )}
+
                 <Button
                     size="sm"
                     variant="ghost"

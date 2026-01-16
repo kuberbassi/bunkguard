@@ -30,9 +30,9 @@ const Calendar: React.FC = () => {
     }, [currentDate, currentSemester]);
 
 
-    const loadData = async () => {
+    const loadData = async (showLoading = true) => {
         try {
-            setLoading(true);
+            if (showLoading) setLoading(true);
             // Fetch for current month view
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1;
@@ -208,8 +208,7 @@ const Calendar: React.FC = () => {
                 onClose={() => setIsMarkModalOpen(false)}
                 defaultDate={selectedDate || new Date()}
                 onSuccess={() => {
-                    loadData();
-                    setIsMarkModalOpen(false);
+                    loadData(false); // Reload silently, do not close modal
                 }}
             />
         </div>
