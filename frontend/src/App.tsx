@@ -208,7 +208,11 @@ const AppRoutes: React.FC = () => {
 
 
 // Main App Component
+import { useAutoUpdate } from './hooks/useAutoUpdate';
+
 const AppContent: React.FC = () => {
+  useAutoUpdate(); // Automatically check for updates and reload if needed
+
   return (
     <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
       <AppRoutes />

@@ -16,6 +16,7 @@ import Select from '@/components/ui/Select';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
 import { authService } from '@/services/auth.service';
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 interface UserPreferences {
     attendance_threshold: number;
@@ -141,6 +142,9 @@ const Settings: React.FC = () => {
             setName(user.name);
         }
     }, [user]);
+
+    // Protect against unsaved profile changes
+    useUnsavedChanges(isEditingProfile);
 
     const handleProfileSave = async () => {
         try {

@@ -9,6 +9,7 @@ from functools import wraps
 from time import time
 import os
 import json
+import base64
 from bson import ObjectId, json_util
 
 from .rate_limiter import limiter, RELAXED_LIMIT, MODERATE_LIMIT
@@ -116,30 +117,39 @@ def upload_pfp():
         return jsonify({"error": "No selected file"}), 400
 
     if file:
-        # Save to static/uploads
-        
-        UPLOAD_FOLDER = 'frontend/public/uploads' # Serve from public in dev, or static
-        # In production, might need specific path
-        if not os.path.exists(UPLOAD_FOLDER):
-            os.makedirs(UPLOAD_FOLDER)
+        try:
+            # Check file size (max 500KB for base64 safety in Mongo)
+            # Read first to check size
+            file.seek(0, os.SEEK_END)
+            size = file.tell()
+            file.seek(0)
             
-        filename = secure_filename(f"{session['user']['email']}_{file.filename}")
-        file.save(os.path.join(UPLOAD_FOLDER, filename))
-        
-        # Return URL
-        url = f"/uploads/{filename}"
-        
-        # Update User Profile
-        users_collection.update_one(
-            {'email': session['user']['email']},
-            {'$set': {'picture': url}}
-        )
-        
-        # Update Session
-        session['user']['picture'] = url
-        session.modified = True
-        
-        return jsonify({"url": url})
+            if size > 500 * 1024:
+                return jsonify({"error": "File too large. Max 500KB."}), 400
+                
+            # Read and Encode
+            file_data = file.read()
+            encoded_string = base64.b64encode(file_data).decode('utf-8')
+            mime_type = file.content_type or 'image/jpeg'
+            
+            # Create Data URL
+            data_url = f"data:{mime_type};base64,{encoded_string}"
+            
+            # Update User Profile in DB
+            users_collection.update_one(
+                {'email': session['user']['email']},
+                {'$set': {'picture': data_url}}
+            )
+            
+            # Update Session
+            session['user']['picture'] = data_url
+            session.modified = True
+            
+            return jsonify({"url": data_url})
+            
+        except Exception as e:
+            print(f"Upload Error: {e}")
+            return jsonify({"error": "Failed to upload image"}), 500
         
     return jsonify({"error": "Upload failed"}), 500
 
@@ -1026,18 +1036,24 @@ def delete_all_data():
     user_email = session['user']['email']
     
     try:
-        # Delete from all collections
+        # Delete from all user-specific collections
         attendance_log_collection.delete_many({'owner_email': user_email})
         subjects_collection.delete_many({'owner_email': user_email})
         timetable_collection.delete_many({'owner_email': user_email})
         system_logs_collection.delete_many({'owner_email': user_email})
-        academic_records_collection.delete_many({'owner_email': user_email})
+        academic_records_collection.delete_many({'owner_email': user_email}) # users_collection
         deadlines_collection.delete_many({'owner_email': user_email})
         holidays_collection.delete_many({'owner_email': user_email})
         
-        # Reset user profile stats if stored? (Optional, keeping profile is safer)
+        # New Feature Collections
+        semester_results_collection.delete_many({'owner_email': user_email})
+        manual_courses_collection.delete_many({'owner_email': user_email})
+        skills_collection.delete_many({'owner_email': user_email})
         
-        create_system_log(user_email, "Data Reset", "User deleted all application data.")
+        # Reset Preferences (Delete doc)
+        db.get_collection('user_preferences').delete_one({'owner_email': user_email})
+        
+        create_system_log(user_email, "Account Reset", "User deleted all application data.")
         return jsonify({"success": True})
     except Exception as e:
         print(f"Delete All Data Error: {e}")
@@ -1470,6 +1486,8 @@ def delete_subject(subject_id):
         return jsonify({"success": True, "message": "Subject and its attendance logs deleted"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 
 @api_bp.route('/update_subject_details', methods=['POST'])

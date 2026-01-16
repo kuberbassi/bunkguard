@@ -1,7 +1,7 @@
 # api/__init__.py
 
 import os
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -42,9 +42,10 @@ def create_app():
     
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-in-production")
     
-    # Session Config for Localhost
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['SESSION_COOKIE_SECURE'] = False
+    # Session Config
+    is_production = os.getenv('FLASK_ENV') == 'production' or os.getenv('VERCEL') == '1'
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None' if is_production else 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = is_production # Secure in production
     
     # Enable CORS for React frontend
     CORS(app, 
@@ -63,7 +64,15 @@ def create_app():
 
     @app.after_request
     def add_security_headers(response):
+        # Security Headers
         response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        
+        # HSTS (Strict-Transport-Security) only on HTTPS
+        if request.scheme == 'https':
+             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+             
         return response
     
     oauth.init_app(app)
