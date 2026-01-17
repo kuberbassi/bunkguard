@@ -87,19 +87,30 @@ def google_auth():
         # Refresh user object after upsert
         db_user = users_collection.find_one({"email": user_info["email"]})
         
+        if not db_user:
+            return jsonify({"error": "Failed to retrieve user after registration"}), 500
+            
         # 4. Generate JWT for mobile/API usage
         token_payload = {
-            'email': user_info['email'],
+            'email': db_user['email'],
+            'name': db_user.get('name', 'User'),
             'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
             'iat': datetime.datetime.utcnow()
         }
         
-        jwt_token = jwt.encode(
-            token_payload,
-            os.getenv('FLASK_SECRET_KEY', 'dev-secret-key'),
-            algorithm='HS256'
-        )
-        
+        try:
+            jwt_token = jwt.encode(
+                token_payload,
+                os.getenv('FLASK_SECRET_KEY', 'dev-secret-key'),
+                algorithm='HS256'
+            )
+            # PyJWT 2.0+ returns str, but handle bytes just in case of environment mismatch
+            if isinstance(jwt_token, bytes):
+                jwt_token = jwt_token.decode('utf-8')
+        except Exception as e:
+            print(f"❌ JWT Encoding Error: {e}")
+            return jsonify({"error": "Failed to generate security token"}), 500
+            
         # 5. Also set session for web compatibility
         session['user'] = {
             'email': db_user['email'],
@@ -112,6 +123,7 @@ def google_auth():
         if refresh_token:
             session['google_refresh_token'] = refresh_token
         
+        # Convert ObjectId to string for JSON serialization
         if '_id' in db_user:
             db_user['_id'] = str(db_user['_id'])
 
@@ -121,8 +133,14 @@ def google_auth():
         }), 200
         
     except Exception as e:
-        print(f"Error in google_auth: {e}")
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        error_msg = f"Error in google_auth: {str(e)}"
+        print(f"❌ {error_msg}")
+        traceback.print_exc()
+        return jsonify({
+            "error": "Internal Server Error during Google Auth",
+            "details": str(e) if not os.getenv('VERCEL') else "Check server logs"
+        }), 500
 
 @auth_bp.route('/logout', methods=['POST', 'GET'])
 def logout():
