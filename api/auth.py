@@ -3,6 +3,7 @@ import requests
 from flask import Blueprint, redirect, url_for, session, request, jsonify
 from authlib.integrations.flask_client import OAuth
 from urllib.parse import urlencode, quote_plus
+from bson import ObjectId
 import jwt
 import datetime
 from . import db
@@ -123,9 +124,13 @@ def google_auth():
         if refresh_token:
             session['google_refresh_token'] = refresh_token
         
-        # Convert ObjectId to string for JSON serialization
+        # Convert non-serializable objects (ObjectId, datetime) to strings
         if '_id' in db_user:
             db_user['_id'] = str(db_user['_id'])
+        if 'last_login' in db_user and isinstance(db_user['last_login'], datetime.datetime):
+            db_user['last_login'] = db_user['last_login'].isoformat()
+        if 'created_at' in db_user and isinstance(db_user['created_at'], datetime.datetime):
+            db_user['created_at'] = db_user['created_at'].isoformat()
 
         return jsonify({
             "token": jwt_token,
