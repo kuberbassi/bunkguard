@@ -5,10 +5,15 @@ from authlib.integrations.flask_client import OAuth
 from urllib.parse import urlencode, quote_plus
 from bson import ObjectId
 import jwt
-import datetime
-from . import db
+from datetime import datetime, timedelta
+from .database import db
 
 auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/login')
+def login():
+    """Shell login route to satisfy url_for('auth.login') and prevent BuildErrors"""
+    return redirect('/')
 
 # This will be initialized in our main __init__.py
 oauth = OAuth()
@@ -68,7 +73,7 @@ def google_auth():
             "email": user_info["email"],
             "name": user_info.get("name"),
             "google_id": user_info.get("id"),
-            "last_login": datetime.datetime.utcnow()
+            "last_login": datetime.utcnow()
         }
         
         # Only set Google picture if user doesn't have one or it's a Google URL (not base64)
@@ -95,8 +100,8 @@ def google_auth():
         token_payload = {
             'email': db_user['email'],
             'name': db_user.get('name', 'User'),
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
-            'iat': datetime.datetime.utcnow()
+            'exp': datetime.utcnow() + timedelta(days=7),
+            'iat': datetime.utcnow()
         }
         
         try:
@@ -127,9 +132,9 @@ def google_auth():
         # Convert non-serializable objects (ObjectId, datetime) to strings
         if '_id' in db_user:
             db_user['_id'] = str(db_user['_id'])
-        if 'last_login' in db_user and isinstance(db_user['last_login'], datetime.datetime):
+        if 'last_login' in db_user and isinstance(db_user['last_login'], datetime):
             db_user['last_login'] = db_user['last_login'].isoformat()
-        if 'created_at' in db_user and isinstance(db_user['created_at'], datetime.datetime):
+        if 'created_at' in db_user and isinstance(db_user['created_at'], datetime):
             db_user['created_at'] = db_user['created_at'].isoformat()
 
         return jsonify({
@@ -204,8 +209,8 @@ def dev_login():
         # Generate JWT token
         token_payload = {
             'email': user['email'],
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
-            'iat': datetime.datetime.utcnow()
+            'exp': datetime.utcnow() + timedelta(days=7),
+            'iat': datetime.utcnow()
         }
         
         token = jwt.encode(

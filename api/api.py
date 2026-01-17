@@ -17,7 +17,7 @@ from flask import Flask, Blueprint, jsonify, request, session, send_from_directo
 from itertools import groupby
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient, IndexModel, ASCENDING, DESCENDING
-from . import db  # ✅ Import db from __init__.py
+from .database import db  # ✅ Import central db to avoid circularity
 # try:
 #     from pywebpush import webpush, WebPushException
 # except ImportError:

@@ -9,25 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# MongoDB Connection with optimized timeouts for stability
-# We don't catch exceptions here because MongoClient is lazy.
-# If it fails to connect later, it will retry based on parameters.
-# Setting it up globally ensures the connection pool is shared.
-client = MongoClient(
-    os.getenv('MONGO_URI'),
-    maxPoolSize=50,
-    minPoolSize=5,
-    maxIdleTimeMS=45000,
-    serverSelectionTimeoutMS=30000,  # Patient for replica set elections
-    connectTimeoutMS=30000,         # More time for SSL handshakes
-    socketTimeoutMS=30000,
-    waitQueueTimeoutMS=5000,
-    retryWrites=True,                # Handle transient network errors
-    retryReads=True
-)
-db = client.get_database('attendanceDB')
-
-from .auth import oauth
+from .database import db
 
 def create_app():
     # Get current directory (api/)
@@ -137,6 +119,7 @@ def create_app():
             response.headers['Access-Control-Allow-Headers'] = "Content-Type, Authorization, Accept"
         return response
     
+    from .auth import auth_bp, oauth
     oauth.init_app(app)
     
     try:
