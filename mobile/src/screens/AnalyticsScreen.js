@@ -1,0 +1,254 @@
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, Animated, UIManager, Platform } from 'react-native';
+import { theme } from '../theme';
+import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { BarChart2, TrendingDown, Activity, Zap, CheckCircle, AlertTriangle } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AnimatedHeader from '../components/AnimatedHeader';
+import { useTheme } from '../contexts/ThemeContext';
+
+const AnalyticsScreen = () => {
+    const { isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+
+    // AMOLED Theme
+    const c = {
+        bgGradStart: isDark ? '#000000' : '#FFFFFF',
+        bgGradMid: isDark ? '#000000' : '#F8F9FA',
+        bgGradEnd: isDark ? '#000000' : '#FFFFFF',
+
+        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
+        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+
+        text: isDark ? '#FFFFFF' : '#000000',
+        subtext: isDark ? '#9CA3AF' : '#6B7280',
+
+        primary: '#0A84FF',
+        success: isDark ? '#34C759' : '#10B981',
+        danger: '#FF3B30',
+        warning: isDark ? '#FF9500' : '#F59E0B'
+    };
+
+    const styles = getStyles(c, isDark, insets);
+    const scrollY = useRef(new Animated.Value(0)).current;
+
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [reportData, setReportData] = useState(null);
+    const [semester, setSemester] = useState(1);
+
+    const fetchData = async () => {
+        try {
+            const response = await api.get(`/api/reports_data?semester=${semester}`);
+            setReportData(response.data);
+        } catch (error) {
+            console.error("Analytics Fetch Error:", error);
+            // Optional: Set mock data or error state here if needed
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = () => { setRefreshing(true); fetchData(); };
+
+    useFocusEffect(useCallback(() => { fetchData(); }, []));
+
+    // Data Processing
+    const getWeeklyData = () => {
+        if (!reportData?.weekly_breakdown) return [];
+        const breakdown = reportData.weekly_breakdown;
+        return Object.keys(breakdown).sort().map(dateStr => {
+            const dayStats = breakdown[dateStr];
+            const dateObj = new Date(dateStr);
+            const pct = dayStats.total > 0 ? (dayStats.attended / dayStats.total) * 100 : 0;
+            return {
+                day: dateObj.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0),
+                count: pct,
+                total: dayStats.total
+            };
+        });
+    };
+
+    const getFocusSubjects = () => {
+        if (!reportData?.subject_breakdown) return [];
+        return [...reportData.subject_breakdown].sort((a, b) => a.percentage - b.percentage).slice(0, 4);
+    };
+
+    const getTotalStats = () => {
+        if (!reportData?.subject_breakdown) return { attended: 0, total: 0, overallPct: 0 };
+        const attended = reportData.subject_breakdown.reduce((s, x) => s + (x.attended || 0), 0);
+        const total = reportData.subject_breakdown.reduce((s, x) => s + (x.total || 0), 0);
+        const overallPct = total > 0 ? (attended / total) * 100 : 0;
+        return { attended, total, overallPct };
+    };
+
+    const weeklyData = getWeeklyData();
+    const focusSubjects = getFocusSubjects();
+    const stats = getTotalStats();
+    const weeklyHasData = weeklyData.some(d => d.total > 0);
+
+    const headerHeight = scrollY.interpolate({ inputRange: [0, 100], outputRange: [120, 80], extrapolate: 'clamp' });
+    const titleSize = scrollY.interpolate({ inputRange: [0, 100], outputRange: [32, 24], extrapolate: 'clamp' });
+    const subHeight = scrollY.interpolate({ inputRange: [0, 100], outputRange: [20, 0], extrapolate: 'clamp' });
+    const subOpacity = scrollY.interpolate({ inputRange: [0, 50], outputRange: [1, 0], extrapolate: 'clamp' });
+
+    return (
+        <View style={{ flex: 1 }}>
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+
+            {/* UNIVERSAL ANIMATED HEADER */}
+            <AnimatedHeader
+                scrollY={scrollY}
+                title="Analytics"
+                subtitle={`Trends & Insights • Sem ${semester}`}
+                isDark={isDark}
+                colors={c}
+            />
+
+            <Animated.ScrollView
+                contentContainerStyle={styles.scrollContent}
+                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+            >
+                {/* Weekly Chart Card */}
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                    <View style={[styles.cardHeader, { marginBottom: 24 }]}>
+                        <View style={[styles.iconBox, { backgroundColor: c.primary + '20' }]}>
+                            <BarChart2 size={18} color={c.primary} />
+                        </View>
+                        <Text style={styles.cardTitle}>Weekly Attendance</Text>
+                    </View>
+
+                    {weeklyHasData ? (
+                        <View style={styles.chartRow}>
+                            {weeklyData.map((item, index) => (
+                                <View key={index} style={styles.barGroup}>
+                                    <View style={styles.barTrack}>
+                                        <LinearGradient
+                                            colors={[item.count > 75 ? c.success : item.count > 50 ? c.warning : c.danger, item.count > 75 ? '#4ADE80' : item.count > 50 ? '#FDBA74' : '#F87171']}
+                                            style={[styles.barFill, { height: `${Math.max(item.count, 15)}%` }]}
+                                            start={{ x: 0, y: 1 }} end={{ x: 0, y: 0 }}
+                                        />
+                                    </View>
+                                    <Text style={styles.dayLabel}>{item.day}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    ) : (
+                        <View style={styles.emptyState}>
+                            <Activity size={32} color={c.subtext} />
+                            <Text style={styles.emptyText}>No data this week</Text>
+                        </View>
+                    )}
+                </LinearGradient>
+
+                {/* Focus Areas */}
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                        <View style={[styles.iconBox, { backgroundColor: c.danger + '20' }]}>
+                            <TrendingDown size={18} color={c.danger} />
+                        </View>
+                        <Text style={styles.cardTitle}>Focus Areas</Text>
+                    </View>
+
+                    {focusSubjects.map((sub, idx) => {
+                        const pct = sub.percentage || 0;
+                        const isSafe = pct >= 75;
+                        return (
+                            <View key={idx} style={styles.focusRow}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                    <Text style={styles.subjectName} numberOfLines={1}>{sub.name}</Text>
+                                    <Text style={[styles.pctText, { color: isSafe ? c.success : c.danger }]}>{pct.toFixed(0)}%</Text>
+                                </View>
+                                <View style={styles.progTrack}>
+                                    <LinearGradient
+                                        colors={[isSafe ? c.success : c.danger, isSafe ? '#4ADE80' : '#F87171']}
+                                        style={[styles.progFill, { width: `${pct}%` }]}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                    />
+                                </View>
+                            </View>
+                        );
+                    })}
+                </LinearGradient>
+
+                {/* Summary */}
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                        <View style={[styles.iconBox, { backgroundColor: c.success + '20' }]}>
+                            <Zap size={18} color={c.success} />
+                        </View>
+                        <Text style={styles.cardTitle}>Summary</Text>
+                    </View>
+
+                    <Text style={styles.summaryText}>
+                        You have attended <Text style={{ fontWeight: '800', color: c.text }}>{stats.attended}</Text> out of <Text style={{ fontWeight: '800', color: c.text }}>{stats.total}</Text> classes.
+                        Overall attendance is <Text style={{ fontWeight: '800', color: stats.overallPct >= 75 ? c.success : c.danger }}>{(stats.overallPct || 0).toFixed(1)}%</Text>.
+                    </Text>
+
+                    <View style={styles.legend}>
+                        <View style={styles.legendItem}>
+                            <CheckCircle size={14} color={c.success} />
+                            <Text style={styles.legendText}>Safe ({'>'}75%)</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <AlertTriangle size={14} color={c.danger} />
+                            <Text style={styles.legendText}>Risk ({'<'}75%)</Text>
+                        </View>
+                    </View>
+                </LinearGradient>
+
+            </Animated.ScrollView>
+        </View>
+    );
+};
+
+const getStyles = (c, isDark, insets) => StyleSheet.create({
+    headerContainer: {
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+        justifyContent: 'flex-end', paddingBottom: 16
+    },
+    glassOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: c.glassBgStart, borderBottomWidth: 1, borderBottomColor: c.glassBorder
+    },
+    headerContent: { paddingHorizontal: 24 },
+    headerTitle: { fontWeight: '900', color: c.text, letterSpacing: -1 },
+    headerSub: { color: c.subtext, fontWeight: '600', fontSize: 13, marginTop: 4 },
+
+    scrollContent: { padding: 20, paddingTop: 140, paddingBottom: 100 + insets.bottom },
+    card: {
+        borderRadius: 24, padding: 20, marginBottom: 20,
+        borderWidth: 1, borderColor: c.glassBorder
+    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+    iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    cardTitle: { fontSize: 18, fontWeight: '800', color: c.text },
+
+    chartRow: { flexDirection: 'row', justifyContent: 'space-between', height: 110, alignItems: 'flex-end', paddingBottom: 8, paddingTop: 10 },
+    barGroup: { alignItems: 'center', gap: 8, flex: 1 },
+    barTrack: { width: 14, height: '100%', backgroundColor: c.glassBgEnd, borderRadius: 8, justifyContent: 'flex-end', overflow: 'hidden' }, // Thicker, rounded
+    barFill: { width: '100%', borderRadius: 8 },
+    dayLabel: { fontSize: 12, fontWeight: '700', color: c.subtext },
+
+    emptyState: { alignItems: 'center', justifyContent: 'center', height: 120, gap: 8 },
+    emptyText: { color: c.subtext, fontWeight: '600' },
+
+    focusRow: { marginBottom: 20 }, // More spacing
+    subjectName: { fontSize: 15, fontWeight: '700', color: c.text, flex: 1, marginBottom: 6 },
+    pctText: { fontSize: 15, fontWeight: '800' },
+    progTrack: { height: 12, backgroundColor: c.glassBgEnd, borderRadius: 6, overflow: 'hidden' }, // Thicker
+    progFill: { height: '100%', borderRadius: 6 },
+
+    summaryText: { fontSize: 16, color: c.subtext, lineHeight: 26, fontWeight: '500' }, // Larger text
+    legend: { flexDirection: 'row', gap: 16, marginTop: 20 },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendText: { fontSize: 13, fontWeight: '700', color: c.subtext }
+});
+
+export default AnalyticsScreen;

@@ -106,6 +106,38 @@ def update_preferences():
     
     return jsonify({"success": True, "preferences": current_prefs})
 
+@api_bp.route('/profile', methods=['GET'])
+def get_profile():
+    """Get user profile information for mobile app"""
+    if 'user' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    if db is None:
+        return jsonify({"error": "Database not available"}), 500
+    
+    user_email = session['user']['email']
+    preferences_collection = db.get_collection('user_preferences')
+    
+    # Get user preferences which contains semester and other profile data
+    user_prefs = preferences_collection.find_one({'owner_email': user_email})
+    
+    if user_prefs:
+        return jsonify({
+            "email": user_email,
+            "name": session['user'].get('name', 'User'),
+            "semester": user_prefs.get('preferences', {}).get('semester', 1),
+            "min_attendance": user_prefs.get('preferences', {}).get('min_attendance', 75)
+        })
+    else:
+        # Default profile if no preferences exist yet
+        return jsonify({
+            "email": user_email,
+            "name": session['user'].get('name', 'User'),
+            "semester": 1,
+            "min_attendance": 75
+        })
+
+
 @api_bp.route('/upload_pfp', methods=['POST'])
 def upload_pfp():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -214,7 +246,11 @@ def calculate_subject_result(subject):
     total_marks = 0
     max_marks = 0
     
-    if subject_type in ['theory', 'both', 'nues']:
+    if subject_type == 'nues':
+        internal_theory = subject.get('internal_theory', 0) or 0
+        total_marks += internal_theory
+        max_marks += 100
+    elif subject_type in ['theory', 'both']:
         internal_theory = subject.get('internal_theory', 0) or 0
         external_theory = subject.get('external_theory', 0) or 0
         total_marks += internal_theory + external_theory
@@ -460,6 +496,31 @@ def get_reports_data():
 
         heatmap_data_lists = {date: list(statuses) for date, statuses in heatmap_data_sets.items()}
         
+        # --- NEW: Weekly Breakdown (Last 7 Days) for Analytics Chart ---
+        weekly_breakdown = {}
+        today = datetime.utcnow().date()
+        # Get last 7 days including today
+        last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+        
+        # Fetch detailed logs for these days to count exactly
+        start_week = last_7_days[0]
+        weekly_logs = list(attendance_log_collection.find(
+            {"owner_email": user_email, "timestamp": {'$gte': datetime.combine(start_week, datetime.min.time())}},
+            {'date': 1, 'status': 1, '_id': 0}
+        ))
+        
+        # Initialize map
+        stats_map = {d.strftime("%Y-%m-%d"): {'attended': 0, 'total': 0} for d in last_7_days}
+        
+        for log in weekly_logs:
+            d_str = log['date']
+            if d_str in stats_map:
+                status = log['status']
+                if status in ['present', 'absent', 'late', 'approved_medical']:
+                    stats_map[d_str]['total'] += 1
+                    if status in ['present', 'approved_medical']:
+                        stats_map[d_str]['attended'] += 1
+        
         streak = calculate_streak(user_email)
 
         response_data = {
@@ -472,7 +533,8 @@ def get_reports_data():
                 "streak": streak
             },
             "subject_breakdown": sorted(subjects, key=lambda s: s.get('percentage', 0), reverse=True),
-            "heatmap_data": heatmap_data_lists
+            "heatmap_data": heatmap_data_lists,
+            "weekly_breakdown": stats_map
         }
         
         return Response(json_util.dumps(response_data), mimetype='application/json')
@@ -764,6 +826,9 @@ def get_classes_for_date():
     return Response(json_util.dumps(subjects), mimetype='application/json')
 
 
+
+
+
 @api_bp.route('/edit_attendance/<log_id>', methods=['POST'])
 def edit_attendance(log_id):
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -939,6 +1004,16 @@ def update_subject_full_details():
         # Ensure Assignment Object
         if 'Assignment' in cats and not isinstance(current_assignments, dict) and 'assignments' not in update_fields:
              update_fields['assignments'] = {'total': 4, 'completed': 0, 'hardcopy': False}
+        
+        # 4. Sync 'type' with categories (Theory/Practical/Both)
+        is_theory = 'Theory' in cats
+        is_practical = 'Practical' in cats
+        if is_theory and is_practical:
+            update_fields['type'] = 'both'
+        elif is_practical:
+            update_fields['type'] = 'practical'
+        else:
+            update_fields['type'] = 'theory'
 
     if not update_fields:
         return jsonify({"success": True}) 
@@ -957,43 +1032,55 @@ def update_subject_full_details():
 def update_practicals(subject_id):
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     
-    data = request.json
-    update_fields = {}
-    
-    if 'total' in data: update_fields['practicals.total'] = int(data['total'])
-    if 'completed' in data: update_fields['practicals.completed'] = int(data['completed'])
-    if 'hardcopy' in data: update_fields['practicals.hardcopy'] = bool(data['hardcopy'])
-    
-    if not update_fields: return jsonify({"success": True})
+    try:
+        data = request.get_json()
+        if not data: return jsonify({"error": "No data provided"}), 400
         
-    result = subjects_collection.update_one(
-        {'_id': ObjectId(subject_id), 'owner_email': session['user']['email']},
-        {'$set': update_fields}
-    )
-    
-    if result.matched_count == 0: return jsonify({"error": "Subject not found"}), 404
-    return jsonify({"success": True})
+        update_fields = {}
+        
+        if 'total' in data: update_fields['practicals.total'] = int(data['total'])
+        if 'completed' in data: update_fields['practicals.completed'] = int(data['completed'])
+        if 'hardcopy' in data: update_fields['practicals.hardcopy'] = bool(data['hardcopy'])
+        
+        if not update_fields: return jsonify({"success": True})
+            
+        result = subjects_collection.update_one(
+            {'_id': ObjectId(subject_id), 'owner_email': session['user']['email']},
+            {'$set': update_fields}
+        )
+        
+        if result.matched_count == 0: return jsonify({"error": "Subject not found"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error updating practicals: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @api_bp.route('/subject/<subject_id>/assignments', methods=['PUT'])
 def update_assignments(subject_id):
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     
-    data = request.json
-    update_fields = {}
-    
-    if 'total' in data: update_fields['assignments.total'] = int(data['total'])
-    if 'completed' in data: update_fields['assignments.completed'] = int(data['completed'])
-    if 'hardcopy' in data: update_fields['assignments.hardcopy'] = bool(data['hardcopy'])
-    
-    if not update_fields: return jsonify({"success": True})
+    try:
+        data = request.get_json()
+        if not data: return jsonify({"error": "No data provided"}), 400
         
-    result = subjects_collection.update_one(
-        {'_id': ObjectId(subject_id), 'owner_email': session['user']['email']},
-        {'$set': update_fields}
-    )
-    
-    if result.matched_count == 0: return jsonify({"error": "Subject not found"}), 404
-    return jsonify({"success": True})
+        update_fields = {}
+        
+        if 'total' in data: update_fields['assignments.total'] = int(data['total'])
+        if 'completed' in data: update_fields['assignments.completed'] = int(data['completed'])
+        if 'hardcopy' in data: update_fields['assignments.hardcopy'] = bool(data['hardcopy'])
+        
+        if not update_fields: return jsonify({"success": True})
+            
+        result = subjects_collection.update_one(
+            {'_id': ObjectId(subject_id), 'owner_email': session['user']['email']},
+            {'$set': update_fields}
+        )
+        
+        if result.matched_count == 0: return jsonify({"error": "Subject not found"}), 404
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error updating assignments: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @api_bp.route('/update_profile', methods=['POST'])
@@ -1137,7 +1224,7 @@ def handle_manual_courses():
         # We can store as a single array document or individual documents?
         # User current logic is array in localStorage. Single doc is easier to sync full state.
         doc = manual_courses_collection.find_one({"owner_email": user_email})
-        return jsonify(doc['courses'] if doc else [])
+        return Response(json_util.dumps(doc['courses'] if doc else []), mimetype='application/json')
 
     if request.method == 'POST':
         # Full sync of courses list
@@ -1322,6 +1409,7 @@ def import_data():
                 except Exception as e:
                     errors.append(f"Semester result {result.get('semester', 'unknown')}: {str(e)}")
             counts['semester_results'] = result_count
+
         
         # Import academic records
         if 'academic_records' in data and data['academic_records']:
@@ -1429,6 +1517,57 @@ def import_data():
             "error": f"Import failed: {str(e)}"
         }), 500
 
+
+# 4. Skills Persistence
+@api_bp.route('/skills', methods=['GET', 'POST'])
+def handle_skills():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+
+    if request.method == 'GET':
+        skills = list(skills_collection.find({'owner_email': user_email}))
+        # Convert ObjectId to string
+        for skill in skills:
+            skill['_id'] = str(skill['_id'])
+        return jsonify(skills)
+
+    if request.method == 'POST':
+        data = request.json
+        data['owner_email'] = user_email
+        data['created_at'] = datetime.utcnow()
+        if 'progress' in data: data['progress'] = int(data['progress'])
+        
+        result = skills_collection.insert_one(data)
+        return jsonify({"success": True, "id": str(result.inserted_id)})
+
+@api_bp.route('/skills/<skill_id>', methods=['PUT', 'DELETE'])
+def handle_skill_item(skill_id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    
+    try:
+        obj_id = ObjectId(skill_id)
+    except:
+        return jsonify({"error": "Invalid ID"}), 400
+
+    if request.method == 'PUT':
+        data = request.json
+        # Prevent overwriting ownership or id
+        data.pop('_id', None)
+        data.pop('owner_email', None)
+        if 'progress' in data: data['progress'] = int(data['progress'])
+        
+        skills_collection.update_one(
+            {'_id': obj_id, 'owner_email': user_email},
+            {'$set': data}
+        )
+        return jsonify({"success": True})
+
+    if request.method == 'DELETE':
+        skills_collection.delete_one({'_id': obj_id, 'owner_email': user_email})
+        return jsonify({"success": True})
+
+
 @api_bp.route('/add_subject', methods=['POST'])
 def add_subject():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -1446,6 +1585,16 @@ def add_subject():
     if existing_subject:
         return jsonify({"success": True, "message": "Subject already exists", "id": str(existing_subject['_id'])})
 
+
+    cats = data.get('categories', ['Theory'])
+    is_theory = 'Theory' in cats
+    is_practical = 'Practical' in cats
+    
+    # Helper to determine type
+    subj_type = 'theory'
+    if is_theory and is_practical: subj_type = 'both'
+    elif is_practical: subj_type = 'practical'
+
     new_subject = {
         "name": subject_name,
         "owner_email": session['user']['email'],
@@ -1453,12 +1602,13 @@ def add_subject():
         "attended": 0,
         "total": 0,
         "created_at": datetime.utcnow(),
-        "categories": data.get('categories', ['Theory']), # Default to list with Theory
+        "categories": cats,
+        "type": subj_type, # Derived type for Results logic
         "code": data.get('code', ''),
         "professor": data.get('professor', ''),
         "classroom": data.get('classroom', ''),
-        "practicals": { "total": 10, "completed": 0, "hardcopy": False } if 'Practical' in data.get('categories', ['Theory']) else None,
-        "assignments": { "total": 4, "completed": 0 } if 'Assignment' in data.get('categories', ['Theory']) else None,
+        "practicals": { "total": int(data.get('practical_total', 10)), "completed": 0, "hardcopy": False } if 'Practical' in cats else None,
+        "assignments": { "total": int(data.get('assignment_total', 4)), "completed": 0, "hardcopy": False } if 'Assignment' in cats else None,
     }
     
     subjects_collection.insert_one(new_subject)
@@ -1723,8 +1873,34 @@ def get_subjects():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     semester = int(request.args.get('semester', 1))
     query = {"owner_email": session['user']['email'], "semester": semester}
-    subjects = list(subjects_collection.find(query, {"name": 1, "semester": 1, "_id": 1}))
-    return Response(json_util.dumps(subjects), mimetype='application/json')
+    
+    # Fetch all fields (remove projection)
+    subjects = list(subjects_collection.find(query))
+    
+    # Transform to match frontend expectations
+    enriched_subjects = []
+    for s in subjects:
+        total = s.get('total', 0)
+        attended = s.get('attended', 0)
+        pct = calculate_percent(attended, total)
+        
+        enriched_subjects.append({
+            "_id": str(s['_id']),
+            "name": s.get('name'),
+            "code": s.get('code', ''),
+            "professor": s.get('professor', ''),
+            "classroom": s.get('classroom', ''),
+            "attended_classes": attended,
+            "total_classes": total,
+            "attendance_percentage": pct,
+            "semester": s.get('semester'),
+            "type": s.get('type', 'theory'),
+            "categories": s.get('categories', ['Theory']),
+            "practicals": s.get('practicals'),
+            "assignments": s.get('assignments')
+        })
+        
+    return jsonify(enriched_subjects)
 
 @api_bp.route('/subject_details/<subject_id>')
 def get_subject_details(subject_id):

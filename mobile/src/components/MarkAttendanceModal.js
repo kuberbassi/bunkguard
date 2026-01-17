@@ -1,0 +1,262 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, Platform, Dimensions } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
+import { theme } from '../theme';
+import { X, Check, X as XIcon, MoreHorizontal, Calendar as CalendarIcon, Trash2, Edit2, AlertCircle } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+
+const { height } = Dimensions.get('window');
+
+const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading }) => {
+    const { isDark } = useTheme();
+
+    // AMOLED Theme
+    const c = {
+        glassBg: isDark ? ['rgba(10, 10, 10, 0.98)', 'rgba(20, 20, 20, 0.98)'] : ['rgba(255, 255, 255, 0.98)', 'rgba(248, 249, 250, 0.98)'],
+        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        text: isDark ? '#FFF' : '#000',
+        subtext: isDark ? '#9CA3AF' : '#6B7280',
+        primary: '#0A84FF',
+        danger: '#FF3B30',
+        success: isDark ? '#34C759' : '#10B981',
+        surface: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+    };
+
+
+    const styles = getStyles(c, isDark);
+
+    const [advancedClass, setAdvancedClass] = useState(null);
+    const [note, setNote] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState(null);
+
+    const openAdvanced = (cls) => {
+        setAdvancedClass(cls);
+        setSelectedStatus(cls.marked_status || 'present');
+        setNote(cls.note || '');
+    };
+
+    const closeAdvanced = () => {
+        setAdvancedClass(null);
+        setNote('');
+        setSelectedStatus(null);
+    };
+
+    const handleConfirmAdvanced = () => {
+        if (advancedClass) {
+            onMark(advancedClass._id, selectedStatus, note);
+            closeAdvanced();
+        }
+    };
+
+    const handleClearMark = () => {
+        if (advancedClass) {
+            onMark(advancedClass._id, 'pending', '');
+            closeAdvanced();
+        }
+    };
+
+    // --- Renderers ---
+
+    const renderAdvancedContent = () => (
+        <LinearGradient colors={c.glassBg} style={styles.advancedCard}>
+            <View style={styles.advHeader}>
+                <View>
+                    <Text style={styles.advTitle}>{advancedClass.name || advancedClass.code}</Text>
+                    <Text style={styles.advSub}>Modify Attendance</Text>
+                </View>
+                <TouchableOpacity onPress={closeAdvanced} style={styles.iconBtn}>
+                    <X size={22} color={c.text} />
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.statusGrid}>
+                {['present', 'absent', 'cancelled', 'medical'].map(status => {
+                    const isActive = selectedStatus === status;
+                    let activeColor = c.primary;
+                    if (status === 'absent') activeColor = c.danger;
+                    if (status === 'cancelled') activeColor = '#FDBA74';
+
+                    return (
+                        <TouchableOpacity
+                            key={status}
+                            style={[
+                                styles.statusOption,
+                                isActive && { backgroundColor: activeColor, borderColor: activeColor, borderWidth: 0 },
+                                !isActive && { borderWidth: 1, borderColor: c.glassBorder }
+                            ]}
+                            onPress={() => setSelectedStatus(status)}
+                        >
+                            <Text style={[styles.statusLabel, { color: isActive ? '#FFF' : c.subtext, textTransform: 'capitalize' }]}>
+                                {status}
+                            </Text>
+                        </TouchableOpacity>
+                    )
+                })}
+            </View>
+
+            <Text style={styles.label}>Notes</Text>
+            <TextInput
+                style={styles.input}
+                placeholder="Add a note..."
+                placeholderTextColor={c.subtext}
+                value={note}
+                onChangeText={setNote}
+                multiline
+            />
+
+            <View style={styles.advFooter}>
+                <TouchableOpacity style={styles.clearBtn} onPress={handleClearMark}>
+                    <Trash2 size={18} color={c.danger} />
+                    <Text style={{ color: c.danger, fontWeight: '700', fontSize: 13 }}>Clear</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmAdvanced}>
+                    <LinearGradient colors={[c.primary, '#00f2fe']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+                    <Text style={styles.confirmText}>Save Changes</Text>
+                </TouchableOpacity>
+            </View>
+        </LinearGradient>
+    );
+
+    return (
+        <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
+            {/* Backdrop */}
+            <View style={styles.backdrop}>
+                {advancedClass ? (
+                    <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
+                        {renderAdvancedContent()}
+                    </View>
+                ) : (
+                    <LinearGradient colors={c.glassBg} style={styles.modalContent}>
+                        {/* Drag Handle */}
+                        <View style={styles.dragHandle} />
+
+                        {/* Header */}
+                        <View style={styles.header}>
+                            <View>
+                                <Text style={styles.title}>Attendance</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <CalendarIcon size={14} color={c.primary} />
+                                    <Text style={styles.dateText}>{new Date(date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' })}</Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                                <X size={20} color={c.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={{ marginTop: 10 }} showsVerticalScrollIndicator={false}>
+                            {classes.length === 0 ? (
+                                <View style={styles.emptyState}>
+                                    <Text style={{ color: c.subtext }}>No classes scheduled.</Text>
+                                </View>
+                            ) : (
+                                classes.map((cls, index) => {
+                                    const isMarked = cls.marked_status && cls.marked_status !== 'pending';
+                                    const statusColor = cls.marked_status === 'absent' ? c.danger : c.success;
+
+                                    return (
+                                        <View key={index} style={styles.classItem}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.className}>{cls.name || cls.code}</Text>
+                                                <Text style={styles.classTime}>{cls.time || '10:00 AM'} • {cls.type || 'Lecture'}</Text>
+                                            </View>
+
+                                            <View style={styles.actions}>
+                                                {isMarked ? (
+                                                    <TouchableOpacity style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]} onPress={() => openAdvanced(cls)}>
+                                                        <Text style={[styles.statusText, { color: statusColor }]}>{cls.marked_status.toUpperCase()}</Text>
+                                                    </TouchableOpacity>
+                                                ) : (
+                                                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.success + '15' }]} onPress={() => onMark(cls._id, 'present')}>
+                                                            <Check size={20} color={c.success} />
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.danger + '15' }]} onPress={() => onMark(cls._id, 'absent')}>
+                                                            <XIcon size={20} color={c.danger} />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                )}
+
+                                                <TouchableOpacity style={styles.moreBtn} onPress={() => openAdvanced(cls)}>
+                                                    <ValidMoreIcon size={20} color={c.subtext} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    );
+                                })
+                            )}
+                            <View style={{ height: 40 }} />
+                        </ScrollView>
+                    </LinearGradient>
+                )}
+            </View>
+        </Modal>
+    );
+};
+
+const ValidMoreIcon = MoreHorizontal;
+
+const getStyles = (c, isDark) => StyleSheet.create({
+    backdrop: {
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end'
+    },
+    modalContent: {
+        borderTopLeftRadius: 32, borderTopRightRadius: 32,
+        padding: 24, height: height * 0.80,
+        borderWidth: 1, borderColor: c.glassBorder,
+        borderBottomWidth: 0
+    },
+    dragHandle: {
+        width: 40, height: 4, backgroundColor: c.glassBorder, borderRadius: 2,
+        alignSelf: 'center', marginBottom: 20
+    },
+    header: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+        marginBottom: 24
+    },
+    title: { fontSize: 24, fontWeight: '800', color: c.text, letterSpacing: -0.5 },
+    dateText: { fontSize: 14, color: c.primary, fontWeight: '600' },
+    closeBtn: { padding: 8, backgroundColor: c.surface, borderRadius: 20 },
+
+    classItem: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        padding: 16, borderRadius: 20, backgroundColor: c.surface, marginBottom: 12,
+        borderWidth: 1, borderColor: c.glassBorder
+    },
+    className: { fontSize: 16, fontWeight: '700', color: c.text, marginBottom: 4 },
+    classTime: { fontSize: 12, color: c.subtext, fontWeight: '500' },
+
+    actions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    actionBtn: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    moreBtn: { padding: 4 },
+
+    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+    statusText: { fontSize: 11, fontWeight: '800' },
+
+    // Advanced Modal
+    advancedCard: {
+        borderRadius: 32, padding: 24, borderWidth: 1, borderColor: c.glassBorder
+    },
+    advHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+    advTitle: { fontSize: 20, fontWeight: '800', color: c.text },
+    advSub: { fontSize: 13, color: c.subtext, marginTop: 2 },
+
+    statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
+    statusOption: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16, flexGrow: 1, alignItems: 'center', minWidth: '40%' },
+    statusLabel: { fontWeight: '700', fontSize: 14 },
+
+    label: { fontSize: 12, color: c.subtext, fontWeight: '700', textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
+    input: {
+        backgroundColor: c.surface, borderRadius: 16, padding: 16, color: c.text,
+        minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: c.glassBorder, marginBottom: 24
+    },
+
+    advFooter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+    clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 12 },
+    confirmBtn: { flex: 1, height: 50, borderRadius: 25, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+    confirmText: { color: '#FFF', fontWeight: '800', fontSize: 16, zIndex: 1 }
+});
+
+export default MarkAttendanceModal;

@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Acadhub",
+    "slug": "acadhub-mobile-kuber",
+    "description": "Your ultimate academic companion for tracking attendance, results, and skills.",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.kuberbassi.acadhubmobilekuber",
+      "usesCleartextTraffic": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "acadhub",
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3196a41e-3b21-470e-979c-c6c7b797c723"
+      }
+    }
+  }
+}

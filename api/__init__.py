@@ -1,7 +1,7 @@
 # api/__init__.py
 
 import os
-from flask import Flask, request
+from flask import Flask, request, session, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -9,22 +9,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-try:
-    # MongoDB Connection with Connection Pooling for 50+ concurrent users
-    client = MongoClient(
-        os.getenv('MONGO_URI'),
-        maxPoolSize=50,  # Max concurrent connections
-        minPoolSize=10,  # Keep minimum connections alive
-        maxIdleTimeMS=45000,  # Close idle connections after 45s
-        waitQueueTimeoutMS=2500,  # Wait max 2.5s for available connection
-        serverSelectionTimeoutMS=5000,  # Server selection timeout
-        connectTimeoutMS=10000,  # Initial connection timeout
-        socketTimeoutMS=20000,  # Socket operation timeout
-    )
-    db = client.get_database('attendanceDB')
-except Exception as e:
-    print(f"MongoDB failed: {e}")
-    db = None
+# MongoDB Connection with optimized timeouts for stability
+# We don't catch exceptions here because MongoClient is lazy.
+# If it fails to connect later, it will retry based on parameters.
+# Setting it up globally ensures the connection pool is shared.
+client = MongoClient(
+    os.getenv('MONGO_URI'),
+    maxPoolSize=50,
+    minPoolSize=5,
+    maxIdleTimeMS=45000,
+    serverSelectionTimeoutMS=30000,  # Patient for replica set elections
+    connectTimeoutMS=30000,         # More time for SSL handshakes
+    socketTimeoutMS=30000,
+    waitQueueTimeoutMS=5000,
+    retryWrites=True,                # Handle transient network errors
+    retryReads=True
+)
+db = client.get_database('attendanceDB')
 
 from .auth import oauth
 
@@ -47,12 +48,15 @@ def create_app():
     app.config['SESSION_COOKIE_SAMESITE'] = 'None' if is_production else 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = is_production # Secure in production
     
-    # Enable CORS for React frontend
+     # Enable CORS for React frontend (Explicit ports for stability)
     CORS(app, 
          resources={r"/*": {
              "origins": [
                  "http://localhost:5173", 
-                 "http://127.0.0.1:5173", 
+                 "http://127.0.0.1:5173",
+                 "http://localhost:8081",     # Expo Web
+                 "http://localhost:19006",    # Expo Legacy
+                 "http://192.168.0.159:8081", # Network IP
                  "https://acadhubkb.vercel.app",
                  "https://acadhub.kuberbassi.com"
              ],
@@ -61,6 +65,42 @@ def create_app():
              "expose_headers": ["Content-Type", "Authorization"],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
          }})
+
+    # JWT-to-Session middleware for mobile app compatibility
+    @app.before_request
+    def inject_jwt_into_session():
+        """
+        Middleware: If JWT token is present in Authorization header (mobile),
+        inject user data into session so existing session-based endpoints work.
+        """
+        import jwt as jwt_lib
+        
+        # Skip if already have session
+        if 'user' in session:
+            return
+        
+        # Check for JWT token
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            try:
+                payload = jwt_lib.decode(
+                    token,
+                    os.getenv('FLASK_SECRET_KEY', 'dev-secret-key'),
+                    algorithms=['HS256']
+                )
+                
+                # Inject user email into session (temporary, request-scoped)
+                session['user'] = {
+                    'email': payload.get('email'),
+                    'name': payload.get('name', 'Mobile User')
+                }
+                # Mark as JWT-based for debugging
+                session['auth_method'] = 'jwt'
+                
+            except (jwt_lib.ExpiredSignatureError, jwt_lib.InvalidTokenError) as e:
+                print(f"⚠️ JWT validation failed: {e}")
+                # Don't inject anything, endpoint will return 401
 
     @app.after_request
     def add_security_headers(response):
@@ -73,6 +113,28 @@ def create_app():
         if request.scheme == 'https':
              response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
              
+        return response
+    
+
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        import traceback
+        print(f"🔥 SERVER ERROR: {str(e)}")
+        traceback.print_exc()
+        response = jsonify({"error": str(e), "trace": traceback.format_exc()})
+        response.status_code = 500
+        # Determine origin for CORS
+        request_origin = request.headers.get('Origin')
+        allowed_origins = [
+            "http://localhost:5173", "http://127.0.0.1:5173",
+            "http://localhost:8081", "http://localhost:19006",
+            "https://acadhubkb.vercel.app", "https://acadhub.kuberbassi.com"
+        ]
+        if request_origin in allowed_origins or (request_origin and request_origin.startswith("http://localhost:")):
+            response.headers['Access-Control-Allow-Origin'] = request_origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = "Content-Type, Authorization, Accept"
         return response
     
     oauth.init_app(app)

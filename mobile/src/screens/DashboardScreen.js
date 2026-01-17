@@ -1,0 +1,546 @@
+import React, { useState, useCallback, useRef } from 'react';
+import {
+    View, Text, StyleSheet, TouchableOpacity, RefreshControl,
+    Platform, StatusBar, Animated, Dimensions
+} from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
+import { theme, Layout } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell } from 'lucide-react-native';
+import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
+import SemesterSelector from '../components/SemesterSelector';
+import EnhancedSubjectCard from '../components/EnhancedSubjectCard';
+import AddSubjectModal from '../components/AddSubjectModal';
+import AnimatedHeader from '../components/AnimatedHeader';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
+
+const DashboardScreen = ({ navigation }) => {
+    const { user } = useAuth();
+    const { isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+
+    // AMOLED Dark Mode Palette
+    const c = {
+        // Background - Pure Black for AMOLED
+        bgGradStart: isDark ? '#000000' : '#FFFFFF',
+        bgGradMid: isDark ? '#000000' : '#F5F5F7',
+        bgGradEnd: isDark ? '#000000' : '#FFFFFF',
+
+        // Glass Cards - Subtle on AMOLED
+        glassBgStart: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
+        glassBgEnd: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+
+        text: isDark ? '#FFFFFF' : '#000000',
+        subtext: isDark ? '#8E8E93' : '#6E6E73',
+
+        primary: isDark ? '#FFFFFF' : '#000000', // White highlights in dark
+        accent: '#FF3B30', // Red accent
+
+        // Status Colors
+        success: '#34C759',
+        danger: '#FF3B30',
+    };
+
+    const styles = getStyles(c, isDark);
+    const scrollY = useRef(new Animated.Value(0)).current;
+
+    const [dashboardData, setDashboardData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [selectedSemester, setSelectedSemester] = useState(1);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [editingSubject, setEditingSubject] = useState(null);
+
+    const fetchDashboardData = async () => {
+        try {
+            const response = await api.get(`/api/dashboard_data?semester=${selectedSemester}`);
+            setDashboardData(response.data);
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchDashboardData();
+        }, [selectedSemester])
+    );
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchDashboardData();
+    }
+
+    const handleSaveSubject = async (data) => {
+        try {
+            if (editingSubject) {
+                if (data.isOverride) {
+                    await api.post('/api/update_attendance_count', {
+                        subject_id: data.subject_id,
+                        attended: data.attended,
+                        total: data.total
+                    });
+                }
+                await api.post('/api/update_subject_full_details', data);
+            } else {
+                await api.post('/api/add_subject', {
+                    subject_name: data.name,
+                    semester: data.semester,
+                    ...data
+                });
+            }
+            setModalVisible(false);
+            setEditingSubject(null);
+            fetchDashboardData();
+        } catch (error) {
+            console.error("Save subject failed", error);
+            alert("Failed to save subject.");
+        }
+    };
+
+    const handleDeleteSubject = async (subjectId) => {
+        try {
+            await api.delete(`/api/delete_subject/${subjectId}`);
+            setModalVisible(false);
+            setEditingSubject(null);
+            fetchDashboardData();
+        } catch (error) {
+            console.error("Delete subject failed", error);
+            alert("Failed to delete subject.");
+        }
+    };
+
+    const overallAttendance = dashboardData?.overall_attendance || 0;
+    const isAtRisk = overallAttendance < 75;
+    const userName = user?.name?.split(' ')[0] || 'Friend';
+    const dateText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    // HEADER ANIMATIONS
+    const headerHeight = scrollY.interpolate({
+        inputRange: [0, 100],
+        outputRange: [Layout.header.maxHeight, Layout.header.minHeight],
+        extrapolate: 'clamp'
+    });
+
+    const titleSize = scrollY.interpolate({
+        inputRange: [0, 100],
+        outputRange: [Layout.header.maxTitleSize, Layout.header.minTitleSize],
+        extrapolate: 'clamp'
+    });
+
+    const subOpacity = scrollY.interpolate({
+        inputRange: [0, 50],
+        outputRange: [1, 0],
+        extrapolate: 'clamp'
+    });
+
+    const subHeight = scrollY.interpolate({
+        inputRange: [0, 50],
+        outputRange: [20, 0],
+        extrapolate: 'clamp'
+    });
+
+    const getGreeting = () => {
+        const h = new Date().getHours();
+        if (h < 12) return 'Good Morning';
+        if (h < 18) return 'Good Afternoon';
+        return 'Good Evening';
+    };
+
+    const hasUnread = dashboardData?.subjects?.some(s => s.status_message?.includes('Attend')) || false;
+
+    return (
+        <View style={{ flex: 1 }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
+            {/* FULL SCREEN FLUID GRADIENT BACKGROUND */}
+            <LinearGradient
+                colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]}
+                style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            />
+
+            {/* UNIVERSAL ANIMATED HEADER */}
+            <AnimatedHeader
+                scrollY={scrollY}
+                title={getGreeting()}
+                subtitle={`Welcome back, ${userName}!`}
+                isDark={isDark}
+                colors={c}
+                rightComponent={
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('Notifications')}
+                        style={styles.bellBtn}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Bell size={24} color={c.text} />
+                        {hasUnread && <View style={styles.badgeDot} />}
+                    </TouchableOpacity>
+                }
+            />
+
+            <Animated.ScrollView
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
+                onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                    { useNativeDriver: false }
+                )}
+                scrollEventThrottle={16}
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />
+
+                {/* LIQUID HERO CARD */}
+                <LinearGradient
+                    colors={isAtRisk ? [c.glassBgStart, c.glassBgStart] : [c.glassBgStart, c.glassBgStart]}
+                    style={styles.heroCard}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                >
+                    <View style={styles.heroInner}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.heroLabel}>AVERAGE ATTENDANCE</Text>
+                            <View style={styles.heroValueRow}>
+                                <Text style={styles.heroValue}>{overallAttendance.toFixed(1)}</Text>
+                                <Text style={styles.heroSymbol}>%</Text>
+                            </View>
+
+                            <View style={[styles.statusPill, {
+                                borderColor: isAtRisk ? c.danger : c.success,
+                                backgroundColor: isAtRisk ? c.danger + '10' : c.success + '10'
+                            }]}>
+                                <Text style={[styles.statusText, { color: isAtRisk ? c.danger : c.success }]}>
+                                    {isAtRisk ? 'Action Needed' : 'Fluid & Smooth'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Decorative Graphic */}
+                        <View style={styles.ringContainer}>
+                            <LinearGradient
+                                colors={isAtRisk ? [c.danger, '#ffffff00'] : [c.success, '#ffffff00']}
+                                style={styles.ring}
+                            />
+                        </View>
+                    </View>
+                </LinearGradient>
+
+                {/* STATS ROW */}
+                <View style={styles.statsRow}>
+                    <LinearGradient
+                        colors={[c.glassBgStart, c.glassBgEnd]}
+                        style={styles.statCard}
+                    >
+                        <Book size={20} color={c.text} opacity={0.8} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.statLabel} numberOfLines={1}>TOTAL</Text>
+                            <Text style={styles.statValue}>{dashboardData?.total_subjects || 0}</Text>
+                        </View>
+                    </LinearGradient>
+
+
+                    <TouchableOpacity
+                        style={{ flex: 1.2, minWidth: 130 }}
+                        onPress={() => {
+                            setEditingSubject(null);
+                            setModalVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <LinearGradient
+                            colors={isDark ? ['#1C1C1E', '#2C2C2E'] : [c.accent + '10', c.accent + '18']}
+                            style={styles.addCourseBtn}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            <View style={styles.addCourseIconBox}>
+                                <Plus size={20} color={c.accent} strokeWidth={2.5} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.addCourseLabel} numberOfLines={1}>Add Subject</Text>
+                                <Text style={styles.addCourseSub} numberOfLines={1}>Quick add</Text>
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </View>
+
+                {/* SECTION TITLE & FILTER */}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>My Courses</Text>
+                    <SemesterSelector
+                        selectedSemester={selectedSemester}
+                        onSelect={setSelectedSemester}
+                        isDark={isDark}
+                    />
+                </View>
+
+                {/* GLASS SUBJECT LIST */}
+                <View style={styles.list}>
+                    {dashboardData?.subjects?.map((subject, index) => (
+                        <EnhancedSubjectCard
+                            key={subject._id || `subj_${index}`}
+                            subject={subject}
+                            isDark={isDark}
+                            onPress={() => {
+                                setEditingSubject(subject);
+                                setModalVisible(true);
+                            }}
+                        />
+                    ))}
+
+                    {(!dashboardData?.subjects || dashboardData.subjects.length === 0) && !loading && (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyText}>No fluid in this container.</Text>
+                        </View>
+                    )}
+                </View>
+
+                <View style={{ height: 100 }} />
+            </Animated.ScrollView>
+
+            <AddSubjectModal
+                visible={modalVisible}
+                onClose={() => {
+                    setModalVisible(false);
+                    setEditingSubject(null);
+                }}
+                onSave={handleSaveSubject}
+                onDelete={handleDeleteSubject}
+                initialData={editingSubject}
+                isDark={isDark}
+            />
+        </View>
+    );
+};
+
+const getStyles = (c, isDark) => StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        paddingHorizontal: 24,
+        paddingBottom: 20,
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 50,
+    },
+    headerContent: {
+        flex: 1,
+        justifyContent: 'flex-end',
+        paddingBottom: 4
+    },
+    headerTitle: {
+        fontWeight: '900',
+        color: c.text,
+        letterSpacing: -1,
+        includeFontPadding: false
+    },
+    headerSub: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: c.subtext,
+        textTransform: 'uppercase',
+        marginTop: 0,
+        letterSpacing: 1
+    },
+    profileBtn: {
+        marginBottom: 8,
+        marginLeft: 16
+    },
+    avatarGradient: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    avatarText: {
+        color: '#FFF',
+        fontWeight: 'bold',
+        fontSize: 18
+    },
+    bellBtn: {
+        marginBottom: 8,
+        marginLeft: 12,
+        justifyContent: 'center',
+        position: 'relative'
+    },
+    badgeDot: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: c.danger
+    },
+    // Content
+    scrollContent: {
+        paddingHorizontal: 24,
+    },
+    heroCard: {
+        borderRadius: 32,
+        padding: 24,
+        height: 190,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        overflow: 'hidden'
+    },
+    heroInner: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        zIndex: 2
+    },
+    ringContainer: {
+        position: 'absolute',
+        right: -40,
+        top: -40,
+        width: 180,
+        height: 180,
+        borderRadius: 90,
+        zIndex: 1,
+        opacity: 0.2
+    },
+    ring: {
+        flex: 1,
+        borderRadius: 90
+    },
+    heroLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: c.subtext,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 4
+    },
+    heroValueRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    heroValue: {
+        fontSize: 64,
+        fontWeight: '800',
+        color: c.text,
+        letterSpacing: -3
+    },
+    heroSymbol: {
+        fontSize: 24,
+        fontWeight: '600',
+        color: c.subtext,
+        marginLeft: 4,
+        marginBottom: 12
+    },
+    statusPill: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        borderWidth: 1,
+        alignSelf: 'flex-start'
+    },
+    statusText: {
+        fontSize: 13,
+        fontWeight: '800',
+        letterSpacing: 0.5
+    },
+    // Stats
+    statsRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 32
+    },
+    statCard: {
+        flex: 1,
+        borderRadius: 20,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        height: 80
+    },
+    statLabel: {
+        fontSize: 9,
+        color: c.subtext,
+        fontWeight: '700',
+        letterSpacing: 0.3
+    },
+    statValue: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: c.text
+    },
+    // Add Course Button
+    addCourseBtn: {
+        flex: 1,
+        borderRadius: 20,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        height: 80,
+        borderWidth: 1.5,
+        borderColor: isDark ? 'rgba(255,255,255,0.12)' : c.accent + '40'
+    },
+    addCourseIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        backgroundColor: c.accent + '15',
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    addCourseLabel: {
+        fontSize: 14,
+        color: c.text,
+        fontWeight: '700',
+        letterSpacing: 0.2
+    },
+    addCourseSub: {
+        fontSize: 11,
+        color: c.subtext,
+        fontWeight: '500',
+        marginTop: 1
+    },
+    // List
+    sectionHeader: {
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: c.text,
+        letterSpacing: -0.5,
+        marginBottom: 16
+    },
+    list: {
+        gap: 16
+    },
+    emptyState: {
+        alignItems: 'center',
+        paddingVertical: 40
+    },
+    emptyText: {
+        color: c.subtext,
+        fontSize: 15
+    }
+});
+
+export default DashboardScreen;
