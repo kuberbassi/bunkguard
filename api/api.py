@@ -12,12 +12,12 @@ import json
 import base64
 from bson import ObjectId, json_util
 
-from .rate_limiter import limiter, RELAXED_LIMIT, MODERATE_LIMIT
+from api.rate_limiter import limiter, RELAXED_LIMIT, MODERATE_LIMIT
 from flask import Flask, Blueprint, jsonify, request, session, send_from_directory, Response
 from itertools import groupby
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient, IndexModel, ASCENDING, DESCENDING
-from .database import db  # ✅ Import central db to avoid circularity
+from api.database import db  # ✅ Import central db to avoid circularity
 # try:
 #     from pywebpush import webpush, WebPushException
 # except ImportError:

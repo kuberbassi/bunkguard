@@ -6,7 +6,7 @@ from urllib.parse import urlencode, quote_plus
 from bson import ObjectId
 import jwt
 from datetime import datetime, timedelta
-from .database import db
+from api.database import db
 
 auth_bp = Blueprint('auth', __name__)
 

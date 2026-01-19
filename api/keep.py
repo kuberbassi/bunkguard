@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, session, request
 from bson import ObjectId
 from datetime import datetime
 import traceback
-from . import db
+from api.database import db
 
 keep_bp = Blueprint('keep', __name__, url_prefix='/api/keep')
 

@@ -3,7 +3,7 @@
 from flask import render_template, session, redirect, url_for, send_from_directory, current_app, Response
 from flask import Blueprint
 from datetime import datetime
-from . import db
+from api.database import db
 import os
 
 views_bp = Blueprint('views', __name__)

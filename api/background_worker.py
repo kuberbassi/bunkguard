@@ -4,8 +4,8 @@ import threading
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from . import db
-from .classroom import get_cached_courses, fetch_course_data
+from api.database import db
+from api.classroom import get_cached_courses, fetch_course_data
 # Collection to track what we've already sent
 users_collection = db.get_collection('users')
 

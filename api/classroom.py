@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 import time
 import os
-from . import db
+from api.database import db
 
 classroom_bp = Blueprint('classroom', __name__, url_prefix='/api/classroom')
 

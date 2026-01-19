@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from .database import db
+from api.database import db
 
 def create_app():
     # Get current directory (api/)
@@ -119,7 +119,7 @@ def create_app():
             response.headers['Access-Control-Allow-Headers'] = "Content-Type, Authorization, Accept"
         return response
     
-    from .auth import auth_bp, oauth
+    from api.auth import auth_bp, oauth
     oauth.init_app(app)
     
     try:
@@ -133,12 +133,12 @@ def create_app():
     except Exception as e:
         print(f"OAuth warning: {e}")
     
-    from .api import api_bp
-    from .auth import auth_bp
-    from .classroom import classroom_bp
-    from .keep import keep_bp
+    from api.api import api_bp
+    from api.auth import auth_bp
+    from api.classroom import classroom_bp
+    from api.keep import keep_bp
 
-    from .rate_limiter import init_limiter
+    from api.rate_limiter import init_limiter
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
