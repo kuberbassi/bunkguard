@@ -14,6 +14,7 @@ import {
 } from 'lucide-react-native';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { LinearGradient } from 'expo-linear-gradient';
+import SemesterSelector from '../components/SemesterSelector';
 
 // Enable LayoutAnimation
 if (Platform.OS === 'android') {
@@ -22,9 +23,12 @@ if (Platform.OS === 'android') {
     }
 }
 
+import { useSemester } from '../contexts/SemesterContext';
+
 const ResultsScreen = ({ navigation }) => {
     const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
+    const { selectedSemester } = useSemester();
 
     // AMOLED Theme
     const c = {
@@ -56,8 +60,6 @@ const ResultsScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Selection
-    const [selectedSem, setSelectedSem] = useState(null);
     const [availableSems, setAvailableSems] = useState([]);
     const [stats, setStats] = useState({ cgpa: '0.00', totalCredits: 0 });
     const [showGradingRef, setShowGradingRef] = useState(false);
@@ -79,10 +81,6 @@ const ResultsScreen = ({ navigation }) => {
             setResults(data);
             setAvailableSems(sems);
             calculateOverallStats(data);
-            if (!selectedSem) {
-                const hasDataSems = data.map(r => r.semester).sort((a, b) => b - a);
-                setSelectedSem(hasDataSems.length > 0 ? hasDataSems[0] : 1);
-            }
         } catch (error) {
             console.error(error);
         } finally {
@@ -122,11 +120,11 @@ const ResultsScreen = ({ navigation }) => {
                 total = parseInt(sub.internal_theory) || 0;
                 max = 100;
             } else {
-                if (type === 'theory' || type === 'both') {
+                if (type === 'theory') {
                     total += (parseInt(sub.internal_theory) || 0) + (parseInt(sub.external_theory) || 0);
                     max += 100;
                 }
-                if (type === 'practical' || type === 'both') {
+                if (type === 'practical') {
                     total += (parseInt(sub.internal_practical) || 0) + (parseInt(sub.external_practical) || 0);
                     max += 100;
                 }
@@ -163,11 +161,11 @@ const ResultsScreen = ({ navigation }) => {
 
     const handleEditStart = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        const current = results.find(r => r.semester === selectedSem);
+        const current = results.find(r => r.semester === selectedSemester);
         if (current) {
             setEditData(JSON.parse(JSON.stringify(current)));
         } else {
-            setEditData({ semester: selectedSem, subjects: [], sgpa: 0, total_credits: 0 });
+            setEditData({ semester: selectedSemester, subjects: [], sgpa: 0, total_credits: 0 });
         }
         setIsEditing(true);
     };
@@ -220,10 +218,10 @@ const ResultsScreen = ({ navigation }) => {
                 displayTotal = parseInt(sub.internal_theory) || 0;
             } else {
                 let t = 0;
-                if (type === 'theory' || type === 'both') {
+                if (type === 'theory') {
                     t += (parseInt(sub.internal_theory) || 0) + (parseInt(sub.external_theory) || 0);
                 }
-                if (type === 'practical' || type === 'both') {
+                if (type === 'practical') {
                     t += (parseInt(sub.internal_practical) || 0) + (parseInt(sub.external_practical) || 0);
                 }
                 displayTotal = t;
@@ -257,13 +255,13 @@ const ResultsScreen = ({ navigation }) => {
                             </View>
                         ) : (
                             <>
-                                {(type === 'theory' || type === 'both') && (
+                                {type === 'theory' && (
                                     <View style={styles.markPill}>
                                         <Text style={styles.markLabel}>THEORY</Text>
                                         <Text style={styles.markValue}>{sub.internal_theory || 0} + {sub.external_theory || 0}</Text>
                                     </View>
                                 )}
-                                {(type === 'practical' || type === 'both') && (
+                                {type === 'practical' && (
                                     <View style={styles.markPill}>
                                         <Text style={styles.markLabel}>PRACTICAL</Text>
                                         <Text style={styles.markValue}>{sub.internal_practical || 0} + {sub.external_practical || 0}</Text>
@@ -305,7 +303,7 @@ const ResultsScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.typeRow}>
-                {['theory', 'practical', 'both', 'nues'].map(t => (
+                {['theory', 'practical', 'nues'].map(t => (
                     <TouchableOpacity
                         key={t}
                         style={[styles.typeChip, sub.type === t && styles.typeChipActive]}
@@ -329,7 +327,7 @@ const ResultsScreen = ({ navigation }) => {
                     </View>
                 ) : (
                     <>
-                        {(sub.type === 'theory' || sub.type === 'both') && (
+                        {sub.type === 'theory' && (
                             <>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.miniLabel}>Th Int</Text>
@@ -351,7 +349,7 @@ const ResultsScreen = ({ navigation }) => {
                                 </View>
                             </>
                         )}
-                        {(sub.type === 'practical' || sub.type === 'both') && (
+                        {sub.type === 'practical' && (
                             <>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.miniLabel}>Pr Int</Text>
@@ -379,7 +377,7 @@ const ResultsScreen = ({ navigation }) => {
         </LinearGradient>
     );
 
-    const currentResult = results.find(r => r.semester === selectedSem);
+    const currentResult = results.find(r => r.semester === selectedSemester);
 
     // Header Animation
 
@@ -399,23 +397,7 @@ const ResultsScreen = ({ navigation }) => {
                 onBack={() => navigation.goBack()}
             >
                 {/* Semester Selector */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.semScroll}>
-                    {availableSems.map(sem => (
-                        <TouchableOpacity
-                            key={sem}
-                            style={[
-                                styles.semChip,
-                                selectedSem === sem && styles.semChipActive
-                            ]}
-                            onPress={() => setSelectedSem(sem)}
-                        >
-                            <Text style={[
-                                styles.semText,
-                                selectedSem === sem && styles.semTextActive
-                            ]}>Sem {sem}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                <SemesterSelector isDark={isDark} />
             </AnimatedHeader>
 
             <Animated.ScrollView
@@ -464,7 +446,7 @@ const ResultsScreen = ({ navigation }) => {
 
                 {/* ACTIONS */}
                 <View style={styles.actionRow}>
-                    <Text style={styles.sectionTitle}>{isEditing ? `Editing Sem ${selectedSem}` : 'Subjects'}</Text>
+                    <Text style={styles.sectionTitle}>{isEditing ? `Editing Sem ${selectedSemester}` : 'Subjects'}</Text>
                     {!isEditing ? (
                         <TouchableOpacity style={styles.iconBtn} onPress={handleEditStart}>
                             <Edit3 size={20} color={c.primary} />

@@ -4,7 +4,15 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-nati
 import { theme } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const SemesterSelector = ({ selectedSemester, onSelect, isDark }) => {
+import { useSemester } from '../contexts/SemesterContext';
+
+const SemesterSelector = ({ selectedSemester: propSem, onSelect: propOnSelect, isDark }) => {
+    const { selectedSemester: globalSem, updateSemester } = useSemester();
+
+    // Use prop if provided, otherwise use global context
+    const currentSem = propSem !== undefined ? propSem : globalSem;
+    const handleSelect = propOnSelect || updateSemester;
+
     // Aquamorphic Palette for Selector
     const c = {
         glassBg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.7)',
@@ -20,18 +28,17 @@ const SemesterSelector = ({ selectedSemester, onSelect, isDark }) => {
     return (
         <View style={styles.container}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {/* Scrollable List */}
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
                 >
                     {semesters.map((sem) => {
-                        const isSelected = selectedSemester === sem;
+                        const isSelected = currentSem === sem;
                         return (
                             <TouchableOpacity
                                 key={sem}
-                                onPress={() => onSelect(sem)}
+                                onPress={() => handleSelect(sem)}
                                 activeOpacity={0.7}
                             >
                                 {isSelected ? (

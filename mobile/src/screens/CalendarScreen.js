@@ -9,8 +9,11 @@ import { Clock, MapPin, CheckCircle, XCircle, AlertCircle, MoreHorizontal, Calen
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 
+import { useSemester } from '../contexts/SemesterContext';
+
 const CalendarScreen = ({ navigation }) => {
     const { isDark } = useTheme();
+    const { selectedSemester } = useSemester();
 
     // AMOLED Theme
     const c = {
@@ -41,11 +44,14 @@ const CalendarScreen = ({ navigation }) => {
     const [dayClasses, setDayClasses] = useState([]);
     const [loadingClasses, setLoadingClasses] = useState(false);
 
-    useEffect(() => { fetchAttendanceHistory(); fetchClassesForDate(selectedDate); }, []);
+    useEffect(() => {
+        fetchAttendanceHistory();
+        fetchClassesForDate(selectedDate);
+    }, [selectedSemester]);
 
     const fetchAttendanceHistory = async () => {
         try {
-            const response = await api.get('/api/attendance_logs?limit=100');
+            const response = await api.get(`/api/attendance_logs?limit=100&semester=${selectedSemester}`);
             const marks = {};
             response.data.logs.forEach(log => {
                 const color = log.status === 'absent' ? c.danger : c.success;
@@ -58,7 +64,7 @@ const CalendarScreen = ({ navigation }) => {
     const fetchClassesForDate = async (date) => {
         setLoadingClasses(true);
         try {
-            const response = await api.get(`/api/classes_for_date?date=${date}`);
+            const response = await api.get(`/api/classes_for_date?date=${date}&semester=${selectedSemester}`);
             setDayClasses(response.data);
         } catch (error) { console.error(error); } finally { setLoadingClasses(false); }
     };
@@ -117,12 +123,12 @@ const CalendarScreen = ({ navigation }) => {
                             selectedDayBackgroundColor: c.primary,
                             selectedDayTextColor: '#FFF',
                             todayTextColor: c.primary,
-                            dayTextColor: c.text,
-                            textDisabledColor: c.glassBorder,
+                            dayTextColor: isDark ? '#FFFFFF' : '#000000', // Explicit white for dark
+                            textDisabledColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
                             dotColor: c.primary,
                             selectedDotColor: '#FFF',
                             arrowColor: c.primary,
-                            monthTextColor: c.text,
+                            monthTextColor: isDark ? '#FFFFFF' : '#000000', // Explicit white for dark
                             indicatorColor: c.primary,
                             textDayFontWeight: '600',
                             textMonthFontWeight: '800',
@@ -130,6 +136,7 @@ const CalendarScreen = ({ navigation }) => {
                             textDayFontSize: 14,
                         }}
                         enableSwipeMonths={true}
+                        displayLoadingIndicator={false}
                     />
                 </LinearGradient>
 

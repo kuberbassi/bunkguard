@@ -7,6 +7,7 @@ from bson import ObjectId
 import jwt
 from datetime import datetime, timedelta
 from api.database import db
+import time
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -118,13 +119,17 @@ def google_auth():
             return jsonify({"error": "Failed to generate security token"}), 500
             
         # 5. Also set session for web compatibility
+        # Update: Store tokens INSIDE user dict for Classroom API compatibility
         session['user'] = {
             'email': db_user['email'],
             'name': db_user.get('name'),
-            'picture': db_user.get('picture')
+            'picture': db_user.get('picture'),
+            'google_token': access_token,
+            'google_refresh_token': refresh_token,
+            'google_token_expiry': time.time() + expires_in
         }
         
-        # Store tokens in session (for Classroom API usage)
+        # Keep legacy session keys just in case other parts use them
         session['google_access_token'] = access_token
         if refresh_token:
             session['google_refresh_token'] = refresh_token

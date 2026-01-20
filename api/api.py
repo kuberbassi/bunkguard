@@ -138,6 +138,49 @@ def get_profile():
         })
 
 
+@api_bp.route('/update_profile', methods=['PUT'])
+def update_profile():
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    user_email = session['user']['email']
+    data = request.json
+    
+    # Allowed fields
+    allowed = ['name', 'course', 'semester', 'batch', 'college', 'phone', 'gender', 'address', 'guardian_name', 'guardian_phone']
+    update_data = {k: v for k, v in data.items() if k in allowed}
+    
+    if 'semester' in update_data:
+        try:
+            update_data['semester'] = int(update_data['semester'])
+        except:
+            pass
+            
+    if not update_data:
+        return jsonify({"error": "No valid fields to update"}), 400
+        
+    users_collection.update_one(
+        {'email': user_email},
+        {'$set': update_data}
+    )
+    
+    # Sync semester to preferences
+    if 'semester' in update_data:
+         preferences_collection.update_one(
+            {'owner_email': user_email},
+            {'$set': {'preferences.semester': update_data['semester']}},
+            upsert=True
+         )
+    
+    # Update Session
+    # session['user'] is a dict, so we can update it
+    # But strictly speaking session is immutable-ish in some contexts without reassignment
+    # Flask session handles dict updates if modified=True
+    for k, v in update_data.items():
+        session['user'][k] = v
+    session.modified = True
+    
+    return jsonify({"success": True})
+
+
 @api_bp.route('/upload_pfp', methods=['POST'])
 def upload_pfp():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -150,14 +193,14 @@ def upload_pfp():
 
     if file:
         try:
-            # Check file size (max 500KB for base64 safety in Mongo)
+            # Check file size (max 5MB for base64 safety in Mongo)
             # Read first to check size
             file.seek(0, os.SEEK_END)
             size = file.tell()
             file.seek(0)
             
-            if size > 500 * 1024:
-                return jsonify({"error": "File too large. Max 500KB."}), 400
+            if size > 5 * 1024 * 1024:
+                return jsonify({"error": "File too large. Max 5MB."}), 400
                 
             # Read and Encode
             file_data = file.read()
@@ -1084,14 +1127,14 @@ def update_assignments(subject_id):
 
 
 @api_bp.route('/update_profile', methods=['POST'])
-def update_profile():
+def update_profile_post():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     
     data = request.json
     user_email = session['user']['email']
     
     # Fields allowed to be updated
-    allowed_fields = ['name', 'branch', 'college', 'semester', 'batch']
+    allowed_fields = ['name', 'branch', 'college', 'semester', 'batch', 'course']
     update_data = {}
     
     for field in allowed_fields:
@@ -1315,22 +1358,7 @@ def approve_leave(log_id):
     else:
         return jsonify({"error": "Leave could not be approved or was already approved."}), 400
 
-@api_bp.route('/preferences', methods=['GET', 'POST'])
-def handle_preferences():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    if request.method == 'POST':
-        threshold = request.json.get('threshold')
-        timetable_collection.update_one(
-            {'owner_email': user_email},
-            {'$set': {'preferences.threshold': int(threshold)}},
-            upsert=True
-        )
-        log_user_action(user_email, "Preferences Updated", f"Set attendance threshold to {threshold}%.")
-        return jsonify({"success": True})
-    user_prefs_doc = timetable_collection.find_one({'owner_email': user_email}, {'preferences': 1})
-    preferences = user_prefs_doc.get('preferences', {}) if user_prefs_doc else {}
-    return jsonify(preferences)
+# Removed duplicate handle_preferences
 
 
 
@@ -1519,53 +1547,9 @@ def import_data():
 
 
 # 4. Skills Persistence
-@api_bp.route('/skills', methods=['GET', 'POST'])
-def handle_skills():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
+# Removed duplicate handle_skills
 
-    if request.method == 'GET':
-        skills = list(skills_collection.find({'owner_email': user_email}))
-        # Convert ObjectId to string
-        for skill in skills:
-            skill['_id'] = str(skill['_id'])
-        return jsonify(skills)
-
-    if request.method == 'POST':
-        data = request.json
-        data['owner_email'] = user_email
-        data['created_at'] = datetime.utcnow()
-        if 'progress' in data: data['progress'] = int(data['progress'])
-        
-        result = skills_collection.insert_one(data)
-        return jsonify({"success": True, "id": str(result.inserted_id)})
-
-@api_bp.route('/skills/<skill_id>', methods=['PUT', 'DELETE'])
-def handle_skill_item(skill_id):
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    user_email = session['user']['email']
-    
-    try:
-        obj_id = ObjectId(skill_id)
-    except:
-        return jsonify({"error": "Invalid ID"}), 400
-
-    if request.method == 'PUT':
-        data = request.json
-        # Prevent overwriting ownership or id
-        data.pop('_id', None)
-        data.pop('owner_email', None)
-        if 'progress' in data: data['progress'] = int(data['progress'])
-        
-        skills_collection.update_one(
-            {'_id': obj_id, 'owner_email': user_email},
-            {'$set': data}
-        )
-        return jsonify({"success": True})
-
-    if request.method == 'DELETE':
-        skills_collection.delete_one({'_id': obj_id, 'owner_email': user_email})
-        return jsonify({"success": True})
+# Removed duplicate handle_skill_item
 
 
 @api_bp.route('/add_subject', methods=['POST'])
@@ -2033,68 +2017,112 @@ def get_notifications():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     
     user_email = session['user']['email']
+    user_data = session['user']
     notifications = []
     
     try:
         # 1. Attendance Alerts (<75%)
-        # Fetch active semester subjects
         subjects = list(subjects_collection.find({'owner_email': user_email}))
-        threshold = 75 # Get from prefs later
+        threshold = 75 
+        try:
+             prefs = db.get_collection('user_preferences').find_one({'owner_email': user_email})
+             if prefs and 'preferences' in prefs:
+                  threshold = int(prefs['preferences'].get('min_attendance', 75))
+        except: pass
         
         for subject in subjects:
             percentage = calculate_percent(subject.get('attended', 0), subject.get('total', 0))
             if percentage < threshold and subject.get('total', 0) > 0:
                  notifications.append({
                     "id": f"att_{subject['_id']}",
-                    "title": "Low Attendance Warning",
-                    "message": f"Attendance for '{subject['name']}' is low ({percentage}%).",
+                    "title": "Attendance Alert 💡",
+                    "message": f"{subject['name']}: {percentage}% (Below {threshold}%)",
                     "type": "attendance",
                     "timestamp": datetime.utcnow().isoformat(),
                     "read": False
                 })
 
-        # 2. IPU Notices
-        ipu_notices_col = db.get_collection('ipu_notices')
-        notices = list(ipu_notices_col.find().sort('date', -1).limit(10))
-        for notice in notices:
-            timestamp = notice.get('date')
-            if isinstance(timestamp, datetime):
-                timestamp = timestamp.isoformat()
-            elif not timestamp:
-                timestamp = datetime.utcnow().isoformat()
-            
+        # 2. Google Classroom Integration (Announcements, Materials, Work)
+        google_token = user_data.get('google_token')
+        if google_token:
+            from api.classroom import get_cached_courses, make_google_api_request
+            courses = get_cached_courses(google_token, user_email)
+            if courses:
+                # Limit to 3 most active courses for speed
+                for course in courses[:5]:
+                    # Fetch Announcements
+                    success, data, status, error = make_google_api_request(
+                        f'https://classroom.googleapis.com/v1/courses/{course["id"]}/announcements',
+                        {'Authorization': f'Bearer {google_token}'},
+                        {'pageSize': 3}
+                    )
+                    if success:
+                        for ann in data.get('announcements', []):
+                            notifications.append({
+                                "id": ann['id'],
+                                "title": f"📢 {course['name']}",
+                                "message": ann.get('text', 'New Announcement')[:100],
+                                "type": "classroom",
+                                "timestamp": ann.get('creationTime', datetime.utcnow().isoformat()),
+                                "link": ann.get('alternateLink'),
+                                "read": False
+                            })
+                    
+                    # Fetch Coursework (Assignments)
+                    success, data, status, error = make_google_api_request(
+                        f'https://classroom.googleapis.com/v1/courses/{course["id"]}/courseWork',
+                        {'Authorization': f'Bearer {google_token}'},
+                        {'pageSize': 3}
+                    )
+                    if success:
+                        for work in data.get('courseWork', []):
+                            notifications.append({
+                                "id": work['id'],
+                                "title": f"📝 {course['name']}",
+                                "message": f"Assignment: {work.get('title')}",
+                                "type": "classroom",
+                                "timestamp": work.get('creationTime', datetime.utcnow().isoformat()),
+                                "link": work.get('alternateLink'),
+                                "read": False
+                            })
+
+        # 3. University Notices (IPU)
+        notices_col = db.get_collection('notices')
+        today_notices = notices_col.find_one({"date_fetched": datetime.now().strftime("%Y-%m-%d")})
+        university_notices = []
+        if today_notices:
+             university_notices = today_notices.get('data', [])
+        else:
+             latest = notices_col.find_one(sort=[('date_fetched', -1)])
+             if latest: university_notices = latest.get('data', [])
+        
+        for notice in university_notices[:8]:
             notifications.append({
-                "id": str(notice['_id']),
-                "title": "New University Notice",
+                "id": str(notice.get('title', hash(notice.get('link', '')))),
+                "title": "University Notice",
                 "message": notice.get('title', 'Notice'),
                 "type": "university",
-                "timestamp": timestamp,
+                "timestamp": datetime.utcnow().isoformat(), # Notices often don't have exact time, just date
                 "link": notice.get('link'),
                 "read": False
             })
             
-        # 3. System Logs (Alerts)
-        logs = list(system_logs_collection.find({'owner_email': user_email}).sort('timestamp', -1).limit(5))
+        # 4. System Logs (Recent important ones)
+        logs = list(system_logs_collection.find({'owner_email': user_email}).sort('timestamp', -1).limit(3))
         for log in logs:
-            timestamp = log.get('timestamp')
-            if isinstance(timestamp, datetime):
-                timestamp = timestamp.isoformat()
-            elif not timestamp:
-                timestamp = datetime.utcnow().isoformat()
-
             notifications.append({
                 "id": str(log['_id']),
                 "title": log.get('action', 'System Alert'),
                 "message": log.get('description', ''),
                 "type": "system",
-                "timestamp": timestamp,
+                "timestamp": log.get('timestamp').isoformat() if isinstance(log.get('timestamp'), datetime) else datetime.utcnow().isoformat(),
                 "read": True
             })
 
-        # Sort by timestamp desc (ensure all are strings or all are datetimes)
+        # Sort by timestamp desc
         notifications.sort(key=lambda x: str(x.get('timestamp', '')), reverse=True)
         
-        return jsonify(notifications)
+        return jsonify(notifications[:30]) # Return top 30
         
     except Exception as e:
         print(f"Error fetching notifications: {e}")
@@ -2252,7 +2280,13 @@ def get_logs_for_date():
     logs = list(attendance_log_collection.aggregate(pipeline))
     return Response(json_util.dumps(logs), mimetype='application/json')
 
+# --- MANUAL COURSES ---
+
+# Removed duplicate handle_manual_courses
+
 # --- ACADEMIC RECORDS (CGPA) ---
+
+# Removed duplicate handle_semester_results
 
 @api_bp.route('/academic_records', methods=['GET'])
 def get_academic_records():

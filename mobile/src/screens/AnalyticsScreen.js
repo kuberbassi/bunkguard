@@ -9,10 +9,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSemester } from '../contexts/SemesterContext';
 
 const AnalyticsScreen = () => {
     const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
+    const { selectedSemester } = useSemester();
 
     // AMOLED Theme
     const c = {
@@ -39,15 +41,13 @@ const AnalyticsScreen = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [reportData, setReportData] = useState(null);
-    const [semester, setSemester] = useState(1);
 
     const fetchData = async () => {
         try {
-            const response = await api.get(`/api/reports_data?semester=${semester}`);
+            const response = await api.get(`/api/reports_data?semester=${selectedSemester}`);
             setReportData(response.data);
         } catch (error) {
             console.error("Analytics Fetch Error:", error);
-            // Optional: Set mock data or error state here if needed
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -56,7 +56,7 @@ const AnalyticsScreen = () => {
 
     const onRefresh = () => { setRefreshing(true); fetchData(); };
 
-    useFocusEffect(useCallback(() => { fetchData(); }, []));
+    useFocusEffect(useCallback(() => { fetchData(); }, [selectedSemester]));
 
     // Data Processing
     const getWeeklyData = () => {
@@ -105,7 +105,7 @@ const AnalyticsScreen = () => {
             <AnimatedHeader
                 scrollY={scrollY}
                 title="Analytics"
-                subtitle={`Trends & Insights • Sem ${semester}`}
+                subtitle={`Trends & Insights • Sem ${selectedSemester}`}
                 isDark={isDark}
                 colors={c}
             />

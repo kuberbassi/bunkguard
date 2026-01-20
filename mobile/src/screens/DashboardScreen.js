@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, RefreshControl,
     Platform, StatusBar, Animated, Dimensions
@@ -6,8 +6,9 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { theme, Layout } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell } from 'lucide-react-native';
 import api from '../services/api';
+import { NotificationService } from '../services/NotificationService';
+import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import SemesterSelector from '../components/SemesterSelector';
@@ -15,33 +16,27 @@ import EnhancedSubjectCard from '../components/EnhancedSubjectCard';
 import AddSubjectModal from '../components/AddSubjectModal';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width } = Dimensions.get('window');
+import { useSemester } from '../contexts/SemesterContext';
 
 const DashboardScreen = ({ navigation }) => {
     const { user } = useAuth();
     const { isDark } = useTheme();
+    const { selectedSemester, updateSemester } = useSemester();
     const insets = useSafeAreaInsets();
 
     // AMOLED Dark Mode Palette
     const c = {
-        // Background - Pure Black for AMOLED
+        // ... (same color palette as before)
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
         bgGradMid: isDark ? '#000000' : '#F5F5F7',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-
-        // Glass Cards - Subtle on AMOLED
         glassBgStart: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
         glassBgEnd: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)',
         glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-
         text: isDark ? '#FFFFFF' : '#000000',
         subtext: isDark ? '#8E8E93' : '#6E6E73',
-
-        primary: isDark ? '#FFFFFF' : '#000000', // White highlights in dark
-        accent: '#FF3B30', // Red accent
-
-        // Status Colors
+        primary: isDark ? '#FFFFFF' : '#000000',
+        accent: '#FF3B30',
         success: '#34C759',
         danger: '#FF3B30',
     };
@@ -52,14 +47,22 @@ const DashboardScreen = ({ navigation }) => {
     const [dashboardData, setDashboardData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedSemester, setSelectedSemester] = useState(1);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingSubject, setEditingSubject] = useState(null);
+
+    // Initial Setup
+    useEffect(() => {
+        NotificationService.registerForPushNotificationsAsync();
+    }, []);
 
     const fetchDashboardData = async () => {
         try {
             const response = await api.get(`/api/dashboard_data?semester=${selectedSemester}`);
             setDashboardData(response.data);
+
+            if (response.data?.subjects) {
+                NotificationService.checkAndNotify(response.data.subjects);
+            }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
         } finally {
@@ -93,7 +96,7 @@ const DashboardScreen = ({ navigation }) => {
             } else {
                 await api.post('/api/add_subject', {
                     subject_name: data.name,
-                    semester: data.semester,
+                    semester: selectedSemester,
                     ...data
                 });
             }
@@ -102,7 +105,7 @@ const DashboardScreen = ({ navigation }) => {
             fetchDashboardData();
         } catch (error) {
             console.error("Save subject failed", error);
-            alert("Failed to save subject.");
+            alert("Failed to save subject. Please check your connection.");
         }
     };
 
@@ -122,6 +125,7 @@ const DashboardScreen = ({ navigation }) => {
     const isAtRisk = overallAttendance < 75;
     const userName = user?.name?.split(' ')[0] || 'Friend';
     const dateText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
 
     // HEADER ANIMATIONS
     const headerHeight = scrollY.interpolate({
@@ -177,14 +181,16 @@ const DashboardScreen = ({ navigation }) => {
                 isDark={isDark}
                 colors={c}
                 rightComponent={
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Notifications')}
-                        style={styles.bellBtn}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <Bell size={24} color={c.text} />
-                        {hasUnread && <View style={styles.badgeDot} />}
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('Notifications')}
+                            style={styles.bellBtn}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Bell size={24} color={c.text} />
+                            {hasUnread && <View style={styles.badgeDot} />}
+                        </TouchableOpacity>
+                    </View>
                 }
             />
 
@@ -278,7 +284,7 @@ const DashboardScreen = ({ navigation }) => {
                     <Text style={styles.sectionTitle}>My Courses</Text>
                     <SemesterSelector
                         selectedSemester={selectedSemester}
-                        onSelect={setSelectedSemester}
+                        onSelect={updateSemester}
                         isDark={isDark}
                     />
                 </View>

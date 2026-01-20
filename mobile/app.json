@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Acadhub",
-    "slug": "acadhub-mobile-kuber",
+    "name": "AcadHub",
+    "slug": "acad-hub-mobile-kuber",
     "description": "Your ultimate academic companion for tracking attendance, results, and skills.",
     "version": "1.0.0",
     "orientation": "portrait",

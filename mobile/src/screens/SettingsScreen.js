@@ -16,12 +16,12 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import AnimatedHeader from '../components/AnimatedHeader';
-// ... imports
+import { useSemester } from '../contexts/SemesterContext';
 
 const SettingsScreen = ({ navigation }) => {
-    // ... setup
     const { user, logout, updateUser } = useAuth();
     const { isDark, toggleTheme } = useTheme();
+    const { selectedSemester, updateSemester } = useSemester();
 
     // AMOLED Theme
     const c = {
@@ -54,7 +54,7 @@ const SettingsScreen = ({ navigation }) => {
         semester: user?.semester ? String(user.semester) : '1',
         batch: user?.batch || '',
         email: user?.email || '',
-        college: user?.college || 'HMRITM'
+        college: user?.college || 'HMRITM',
     });
 
     const [minAttendance, setMinAttendance] = useState('75');
@@ -70,20 +70,60 @@ const SettingsScreen = ({ navigation }) => {
                 email: user.email || prev.email,
                 course: user.course || prev.course,
                 semester: user.semester ? String(user.semester) : prev.semester,
-                batch: user.batch || prev.batch
+                batch: user.batch || prev.batch,
+                college: user.college || prev.college
             }));
+
+            // Should fetch preferences here if available in user object or separate call
+            // user object from context might not have preferences directly unless updated
+            // For now assuming defaults or state is managed
+            // Ideally: api.get('/api/preferences').then(...)
         }
     }, [user]);
+
+    // Fetch preferences on mount
+    useEffect(() => {
+        const loadPrefs = async () => {
+            try {
+                const res = await api.get('/api/preferences');
+                if (res.data) {
+                    if (res.data.min_attendance) setMinAttendance(String(res.data.min_attendance));
+                    if (res.data.attendance_threshold) setWarningThreshold(String(res.data.attendance_threshold));
+                }
+            } catch (e) { console.log("Error loading prefs", e) }
+        };
+        loadPrefs();
+    }, []);
 
     // ... Actions (Keep as is) ...
     const handleSaveProfile = async () => {
         setLoading(true);
         try {
-            await updateUser({ ...profileData, semester: Number(profileData.semester) });
-            await api.put('/api/update_profile', { ...profileData, semester: Number(profileData.semester) });
+            const updatedSemester = Number(profileData.semester);
+            const updatedUser = {
+                ...profileData,
+                semester: updatedSemester
+            };
+
+            // 1. Update Profile
+            await api.put('/api/update_profile', updatedUser);
+
+            // 2. Update Preferences (Min Attendance / Warning)
+            await api.post('/api/preferences', {
+                min_attendance: Number(minAttendance),
+                attendance_threshold: Number(warningThreshold)
+            });
+
+            // 3. Update global semester context
+            await updateSemester(updatedSemester);
+
+            // 4. Update Local Context
+            await updateUser(updatedUser);
+
             setEditingProfile(false);
-            Alert.alert("Success", "Profile updated.");
+            Alert.alert("Success", "Profile and settings updated.");
         } catch (error) {
+            console.error(error);
             Alert.alert("Error", "Failed to update profile.");
         } finally {
             setLoading(false);
@@ -160,11 +200,7 @@ const SettingsScreen = ({ navigation }) => {
                 type: file.mimeType || 'image/jpeg'
             });
 
-            const response = await api.post('/api/upload_pfp', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            const response = await api.post('/api/upload_pfp', formData);
 
             if (response.data.url) {
                 await updateUser({ ...user, picture: response.data.url });
@@ -286,6 +322,42 @@ const SettingsScreen = ({ navigation }) => {
                             />
                         </View>
                     </View>
+
+                    {/* BATCH & COLLEGE (Added to match Web App) */}
+                    <View style={[styles.row, { marginTop: 16 }]}>
+                        <View style={{ flex: 1, marginRight: 10 }}>
+                            <Text style={styles.label}>Batch</Text>
+                            <TextInput
+                                style={[styles.input, editingProfile && styles.inputActive]}
+                                value={profileData.batch}
+                                onChangeText={t => setProfileData({ ...profileData, batch: t })}
+                                editable={editingProfile}
+                                placeholder="2025-29"
+                                placeholderTextColor={c.subtext}
+                            />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>College</Text>
+                            <TextInput
+                                style={[styles.input, editingProfile && styles.inputActive]}
+                                value={profileData.college}
+                                onChangeText={t => setProfileData({ ...profileData, college: t })}
+                                editable={editingProfile}
+                                placeholder="HMRITM"
+                                placeholderTextColor={c.subtext}
+                            />
+                        </View>
+                    </View>
+
+                    <View style={{ marginTop: 16 }}>
+                        <Text style={styles.label}>Email</Text>
+                        <TextInput
+                            style={[styles.input, { opacity: 0.7 }]} // Email usually read-only or less emphasized
+                            value={profileData.email}
+                            editable={false}
+                        />
+                    </View>
+
                 </LinearGradient>
 
                 {/* PREFERENCES */}
@@ -300,13 +372,7 @@ const SettingsScreen = ({ navigation }) => {
                         <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: '#767577', true: c.primary }} thumbColor={'#f4f3f4'} />
                     </View>
 
-                    <View style={[styles.row, { alignItems: 'center', marginBottom: 16 }]}>
-                        <View>
-                            <Text style={styles.settingLabel}>Notifications</Text>
-                            <Text style={styles.settingSub}>Class Alerts & Notices</Text>
-                        </View>
-                        <Switch value={true} trackColor={{ false: '#767577', true: c.primary }} thumbColor={'#f4f3f4'} />
-                    </View>
+                    {/* Removed Notification Toggle as requested */}
 
                     <View style={styles.row}>
                         <View style={{ flex: 1, marginRight: 10 }}>

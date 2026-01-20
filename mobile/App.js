@@ -25,6 +25,10 @@ import ActivityLogScreen from './src/screens/ActivityLogScreen';
 import TimetableSetupScreen from './src/screens/TimetableSetupScreen';
 import CourseManagerScreen from './src/screens/CourseManagerScreen';
 
+import { SemesterProvider } from './src/contexts/SemesterContext';
+import NetInfo from '@react-native-community/netinfo';
+import OfflineOverlay from './src/components/OfflineOverlay';
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -136,12 +140,21 @@ const MainTabs = () => {
   );
 }
 
+
 const AppNavigator = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { isDark } = useTheme();
+  const [isOffline, setIsOffline] = React.useState(false);
   const colors = isDark ? theme.dark : theme.light;
 
-  if (loading) {
+  React.useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsOffline(!state.isConnected);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: colors.onSurface }}>Loading...</Text>
@@ -150,26 +163,29 @@ const AppNavigator = () => {
   }
 
   return (
-    <NavigationContainer>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent={true} />
-      <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: colors.background } }}>
-        {!user ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
-        ) : (
-          <>
-            <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name="SubjectDetail" component={SubjectDetailScreen} />
-            <Stack.Screen name="Results" component={ResultsScreen} />
-            <Stack.Screen name="SkillTracker" component={SkillTrackerScreen} />
-            <Stack.Screen name="Assignments" component={AssignmentsScreen} />
-            <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="CourseManager" component={CourseManagerScreen} />
-            <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
-            <Stack.Screen name="TimetableSetup" component={TimetableSetupScreen} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1 }}>
+      <NavigationContainer>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent={true} />
+        <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: colors.background } }}>
+          {!user ? (
+            <Stack.Screen name="Login" component={LoginScreen} />
+          ) : (
+            <>
+              <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen name="SubjectDetail" component={SubjectDetailScreen} />
+              <Stack.Screen name="Results" component={ResultsScreen} />
+              <Stack.Screen name="SkillTracker" component={SkillTrackerScreen} />
+              <Stack.Screen name="Assignments" component={AssignmentsScreen} />
+              <Stack.Screen name="Notifications" component={NotificationsScreen} />
+              <Stack.Screen name="CourseManager" component={CourseManagerScreen} />
+              <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
+              <Stack.Screen name="TimetableSetup" component={TimetableSetupScreen} />
+            </>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+      <OfflineOverlay isVisible={isOffline} />
+    </View>
   );
 }
 
@@ -177,8 +193,11 @@ export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <AppNavigator />
+        <SemesterProvider>
+          <AppNavigator />
+        </SemesterProvider>
       </ThemeProvider>
     </AuthProvider>
   );
 }
+

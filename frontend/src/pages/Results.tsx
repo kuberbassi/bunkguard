@@ -35,15 +35,12 @@ const calculateLocalResult = (subject: SubjectResult) => {
     if (type === 'nues') {
         totalMarks = (subject.internal_theory || 0);
         maxMarks = 100;
-    } else {
-        if (type === 'theory' || type === 'both') {
-            totalMarks += (subject.internal_theory || 0) + (subject.external_theory || 0);
-            maxMarks += 100;
-        }
-        if (type === 'practical' || type === 'both') {
-            totalMarks += (subject.internal_practical || 0) + (subject.external_practical || 0);
-            maxMarks += 100;
-        }
+    } else if (type === 'theory') {
+        totalMarks = (subject.internal_theory || 0) + (subject.external_theory || 0);
+        maxMarks = 100;
+    } else if (type === 'practical') {
+        totalMarks = (subject.internal_practical || 0) + (subject.external_practical || 0);
+        maxMarks = 100;
     }
 
     const percentage = maxMarks > 0 ? (totalMarks / maxMarks) * 100 : 0;
@@ -57,7 +54,7 @@ const createEmptySubject = (): SubjectResult => ({
     name: '',
     code: '',
     credits: 4,
-    type: 'both',
+    type: 'theory',
     internal_theory: undefined,
     external_theory: undefined,
     internal_practical: undefined,
@@ -611,13 +608,13 @@ const Results: React.FC = () => {
 
                                             {/* Detailed Marks Breakdown */}
                                             <div className="flex flex-wrap gap-x-2 md:gap-x-3 gap-y-0.5 mt-0.5 md:mt-1 text-[9px] md:text-xs text-on-surface-variant/80">
-                                                {(subject.type === 'theory' || subject.type === 'both') && (
+                                                {subject.type === 'theory' && (
                                                     <span className="flex items-center gap-1">
                                                         <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-blue-400" />
                                                         Th: <strong className="text-on-surface-variant">{subject.internal_theory || 0}</strong>+<strong className="text-on-surface-variant">{subject.external_theory || 0}</strong>
                                                     </span>
                                                 )}
-                                                {(subject.type === 'practical' || subject.type === 'both') && (
+                                                {subject.type === 'practical' && (
                                                     <span className="flex items-center gap-1">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                                                         Pr: <strong className="text-on-surface-variant">{subject.internal_practical || 0}</strong>+<strong className="text-on-surface-variant">{subject.external_practical || 0}</strong>
@@ -716,7 +713,6 @@ const Results: React.FC = () => {
                                                     options={[
                                                         { value: 'theory', label: 'Theory Only' },
                                                         { value: 'practical', label: 'Practical Only' },
-                                                        { value: 'both', label: 'Theory + Practical' },
                                                         { value: 'nues', label: 'NUES' },
                                                     ]}
                                                 />
@@ -734,7 +730,7 @@ const Results: React.FC = () => {
 
                                         {/* Marks Input */}
                                         <div className="mt-3 md:mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                                            {(subject.type === 'theory' || subject.type === 'both') && (
+                                            {(subject.type === 'theory') && (
                                                 <>
                                                     <Input
                                                         label="Th. Int (40)"
@@ -752,7 +748,7 @@ const Results: React.FC = () => {
                                                     />
                                                 </>
                                             )}
-                                            {(subject.type === 'practical' || subject.type === 'both') && (
+                                            {(subject.type === 'practical') && (
                                                 <>
                                                     <Input
                                                         label="Pr. Int (40)"

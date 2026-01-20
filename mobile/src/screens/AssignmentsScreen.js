@@ -2,12 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     UIManager, Platform, LayoutAnimation, ActivityIndicator,
-    StatusBar, Animated, Dimensions
+    StatusBar, Animated, Dimensions, Linking
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { ChevronRight, Check, Plus, Minus, Beaker, FolderOpen, AlertCircle, BookOpen } from 'lucide-react-native';
+import { ChevronRight, Check, Plus, Minus, Beaker, FolderOpen, AlertCircle, BookOpen, Calendar, ExternalLink } from 'lucide-react-native';
 import api from '../services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
@@ -20,7 +20,7 @@ if (Platform.OS === 'android') {
 }
 
 const { width } = Dimensions.get('window');
-const TAB_CATEGORIES = ['All', 'Theory', 'Practical', 'Assignment', 'Project'];
+const TAB_CATEGORIES = ['All', 'Classroom', 'Pending'];
 
 const AssignmentsScreen = ({ navigation }) => {
     const { isDark } = useTheme();
@@ -41,6 +41,7 @@ const AssignmentsScreen = ({ navigation }) => {
 
         primary: '#0A84FF',
         danger: '#FF3B30',
+        warning: '#FF9F0A',
 
         pillActive: isDark ? '#FFF' : '#000',
         pillInactive: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
@@ -52,24 +53,30 @@ const AssignmentsScreen = ({ navigation }) => {
     const scrollY = useRef(new Animated.Value(0)).current;
 
     const [subjects, setSubjects] = useState([]);
+    const [classroomWork, setClassroomWork] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [selectedCategory, setSelectedCategory] = useState('Classroom');
 
     useEffect(() => {
-        fetchSubjects();
+        fetchData();
     }, []);
 
-    const fetchSubjects = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true);
             const profileRes = await api.get('/api/profile');
             const currentSem = profileRes.data?.semester || 1;
-            const subResponse = await api.get(`/api/subjects?semester=${currentSem}`);
+
+            const [subResponse, classResponse] = await Promise.all([
+                api.get(`/api/subjects?semester=${currentSem}`),
+                api.get('/api/classroom/all_assignments').catch(() => ({ data: [] }))
+            ]);
+
             setSubjects(Array.isArray(subResponse.data) ? subResponse.data : []);
+            setClassroomWork(Array.isArray(classResponse.data) ? classResponse.data : []);
         } catch (error) {
-            console.error("Failed to load subjects", error);
-            Alert.alert("Error", "Failed to load subjects. Please try again.");
-            setSubjects([]); // Ensure subjects is always an array
+            console.error("Failed to load data", error);
+            // Don't alert here to avoid spamming if one fails
         } finally {
             setLoading(false);
         }
@@ -101,15 +108,15 @@ const AssignmentsScreen = ({ navigation }) => {
     };
 
     const filteredSubjects = subjects.filter(sub => {
-        if (selectedCategory === 'All') return true;
-        const cats = sub.categories || [];
-        // Support both "Assignment" and "Theory" (for theory assignments) under Assignment filter
-        if (selectedCategory === 'Assignment') {
-            return cats.includes('Assignment') || cats.includes('Theory');
-        }
-        return cats.includes(selectedCategory);
-    });
+        if (selectedCategory === 'Classroom') return false;
 
+        const assignments = sub.assignments || { completed: 0, total: 0 };
+        const practicals = sub.practicals || { completed: 0, total: 0 };
+        const isPending = (assignments.total > assignments.completed) || (practicals.total > practicals.completed);
+
+        if (selectedCategory === 'Pending') return isPending;
+        return true; // 'All'
+    });
 
     const ProgressBar = ({ current, total, color }) => {
         const progress = total > 0 ? (current / total) * 100 : 0;
@@ -123,6 +130,36 @@ const AssignmentsScreen = ({ navigation }) => {
             </View>
         );
     };
+
+    const renderClassroomItem = (item) => (
+        <TouchableOpacity
+            key={item.id}
+            activeOpacity={0.7}
+            onPress={() => item.alternateLink && Linking.canOpenURL(item.alternateLink) && Linking.openURL(item.alternateLink)}
+        >
+            <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.subjectName, { fontSize: 14, color: c.subtext }]}>{item.courseName}</Text>
+                        <Text style={[styles.headerTitle, { fontSize: 18, marginTop: 4 }]} numberOfLines={2}>{item.title}</Text>
+                    </View>
+                    <View style={[styles.categoryBadge, { backgroundColor: c.primary + '15' }]}>
+                        <Text style={[styles.categoryText, { color: c.primary }]}>CLASSROOM</Text>
+                    </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                        <Calendar size={14} color={c.subtext} />
+                        <Text style={{ color: c.subtext, fontSize: 12, fontWeight: '600' }}>
+                            Due: {item.dueDate ? `${item.dueDate.day}/${item.dueDate.month}/${item.dueDate.year}` : 'No Due Date'}
+                        </Text>
+                    </View>
+                    {item.alternateLink && <ExternalLink size={16} color={c.primary} />}
+                </View>
+            </LinearGradient>
+        </TouchableOpacity>
+    );
 
     return (
         <View style={{ flex: 1 }}>
@@ -189,139 +226,154 @@ const AssignmentsScreen = ({ navigation }) => {
                 >
                     <View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />
 
-                    {filteredSubjects.map((sub, index) => {
-                        const cats = sub.categories || [];
-                        const hasPracticals = cats.includes('Practical');
-                        const hasAssignments = cats.includes('Assignment') || cats.includes('Theory');
-
-                        const practicals = sub.practicals || { total: 10, completed: 0, hardcopy: false };
-                        const assignments = sub.assignments || { total: 4, completed: 0, hardcopy: false };
-
-                        if (!hasPracticals && !hasAssignments) return null;
-
-                        return (
-                            <LinearGradient
-                                key={sub._id}
-                                colors={[c.glassBgStart, c.glassBgEnd]}
-                                style={styles.card}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                            >
-                                <View style={styles.cardHeader}>
-                                    <View>
-                                        <Text style={styles.subjectName}>{sub.name}</Text>
-                                        <Text style={styles.subjectCode}>{sub.code || 'NO CODE'}</Text>
-                                    </View>
-                                    <View style={styles.categoryBadge}>
-                                        <Text style={styles.categoryText}>{cats.find(c => c !== 'Theory') || 'Theory'}</Text>
-                                    </View>
+                    {selectedCategory === 'Classroom' ? (
+                        <>
+                            {classroomWork.length === 0 ? (
+                                <View style={styles.emptyState}>
+                                    <FolderOpen size={48} color={c.subtext} />
+                                    <Text style={styles.emptyText}>No pending classroom work</Text>
                                 </View>
+                            ) : (
+                                classroomWork.map((item, index) => renderClassroomItem(item))
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {filteredSubjects.map((sub, index) => {
+                                const cats = sub.categories || [];
+                                const hasPracticals = cats.includes('Practical');
+                                const hasAssignments = cats.includes('Assignment') || cats.includes('Theory');
 
-                                {/* PRACTICALS ROW */}
-                                {hasPracticals && (
-                                    <View style={styles.trackRow}>
-                                        <View style={styles.trackInfo}>
-                                            <View style={[styles.iconCircle, { backgroundColor: c.primary + '20' }]}>
-                                                <Beaker size={18} color={c.primary} />
+                                const practicals = sub.practicals || { total: 10, completed: 0, hardcopy: false };
+                                const assignments = sub.assignments || { total: 4, completed: 0, hardcopy: false };
+
+                                if (!hasPracticals && !hasAssignments) return null;
+
+                                return (
+                                    <LinearGradient
+                                        key={sub._id}
+                                        colors={[c.glassBgStart, c.glassBgEnd]}
+                                        style={styles.card}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                                    >
+                                        <View style={styles.cardHeader}>
+                                            <View>
+                                                <Text style={styles.subjectName}>{sub.name}</Text>
+                                                <Text style={styles.subjectCode}>{sub.code || 'NO CODE'}</Text>
                                             </View>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.trackTitle}>Practicals</Text>
-                                                <ProgressBar current={practicals.completed} total={practicals.total} color={c.primary} />
+                                            <View style={styles.categoryBadge}>
+                                                <Text style={styles.categoryText}>{cats.find(c => c !== 'Theory') || 'Theory'}</Text>
                                             </View>
-                                            <Text style={[styles.trackCount, { color: c.primary }]}>{practicals.completed}/{practicals.total}</Text>
                                         </View>
 
-                                        <View style={styles.actionsRow}>
-                                            <View style={styles.stepper}>
-                                                <TouchableOpacity
-                                                    style={styles.stepBtn}
-                                                    onPress={() => handleUpdate(sub._id, 'practical', { completed: Math.max(0, practicals.completed - 1) })}
-                                                >
-                                                    <Minus size={16} color={c.subtext} />
-                                                </TouchableOpacity>
-                                                <View style={styles.stepDivider} />
-                                                <TouchableOpacity
-                                                    style={styles.stepBtn}
-                                                    onPress={() => handleUpdate(sub._id, 'practical', { completed: Math.min(practicals.total, practicals.completed + 1) })}
-                                                >
-                                                    <Plus size={16} color={c.primary} />
-                                                </TouchableOpacity>
-                                            </View>
-
-                                            <TouchableOpacity
-                                                style={[styles.checkBtn, practicals.hardcopy && { backgroundColor: c.primary, borderColor: c.primary }]}
-                                                onPress={() => handleUpdate(sub._id, 'practical', { hardcopy: !practicals.hardcopy })}
-                                            >
-                                                {practicals.hardcopy ? (
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                        <Check size={14} color="#FFF" />
-                                                        <Text style={styles.checkTextActive}>Done</Text>
+                                        {/* PRACTICALS ROW */}
+                                        {hasPracticals && (
+                                            <View style={styles.trackRow}>
+                                                <View style={styles.trackInfo}>
+                                                    <View style={[styles.iconCircle, { backgroundColor: c.primary + '20' }]}>
+                                                        <Beaker size={18} color={c.primary} />
                                                     </View>
-                                                ) : (
-                                                    <Text style={styles.checkText}>Mark Done</Text>
-                                                )}
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                )}
-
-                                {hasPracticals && hasAssignments && <View style={styles.divider} />}
-
-                                {/* ASSIGNMENTS ROW */}
-                                {hasAssignments && (
-                                    <View style={styles.trackRow}>
-                                        <View style={styles.trackInfo}>
-                                            <View style={[styles.iconCircle, { backgroundColor: c.danger + '15' }]}>
-                                                <BookOpen size={18} color={c.danger} />
-                                            </View>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.trackTitle}>Assignments</Text>
-                                                <ProgressBar current={assignments.completed} total={assignments.total} color={c.danger} />
-                                            </View>
-                                            <Text style={[styles.trackCount, { color: c.danger }]}>{assignments.completed}/{assignments.total}</Text>
-                                        </View>
-
-                                        <View style={styles.actionsRow}>
-                                            <View style={styles.stepper}>
-                                                <TouchableOpacity
-                                                    style={styles.stepBtn}
-                                                    onPress={() => handleUpdate(sub._id, 'assignment', { completed: Math.max(0, assignments.completed - 1) })}
-                                                >
-                                                    <Minus size={16} color={c.subtext} />
-                                                </TouchableOpacity>
-                                                <View style={styles.stepDivider} />
-                                                <TouchableOpacity
-                                                    style={styles.stepBtn}
-                                                    onPress={() => handleUpdate(sub._id, 'assignment', { completed: Math.min(assignments.total, assignments.completed + 1) })}
-                                                >
-                                                    <Plus size={16} color={c.danger} />
-                                                </TouchableOpacity>
-                                            </View>
-
-                                            <TouchableOpacity
-                                                style={[styles.checkBtn, assignments.hardcopy && { backgroundColor: c.danger, borderColor: c.danger }]}
-                                                onPress={() => handleUpdate(sub._id, 'assignment', { hardcopy: !assignments.hardcopy })}
-                                            >
-                                                {assignments.hardcopy ? (
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                                        <Check size={14} color="#FFF" />
-                                                        <Text style={styles.checkTextActive}>Done</Text>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.trackTitle}>Practicals</Text>
+                                                        <ProgressBar current={practicals.completed} total={practicals.total} color={c.primary} />
                                                     </View>
-                                                ) : (
-                                                    <Text style={styles.checkText}>Mark Done</Text>
-                                                )}
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                )}
-                            </LinearGradient>
-                        );
-                    })}
+                                                    <Text style={[styles.trackCount, { color: c.primary }]}>{practicals.completed}/{practicals.total}</Text>
+                                                </View>
 
-                    {filteredSubjects.length === 0 && (
-                        <View style={styles.emptyState}>
-                            <FolderOpen size={48} color={c.subtext} />
-                            <Text style={styles.emptyText}>No subjects found</Text>
-                        </View>
+                                                <View style={styles.actionsRow}>
+                                                    <View style={styles.stepper}>
+                                                        <TouchableOpacity
+                                                            style={styles.stepBtn}
+                                                            onPress={() => handleUpdate(sub._id, 'practical', { completed: Math.max(0, practicals.completed - 1) })}
+                                                        >
+                                                            <Minus size={16} color={c.subtext} />
+                                                        </TouchableOpacity>
+                                                        <View style={styles.stepDivider} />
+                                                        <TouchableOpacity
+                                                            style={styles.stepBtn}
+                                                            onPress={() => handleUpdate(sub._id, 'practical', { completed: Math.min(practicals.total, practicals.completed + 1) })}
+                                                        >
+                                                            <Plus size={16} color={c.primary} />
+                                                        </TouchableOpacity>
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        style={[styles.checkBtn, practicals.hardcopy && { backgroundColor: c.primary, borderColor: c.primary }]}
+                                                        onPress={() => handleUpdate(sub._id, 'practical', { hardcopy: !practicals.hardcopy })}
+                                                    >
+                                                        {practicals.hardcopy ? (
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                                <Check size={14} color="#FFF" />
+                                                                <Text style={styles.checkTextActive}>Done</Text>
+                                                            </View>
+                                                        ) : (
+                                                            <Text style={styles.checkText}>Mark Done</Text>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        )}
+
+                                        {hasPracticals && hasAssignments && <View style={styles.divider} />}
+
+                                        {/* ASSIGNMENTS ROW */}
+                                        {hasAssignments && (
+                                            <View style={styles.trackRow}>
+                                                <View style={styles.trackInfo}>
+                                                    <View style={[styles.iconCircle, { backgroundColor: c.danger + '15' }]}>
+                                                        <BookOpen size={18} color={c.danger} />
+                                                    </View>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={styles.trackTitle}>Assignments</Text>
+                                                        <ProgressBar current={assignments.completed} total={assignments.total} color={c.danger} />
+                                                    </View>
+                                                    <Text style={[styles.trackCount, { color: c.danger }]}>{assignments.completed}/{assignments.total}</Text>
+                                                </View>
+
+                                                <View style={styles.actionsRow}>
+                                                    <View style={styles.stepper}>
+                                                        <TouchableOpacity
+                                                            style={styles.stepBtn}
+                                                            onPress={() => handleUpdate(sub._id, 'assignment', { completed: Math.max(0, assignments.completed - 1) })}
+                                                        >
+                                                            <Minus size={16} color={c.subtext} />
+                                                        </TouchableOpacity>
+                                                        <View style={styles.stepDivider} />
+                                                        <TouchableOpacity
+                                                            style={styles.stepBtn}
+                                                            onPress={() => handleUpdate(sub._id, 'assignment', { completed: Math.min(assignments.total, assignments.completed + 1) })}
+                                                        >
+                                                            <Plus size={16} color={c.danger} />
+                                                        </TouchableOpacity>
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        style={[styles.checkBtn, assignments.hardcopy && { backgroundColor: c.danger, borderColor: c.danger }]}
+                                                        onPress={() => handleUpdate(sub._id, 'assignment', { hardcopy: !assignments.hardcopy })}
+                                                    >
+                                                        {assignments.hardcopy ? (
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                                <Check size={14} color="#FFF" />
+                                                                <Text style={styles.checkTextActive}>Done</Text>
+                                                            </View>
+                                                        ) : (
+                                                            <Text style={styles.checkText}>Mark Done</Text>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        )}
+                                    </LinearGradient>
+                                );
+                            })}
+
+                            {filteredSubjects.length === 0 && (
+                                <View style={styles.emptyState}>
+                                    <FolderOpen size={48} color={c.subtext} />
+                                    <Text style={styles.emptyText}>No subjects found</Text>
+                                </View>
+                            )}
+                        </>
                     )}
 
                     <View style={{ height: 40 }} />

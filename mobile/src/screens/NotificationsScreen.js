@@ -57,45 +57,70 @@ const NotificationsScreen = ({ navigation }) => {
 
     const headerHeight = scrollY.interpolate({ inputRange: [0, 100], outputRange: [120, 80], extrapolate: 'clamp' });
     const titleSize = scrollY.interpolate({ inputRange: [0, 100], outputRange: [32, 24], extrapolate: 'clamp' });
-
     const currentList = activeTab === 'classroom' ? classroomNotifs : uniNotices;
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        try {
+            // Handle ISO strings (Google Classroom)
+            const date = new Date(dateString);
+            if (!isNaN(date.getTime())) {
+                const now = new Date();
+                const diff = now - date;
+                if (diff < 86400000) return 'Today';
+                if (diff < 172800000) return 'Yesterday';
+                return date.toLocaleDateString('en-GB');
+            }
+
+            // Handle DD-MM-YYYY (University scraping common format)
+            const parts = dateString.split('-');
+            if (parts.length === 3) return `${parts[0]}/${parts[1]}/${parts[2]}`;
+
+            return dateString;
+        } catch (e) { return dateString; }
+    };
 
     const renderItem = ({ item }) => {
         const isClassroom = activeTab === 'classroom';
         const Icon = isClassroom ? Megaphone : Info;
 
+        // Standardized from backend: title, message, link, timestamp
+        const displayTitle = item.title || (isClassroom ? 'Classroom Update' : 'Notice');
+        const displayMessage = item.message || item.text || '';
+        const displayLink = item.link || item.alternateLink;
+        const displayTime = formatDate(item.timestamp || item.creationTime || item.date);
+
         return (
-            <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
-                <View style={styles.cardHeader}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                        <View style={[styles.iconBox, { backgroundColor: isClassroom ? c.primary + '20' : c.danger + '20' }]}>
-                            {isClassroom ? <Megaphone size={18} color={c.primary} /> : <Info size={18} color={c.danger} />}
+            <TouchableOpacity
+                activeOpacity={displayLink ? 0.7 : 1}
+                onPress={() => displayLink && handleOpenLink(displayLink)}
+            >
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                            <View style={[styles.iconBox, { backgroundColor: isClassroom ? c.primary + '20' : c.danger + '20' }]}>
+                                {isClassroom ? <Megaphone size={18} color={c.primary} /> : <Info size={18} color={c.danger} />}
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.cardTitle} numberOfLines={1}>
+                                    {displayTitle}
+                                </Text>
+                                <Text style={styles.cardDate}>
+                                    {displayTime}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.cardTitle} numberOfLines={1}>
-                                {isClassroom ? 'HMRITM Update' : (item.message || item.title)}
-                            </Text>
-                            <Text style={styles.cardDate}>
-                                {new Date(item.timestamp || item.created_at || item.date).toLocaleDateString('en-GB')}
-                            </Text>
-                        </View>
+
+                        {displayLink && (
+                            <View style={styles.linkBtn}>
+                                <ExternalLink size={16} color={c.subtext} />
+                            </View>
+                        )}
                     </View>
 
-                    {(item.link) && (
-                        <TouchableOpacity
-                            onPress={() => handleOpenLink(item.link)}
-                            style={styles.linkBtn}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <ExternalLink size={16} color={c.primary} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                {isClassroom && (
-                    <Text style={styles.messageText}>{item.message || item.text}</Text>
-                )}
-            </LinearGradient>
+                    <Text style={styles.messageText}>{displayMessage}</Text>
+                </LinearGradient>
+            </TouchableOpacity>
         );
     };
 

@@ -72,11 +72,29 @@ def create_app():
                     algorithms=['HS256']
                 )
                 
-                # Inject user email into session (temporary, request-scoped)
-                session['user'] = {
-                    'email': payload.get('email'),
-                    'name': payload.get('name', 'Mobile User')
-                }
+                # Inject full user data from DB into session
+                # This ensures course, semester, batch, etc. are available
+                user_email = payload.get('email')
+                if user_email:
+                    from api.database import db
+                    users_collection = db.get_collection('users')
+                    db_user = users_collection.find_one({'email': user_email})
+                    
+                    if db_user:
+                        # Convert ObjectId and datetimes to serializable
+                        from bson import ObjectId
+                        if '_id' in db_user: db_user['_id'] = str(db_user['_id'])
+                        for k, v in db_user.items():
+                            if isinstance(v, datetime): db_user[k] = v.isoformat()
+                        
+                        session['user'] = db_user
+                    else:
+                        # Fallback to minimal data if user not in DB yet
+                        session['user'] = {
+                            'email': user_email,
+                            'name': payload.get('name', 'Mobile User')
+                        }
+                
                 # Mark as JWT-based for debugging
                 session['auth_method'] = 'jwt'
                 

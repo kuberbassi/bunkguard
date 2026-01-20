@@ -159,6 +159,28 @@ const TimeTable: React.FC = () => {
         setAppModalOpen(true);
     };
 
+    const handleAddMobile = (day: string) => {
+        // Find first empty period
+        const daySlots = timetable[day] || [];
+        const emptyPeriod = periods.find(p => !daySlots.some((s: any) => s.start_time === p.startTime));
+
+        if (emptyPeriod) {
+            handleGridAdd(day, emptyPeriod);
+        } else if (periods.length > 0) {
+            handleGridAdd(day, periods[0]);
+        } else {
+            setCurrentSlot({
+                day,
+                start_time: '09:00',
+                end_time: '10:00',
+                type: 'class',
+                subject_id: ''
+            });
+            setIsEditing(false);
+            setAppModalOpen(true);
+        }
+    };
+
     const getSubjectName = (subjectId?: string) => {
         if (!subjectId) return '';
         const subject = subjects.find(s => {
@@ -249,9 +271,17 @@ const TimeTable: React.FC = () => {
                                         <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                         {day}
                                     </h3>
-                                    <span className="text-[10px] md:text-xs font-medium px-2 py-0.5 md:py-1 rounded-full bg-surface-container text-on-surface-variant">
-                                        {classSlots.length} Classes
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleAddMobile(day)}
+                                            className="p-1.5 rounded-full bg-surface-container hover:bg-primary/10 text-on-surface-variant hover:text-primary transition-colors"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
+                                        <span className="text-[10px] md:text-xs font-medium px-2 py-0.5 md:py-1 rounded-full bg-surface-container text-on-surface-variant">
+                                            {classSlots.length} Classes
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div className="p-3 md:p-4 space-y-2 md:space-y-3 flex-1 min-h-[100px] md:min-h-[150px]">
@@ -442,6 +472,31 @@ const TimeTable: React.FC = () => {
                 title={ModalTitle}
             >
                 <div className="space-y-6">
+                    {/* Period Selector (Mobile/Edit) */}
+                    <div>
+                        <h4 className="text-lg font-bold text-on-surface mb-3">Select Time Slot</h4>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[150px] overflow-y-auto pr-1">
+                            {periods.map((p) => {
+                                const isSelected = currentSlot.start_time === p.startTime;
+                                return (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => setCurrentSlot({ ...currentSlot, start_time: p.startTime, end_time: p.endTime })}
+                                        disabled={isSaving}
+                                        className={`px-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-all border
+                                            ${isSelected
+                                                ? 'bg-primary text-on-primary border-primary'
+                                                : 'bg-surface-container border-outline hover:border-primary/50 text-on-surface-variant'
+                                            }`}
+                                    >
+                                        <div className="truncate">{p.name}</div>
+                                        <div className="font-normal opacity-80 text-[10px]">{p.startTime}</div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     {/* Quick Actions Types */}
                     <div>
                         <h4 className="text-lg font-bold text-on-surface mb-3">Select Slot Type</h4>

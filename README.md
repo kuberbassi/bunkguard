@@ -57,6 +57,7 @@ This application showcases **prompt engineering in action**. Every feature, comp
 *   **Backend**: Python (Flask), PyMongo, Google OAuth.
 *   **Database**: MongoDB Atlas.
 *   **PWA**: Service Workers, Web App Manifest.
+*   **Mobile**: React Native (Expo), managed workflow.
 
 ---
 
@@ -109,6 +110,32 @@ This application showcases **prompt engineering in action**. Every feature, comp
 5.  **Run the App**
     *   **Backend**: `python run.py`
     *   **Frontend**: `npm run dev`
+
+### 📱 Mobile App Setup
+
+1.  **Install Dependencies**
+    ```bash
+    cd mobile
+    npm install
+    ```
+
+2.  **Run Development Server**
+    ```bash
+    npx expo start
+    ```
+
+3.  **Run on Android Emulator**
+    ```bash
+    npx expo run:android
+    ```
+    *(Requires Android Studio & SDK to be installed and configured)*
+
+4.  **Build APK (Native)**
+    ```bash
+    cd mobile/android
+    ./gradlew assembleDebug
+    ```
+    *Output APK: `mobile/android/app/build/outputs/apk/debug/app-debug.apk`*
 
 ---
 

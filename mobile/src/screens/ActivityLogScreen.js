@@ -37,7 +37,8 @@ const ActivityLogScreen = ({ navigation }) => {
 
     const fetchLogs = async () => {
         try {
-            const response = await api.get('/api/attendance_logs');
+            // Updated to fetch SYSTEM logs as requested
+            const response = await api.get('/api/system_logs');
             setLogs(response.data);
         } catch (error) {
             console.error(error);
@@ -53,10 +54,15 @@ const ActivityLogScreen = ({ navigation }) => {
         let Icon = AlertCircle;
         let color = c.subtext;
 
-        if (item.status === 'present') { Icon = CheckCircle; color = c.success; }
-        if (item.status === 'absent') { Icon = XCircle; color = c.danger; }
-        if (item.action === 'override') { Icon = Edit; color = '#F59E0B'; }
-        if (item.action === 'delete') { Icon = Trash2; color = c.danger; }
+        // System Log handling
+        // Action types: "Attendance Marked", "Subject Added", "Subject Deleted", "Data Overridden", "Google Auth", etc.
+        const action = item.action || '';
+
+        if (action.includes('Attendance')) { Icon = CheckCircle; color = c.success; }
+        else if (action.includes('Deleted')) { Icon = Trash2; color = c.danger; }
+        else if (action.includes('Added') || action.includes('Created')) { Icon = CheckCircle; color = c.primary; }
+        else if (action.includes('Overridden') || action.includes('Updated')) { Icon = Edit; color = '#F59E0B'; }
+        else if (action.includes('Import')) { Icon = ArrowLeft; color = c.primary; }
 
         return (
             <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.logItem}>
@@ -64,16 +70,14 @@ const ActivityLogScreen = ({ navigation }) => {
                     <Icon size={20} color={color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.logTitle}>
-                        {item.action === 'override' ? 'Data Overridden' :
-                            item.action === 'delete' ? 'Entry Deleted' :
-                                `${item.status === 'present' ? 'Attended' : 'Missed'} Class`}
-                    </Text>
+                    <Text style={styles.logTitle}>{item.action}</Text>
                     <Text style={styles.logSub}>
-                        {item.description || `${item.subject_name}`}
+                        {item.description}
                     </Text>
                 </View>
-                <Text style={styles.timeText}>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                <Text style={styles.timeText}>
+                    {item.timestamp ? (item.timestamp.$date ? new Date(item.timestamp.$date) : new Date(item.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                </Text>
             </LinearGradient>
         );
     };

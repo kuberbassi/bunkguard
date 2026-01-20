@@ -32,7 +32,7 @@ const LoginScreen = () => {
     useEffect(() => {
         GoogleSignin.configure({
             webClientId: '977241229787-o6enc2sdef4gq5gitl5lgitp1qec0r0r.apps.googleusercontent.com', // Verified Web Client
-            androidClientId: '977241229787-o005tck57ts86p8iaegcujkg5ngtl6iu.apps.googleusercontent.com', // Verified Android Client
+
             offlineAccess: true,
             scopes: [
                 'https://www.googleapis.com/auth/classroom.courses.readonly',

@@ -177,4 +177,4 @@ const getStyles = (c, isDark) => StyleSheet.create({
     }
 });
 
-export default EnhancedSubjectCard;
+export default React.memo(EnhancedSubjectCard);

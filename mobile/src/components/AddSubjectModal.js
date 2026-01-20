@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, Switch, KeyboardAvoidingView, Platform, Alert, Dimensions } from 'react-native';
 import { theme } from '../theme';
-import { X, Save, BookOpen, User, MapPin, AlertTriangle, Target, Briefcase, Trash2 } from 'lucide-react-native';
+import { X, Save, BookOpen, User, MapPin, AlertTriangle, Target, Briefcase, Trash2, FileText } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
+import { useSemester } from '../contexts/SemesterContext';
 
 const { height } = Dimensions.get('window');
 
 const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDark }) => {
+    const { selectedSemester } = useSemester();
 
     // AMOLED Theme
     const c = {
         glassBg: isDark ? ['rgba(10, 10, 10, 1.0)', 'rgba(20, 20, 20, 1.0)'] : ['rgba(255, 255, 255, 1.0)', 'rgba(248, 249, 250, 1.0)'],
         glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-        text: isDark ? '#FFF' : '#000',
+        text: isDark ? '#FFF' : '#000000',
         subtext: isDark ? '#9CA3AF' : '#6B7280',
         primary: '#0A84FF',
         surface: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
         inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
         danger: '#FF3B30',
     };
-
-
 
     const styles = getStyles(c, isDark);
 
@@ -29,7 +30,7 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
     const [code, setCode] = useState('');
     const [professor, setProfessor] = useState('');
     const [classroom, setClassroom] = useState('');
-    const [semester, setSemester] = useState('1');
+    const [semester, setSemester] = useState(String(selectedSemester || '1'));
     const [syllabus, setSyllabus] = useState('');
     const [categories, setCategories] = useState(['Theory']);
 
@@ -46,7 +47,7 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                 setCode(initialData.code || '');
                 setProfessor(initialData.professor || '');
                 setClassroom(initialData.classroom || '');
-                setSemester(String(initialData.semester || '1'));
+                setSemester(String(initialData.semester || selectedSemester || '1'));
                 setSyllabus(initialData.syllabus || '');
                 setCategories(initialData.categories || ['Theory']);
                 setAttended(String(initialData.attended || 0));
@@ -59,11 +60,11 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                 resetForm();
             }
         }
-    }, [visible, initialData]);
+    }, [visible, initialData, selectedSemester]);
 
     const resetForm = () => {
         setName(''); setCode(''); setProfessor(''); setClassroom('');
-        setSemester('1'); setSyllabus(''); setCategories(['Theory']);
+        setSemester(String(selectedSemester || '1')); setSyllabus(''); setCategories(['Theory']);
         setAttended('0'); setTotal('0'); setPracticalTotal('10'); setAssignmentTotal('4');
     };
 
@@ -172,6 +173,20 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                                 </View>
                             </View>
 
+                            {/* Section: Syllabus */}
+                            <Text style={styles.sectionLabel}>Syllabus</Text>
+                            <View style={[styles.inputGroup, { height: 100, alignItems: 'flex-start', paddingTop: 12 }]}>
+                                <View style={[styles.inputIcon, { marginTop: 4 }]}><FileText size={18} color={c.subtext} /></View>
+                                <TextInput
+                                    style={[styles.input, { textAlignVertical: 'top' }]}
+                                    placeholder="Enter syllabus or notes..."
+                                    placeholderTextColor={c.subtext}
+                                    value={syllabus} onChangeText={setSyllabus}
+                                    multiline={true}
+                                    numberOfLines={4}
+                                />
+                            </View>
+
                             {/* Categories */}
                             <Text style={styles.sectionLabel}>Category</Text>
                             <View style={styles.chipRow}>
@@ -247,7 +262,7 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
 
                 </LinearGradient>
             </View>
-        </Modal>
+        </Modal >
     );
 };
 
