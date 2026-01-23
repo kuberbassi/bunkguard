@@ -5,6 +5,9 @@ from flask import Flask, request, session, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import nest_asyncio
+
+nest_asyncio.apply()
 
 
 load_dotenv()
@@ -153,15 +156,15 @@ def create_app():
     
     from api.api import api_bp
     from api.auth import auth_bp
-    from api.classroom import classroom_bp
     from api.keep import keep_bp
+    from api.scraper import scraper_bp
 
     from api.rate_limiter import init_limiter
 
     app.register_blueprint(api_bp)
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(classroom_bp)
     app.register_blueprint(keep_bp)
+    app.register_blueprint(scraper_bp, url_prefix='/api/scraper')
 
     
     # Initialize Rate Limiter

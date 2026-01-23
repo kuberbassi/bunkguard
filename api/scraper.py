@@ -1,6 +1,14 @@
+from flask import Blueprint, jsonify
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+
+scraper_bp = Blueprint('scraper', __name__)
+
+@scraper_bp.route('/notices', methods=['GET'])
+def get_notices():
+    notices = scrape_ipu_notices()
+    return jsonify(notices)
 
 def scrape_ipu_notices():
     url = "http://www.ipu.ac.in/notices.php"

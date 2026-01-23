@@ -375,4 +375,14 @@ export const attendanceService = {
         const response = await api.get('/api/notifications');
         return response.data;
     },
+
+    // Manual Course Manager
+    getManualCourses: async () => {
+        const response = await api.get('/api/courses/manual');
+        return response.data;
+    },
+    saveManualCourses: async (courses: any[]) => {
+        const response = await api.post('/api/courses/manual', courses);
+        return response.data;
+    },
 };

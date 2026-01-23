@@ -27,7 +27,7 @@ const Login: React.FC = () => {
         flow: 'auth-code',
         // @ts-ignore
         prompt: 'consent', // Force consent prompt to ensure we get a refresh_token
-        scope: 'email profile openid https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me.readonly https://www.googleapis.com/auth/classroom.announcements.readonly https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly'
+        scope: 'email profile openid'
     });
 
     return (

@@ -74,7 +74,10 @@ def google_auth():
             "email": user_info["email"],
             "name": user_info.get("name"),
             "google_id": user_info.get("id"),
-            "last_login": datetime.utcnow()
+            "last_login": datetime.utcnow(),
+            "google_token": access_token if access_token else None,
+            "google_refresh_token": refresh_token if refresh_token else None,
+            "token_expiry": datetime.utcnow() + timedelta(seconds=expires_in)
         }
         
         # Only set Google picture if user doesn't have one or it's a Google URL (not base64)

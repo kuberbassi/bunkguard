@@ -110,6 +110,7 @@ export interface DashboardData {
     overall_attendance: number;
     subjects_overview: SubjectOverview[];
     subjects: Array<Subject & { attendance_percentage: number; status_message: string }>;
+    recent_logs: Array<{ date: string; subject: string; status: string }>;
     current_semester: number;
     total_subjects: number;
 }

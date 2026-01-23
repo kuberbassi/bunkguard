@@ -442,7 +442,7 @@ const Results: React.FC = () => {
     }
 
     return (
-        <div className="space-y-4 md:space-y-6 pb-20 md:pb-8">
+        <div className="space-y-4 md:space-y-6 pb-20 md:pb-8 max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex flex-col gap-3 md:gap-4">
                 <div>
@@ -465,7 +465,7 @@ const Results: React.FC = () => {
                                 key={sem}
                                 onClick={() => setCurrentSemester(sem)}
                                 className={`
-                                    relative px-3 py-1 md:px-4 md:py-1.5 rounded-full font-bold text-xs md:text-sm transition-all duration-200 whitespace-nowrap
+                                    relative px-3 py-1.5 md:px-4 md:py-1.5 rounded-full font-bold text-xs md:text-sm transition-all duration-200 whitespace-nowrap
                                     ${isActive
                                         ? 'bg-primary text-on-primary shadow-sm'
                                         : 'text-on-surface-variant hover:bg-on-surface/5 hover:text-on-surface'
@@ -483,22 +483,22 @@ const Results: React.FC = () => {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-                <GlassCard className="p-3 md:p-4 text-center">
-                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">SGPA</p>
-                    <p className="text-xl md:text-3xl font-bold text-primary mt-1">{liveStats.sgpa.toFixed(2)}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                <GlassCard className="p-3 md:p-4 text-center flex flex-col justify-center h-full">
+                    <p className="text-[10px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">SGPA</p>
+                    <p className="text-2xl md:text-3xl font-bold text-primary mt-1">{liveStats.sgpa.toFixed(2)}</p>
                 </GlassCard>
-                <GlassCard className="p-3 md:p-4 text-center">
-                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">CGPA</p>
-                    <p className="text-xl md:text-3xl font-bold text-secondary mt-1">{liveStats.cgpa.toFixed(2)}</p>
+                <GlassCard className="p-3 md:p-4 text-center flex flex-col justify-center h-full">
+                    <p className="text-[10px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">CGPA</p>
+                    <p className="text-2xl md:text-3xl font-bold text-secondary mt-1">{liveStats.cgpa.toFixed(2)}</p>
                 </GlassCard>
-                <GlassCard className="p-3 md:p-4 text-center">
-                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Total Credits</p>
-                    <p className="text-xl md:text-3xl font-bold text-on-surface mt-1">{liveStats.totalCredits}</p>
+                <GlassCard className="p-3 md:p-4 text-center flex flex-col justify-center h-full">
+                    <p className="text-[10px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Total Credits</p>
+                    <p className="text-2xl md:text-3xl font-bold text-on-surface mt-1">{liveStats.totalCredits}</p>
                 </GlassCard>
-                <GlassCard className="p-3 md:p-4 text-center">
-                    <p className="text-[9px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Subjects</p>
-                    <p className="text-xl md:text-3xl font-bold text-on-surface mt-1">{liveStats.validSubjects}</p>
+                <GlassCard className="p-3 md:p-4 text-center flex flex-col justify-center h-full">
+                    <p className="text-[10px] md:text-xs uppercase tracking-wider text-on-surface-variant font-semibold">Subjects</p>
+                    <p className="text-2xl md:text-3xl font-bold text-on-surface mt-1">{liveStats.validSubjects}</p>
                 </GlassCard>
             </div>
 
@@ -507,35 +507,34 @@ const Results: React.FC = () => {
                 <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden w-full relative overflow-hidden bg-surface dark:bg-surface-container border border-outline-variant/60 rounded-2xl shadow-sm transition-all duration-300 backdrop-blur-sm hover:shadow-md hover:border-outline-variant hover:bg-surface-container-high/50 p-3 md:p-4">
                     <div className="grid grid-cols-[1fr_auto] items-center gap-4">
                         <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+                            <div className="w-8 h-8 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <AlertCircle className="w-4 h-4 md:w-4 md:h-4 text-primary" />
                             </div>
                             <span className="font-semibold text-sm md:text-base text-on-surface truncate">IPU Grading Reference</span>
                         </div>
-                        <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-on-surface-variant group-open:rotate-180 transition-transform" />
+                        <ChevronDown className="w-5 h-5 md:w-5 md:h-5 text-on-surface-variant group-open:rotate-180 transition-transform" />
                     </div>
                 </summary>
                 <div className="mt-2">
                     <GlassCard className="p-4 md:p-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                             {/* Marks Distribution */}
-                            {/* Marks Distribution */}
                             <div>
                                 <h4 className="font-semibold text-on-surface mb-2 md:mb-3 text-xs md:text-sm uppercase tracking-wide">Marks Distribution</h4>
-                                <div className="space-y-2 text-[10px] md:text-sm">
-                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
+                                <div className="space-y-2 text-xs md:text-sm">
+                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Theory Internal</span>
                                         <span className="font-medium text-on-surface">40 marks</span>
                                     </div>
-                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
+                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Theory External</span>
                                         <span className="font-medium text-on-surface">60 marks</span>
                                     </div>
-                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
+                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Practical Internal</span>
                                         <span className="font-medium text-on-surface">40 marks</span>
                                     </div>
-                                    <div className="flex justify-between py-1.5 px-3 bg-surface-container/50 rounded-lg">
+                                    <div className="flex justify-between py-2 px-3 bg-surface-container/50 rounded-lg">
                                         <span className="text-on-surface-variant">Practical External</span>
                                         <span className="font-medium text-on-surface">60 marks</span>
                                     </div>
@@ -545,7 +544,7 @@ const Results: React.FC = () => {
                             {/* Grade Scale - Full List - Responsive Grid */}
                             <div>
                                 <h4 className="font-semibold text-on-surface mb-2 md:mb-3 text-xs md:text-sm uppercase tracking-wide">Grade Scale</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] md:text-sm">
+                                <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
                                     {[
                                         { g: 'O', r: '90-100', p: 10, c: 'text-emerald-500', bg: 'bg-emerald-500/10' },
                                         { g: 'A+', r: '75-89', p: 9, c: 'text-green-500', bg: 'bg-green-500/10' },
@@ -556,10 +555,10 @@ const Results: React.FC = () => {
                                         { g: 'P', r: '40-44', p: 4, c: 'text-orange-600', bg: 'bg-orange-600/10' },
                                         { g: 'F', r: '<40', p: 0, c: 'text-red-500', bg: 'bg-red-500/10' },
                                     ].map((item, idx) => (
-                                        <div key={idx} className={`flex items-center gap-1.5 py-1 px-2 ${item.bg} rounded-md md:rounded-lg`}>
-                                            <span className={`font-bold ${item.c} text-xs md:text-sm w-4 md:w-6`}>{item.g}</span>
-                                            <span className="text-[10px] md:text-xs text-on-surface-variant">{item.r}</span>
-                                            <span className="ml-auto font-medium text-[10px] md:text-sm text-on-surface">{item.p}</span>
+                                        <div key={idx} className={`flex items-center gap-1.5 py-1.5 px-2.5 ${item.bg} rounded-lg`}>
+                                            <span className={`font-bold ${item.c} text-sm w-5 md:w-6`}>{item.g}</span>
+                                            <span className="text-[10px] md:text-xs text-on-surface-variant whitespace-nowrap">{item.r}</span>
+                                            <span className="ml-auto font-medium text-xs md:text-sm text-on-surface">{item.p}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -570,20 +569,20 @@ const Results: React.FC = () => {
             </details>
 
             {(!isEditing && isSaved) ? (
-                <GlassCard className="p-3 md:p-6">
+                <GlassCard className="p-4 md:p-6">
                     <div className="flex items-center justify-between mb-4 md:mb-6">
                         <h2 className="text-base md:text-lg font-bold text-on-surface flex items-center gap-2">
-                            <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+                            <BookOpen className="w-5 h-5 text-primary" />
                             Semester {currentSemester} <span className="text-on-surface hidden md:inline">Subjects</span>
                         </h2>
                         <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" className="text-error hover:bg-error/10" icon={<Trash2 size={14} />} onClick={() => setDeleteModalOpen(true)}>
+                            <Button variant="ghost" size="sm" className="text-error hover:bg-error/10" icon={<Trash2 size={16} />} onClick={() => setDeleteModalOpen(true)}>
                                 Delete
                             </Button>
-                            <Button variant="tonal" size="sm" icon={<Download size={14} />} onClick={() => downloadSemesterReport(currentSemester)}>
+                            <Button variant="tonal" size="sm" icon={<Download size={16} />} onClick={() => downloadSemesterReport(currentSemester)}>
                                 Report
                             </Button>
-                            <Button variant="tonal" size="sm" icon={<Edit2 size={14} />} onClick={() => setIsEditing(true)}>
+                            <Button variant="tonal" size="sm" icon={<Edit2 size={16} />} onClick={() => setIsEditing(true)}>
                                 Edit
                             </Button>
                         </div>
@@ -593,35 +592,35 @@ const Results: React.FC = () => {
                         {subjects.map((subject, index) => {
                             const result = calculateLocalResult(subject);
                             return (
-                                <div key={index} className="flex items-center justify-between p-2.5 md:p-4 bg-surface-container/30 rounded-xl border border-outline-variant/10">
-                                    <div className="flex items-center gap-2.5 md:gap-4 min-w-0">
-                                        <div className={`w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center font-bold text-xs md:text-lg bg-surface-container border border-outline-variant/20 ${getGradeColor(result.grade)} shrink-0`}>
+                                <div key={index} className="flex items-center justify-between p-3 md:p-4 bg-surface-container/30 rounded-xl border border-outline-variant/10">
+                                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                                        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center font-bold text-lg md:text-xl bg-surface-container border border-outline-variant/20 ${getGradeColor(result.grade)} shrink-0`}>
                                             {result.grade}
                                         </div>
                                         <div className="min-w-0">
-                                            <div className="flex items-center gap-1.5 md:gap-2">
-                                                <p className="font-semibold text-xs md:text-base text-on-surface truncate leading-tight">{subject.name}</p>
-                                                <span className={`text-[9px] md:text-[10px] px-1 md:px-1.5 py-0.5 rounded border ${subject.credits >= 4 ? 'bg-primary/10 text-primary border-primary/20' : 'bg-surface-container-high text-on-surface-variant border-outline-variant/30'}`}>
+                                            <div className="flex items-center gap-2 md:gap-2">
+                                                <p className="font-semibold text-sm md:text-base text-on-surface truncate leading-tight">{subject.name}</p>
+                                                <span className={`text-[10px] md:text-xs px-2 py-0.5 rounded border font-medium ${subject.credits >= 4 ? 'bg-primary/10 text-primary border-primary/20' : 'bg-surface-container-high text-on-surface-variant border-outline-variant/30'}`}>
                                                     {subject.credits}C
                                                 </span>
                                             </div>
 
                                             {/* Detailed Marks Breakdown */}
-                                            <div className="flex flex-wrap gap-x-2 md:gap-x-3 gap-y-0.5 mt-0.5 md:mt-1 text-[9px] md:text-xs text-on-surface-variant/80">
+                                            <div className="flex flex-wrap gap-x-2 md:gap-x-3 gap-y-1 mt-1 md:mt-1 text-[10px] md:text-xs text-on-surface-variant/80">
                                                 {subject.type === 'theory' && (
-                                                    <span className="flex items-center gap-1">
-                                                        <span className="w-1 md:w-1.5 h-1 md:h-1.5 rounded-full bg-blue-400" />
+                                                    <span className="flex items-center gap-1.5">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                                                         Th: <strong className="text-on-surface-variant">{subject.internal_theory || 0}</strong>+<strong className="text-on-surface-variant">{subject.external_theory || 0}</strong>
                                                     </span>
                                                 )}
                                                 {subject.type === 'practical' && (
-                                                    <span className="flex items-center gap-1">
+                                                    <span className="flex items-center gap-1.5">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                                                         Pr: <strong className="text-on-surface-variant">{subject.internal_practical || 0}</strong>+<strong className="text-on-surface-variant">{subject.external_practical || 0}</strong>
                                                     </span>
                                                 )}
                                                 {subject.type === 'nues' && (
-                                                    <span className="flex items-center gap-1">
+                                                    <span className="flex items-center gap-1.5">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
                                                         NUES: <strong className="text-on-surface-variant">{subject.internal_theory || 0}</strong>
                                                     </span>
@@ -633,7 +632,7 @@ const Results: React.FC = () => {
                                         <div className="flex flex-col items-end">
                                             {/* Show Grade Point Explicitly */}
                                             <p className="text-xs md:text-sm font-bold text-primary mb-0.5">GP: {result.gradePoint}</p>
-                                            <p className="font-bold text-sm md:text-base text-on-surface">{result.percentage}% <span className="text-[10px] font-normal text-on-surface-variant">({result.totalMarks}/{result.maxMarks})</span></p>
+                                            <p className="font-bold text-sm md:text-base text-on-surface">{result.percentage}% <span className="text-xs font-normal text-on-surface-variant">({result.totalMarks}/{result.maxMarks})</span></p>
                                         </div>
                                     </div>
                                 </div>
@@ -658,7 +657,7 @@ const Results: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 md:space-y-6">
                         <AnimatePresence mode="popLayout">
                             {subjects.map((subject, index) => {
                                 const result = calculateLocalResult(subject);
@@ -668,20 +667,20 @@ const Results: React.FC = () => {
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, x: -20 }}
-                                        className="bg-surface-container/50 rounded-2xl p-3 md:p-4 border border-outline-variant/20 relative"
+                                        className="bg-surface-container/50 rounded-2xl p-4 md:p-5 border border-outline-variant/20 relative"
                                     >
                                         {/* Remove Button - Top Right on Mobile */}
                                         <button
                                             onClick={() => removeSubject(index)}
-                                            className="absolute top-2 right-2 p-2 rounded-full text-error hover:bg-error-container/30 transition-colors md:hidden"
+                                            className="absolute top-2 right-2 p-2.5 rounded-full text-error hover:bg-error-container/30 transition-colors md:hidden"
                                             disabled={subjects.length === 1}
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={18} />
                                         </button>
 
                                         {/* Subject Inputs */}
                                         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-end">
-                                            <div className="md:col-span-4">
+                                            <div className="md:col-span-4 max-w-[85%] md:max-w-none">
                                                 <Input
                                                     label="Subject Name"
                                                     value={subject.name}
@@ -717,19 +716,19 @@ const Results: React.FC = () => {
                                                     ]}
                                                 />
                                             </div>
-                                            <div className="md:col-span-1 hidden md:flex justify-end">
+                                            <div className="md:col-span-1 hidden md:flex justify-end pb-1">
                                                 <button
                                                     onClick={() => removeSubject(index)}
                                                     className="p-2 rounded-full text-error hover:bg-error-container/30 transition-colors"
                                                     disabled={subjects.length === 1}
                                                 >
-                                                    <Trash2 size={18} />
+                                                    <Trash2 size={20} />
                                                 </button>
                                             </div>
                                         </div>
 
                                         {/* Marks Input */}
-                                        <div className="mt-3 md:mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                                        <div className="mt-4 md:mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                                             {(subject.type === 'theory') && (
                                                 <>
                                                     <Input
@@ -780,22 +779,22 @@ const Results: React.FC = () => {
                                         </div>
 
                                         {/* Live Result Preview */}
-                                        <div className="mt-3 pt-3 border-t border-outline-variant/20 flex flex-wrap items-center gap-4 text-xs md:text-sm">
+                                        <div className="mt-4 pt-3 border-t border-outline-variant/20 flex flex-wrap items-center gap-4 text-xs md:text-sm">
                                             <div>
                                                 <span className="text-on-surface-variant">Total:</span>
-                                                <span className="ml-1 font-bold text-on-surface">{result.totalMarks}/{result.maxMarks}</span>
+                                                <span className="ml-1.5 font-bold text-on-surface">{result.totalMarks}/{result.maxMarks}</span>
                                             </div>
                                             <div>
                                                 <span className="text-on-surface-variant">Percentage:</span>
-                                                <span className="ml-1 font-bold text-on-surface">{result.percentage}%</span>
+                                                <span className="ml-1.5 font-bold text-on-surface">{result.percentage}%</span>
                                             </div>
                                             <div>
                                                 <span className="text-on-surface-variant">Grade:</span>
-                                                <span className={`ml-1 font-bold text-base ${getGradeColor(result.grade)}`}>{result.grade}</span>
+                                                <span className={`ml-1.5 font-bold text-base ${getGradeColor(result.grade)}`}>{result.grade}</span>
                                             </div>
                                             <div>
                                                 <span className="text-on-surface-variant">GP:</span>
-                                                <span className="ml-1 font-bold text-on-surface">{result.gradePoint}</span>
+                                                <span className="ml-1.5 font-bold text-on-surface">{result.gradePoint}</span>
                                             </div>
                                         </div>
                                     </motion.div>
@@ -804,9 +803,13 @@ const Results: React.FC = () => {
                         </AnimatePresence>
                     </div>
 
-                    <div className="flex justify-end gap-2 mt-4 md:mt-6">
-                        <Button variant="outlined" onClick={() => setIsEditing(false)}>Cancel</Button>
-                        <Button onClick={handleSave} disabled={saving} isLoading={saving} icon={<Save size={18} />}>
+                    <div className="mt-6 md:mt-8 flex justify-end gap-3 sticky bottom-4 z-10">
+                        {isEditing && (
+                            <Button variant="outlined" onClick={handleCancel} className="bg-surface/80 backdrop-blur-sm">
+                                Cancel
+                            </Button>
+                        )}
+                        <Button onClick={handleSave} disabled={saving} isLoading={saving} icon={<Save size={18} />} className="shadow-lg">
                             Save Results
                         </Button>
                     </div>
@@ -816,7 +819,7 @@ const Results: React.FC = () => {
             <Modal
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
-                title="Delete Result?"
+                title={`Delete Semester ${currentSemester} Results?`}
             >
                 <div className="space-y-4">
                     <p className="text-on-surface-variant">

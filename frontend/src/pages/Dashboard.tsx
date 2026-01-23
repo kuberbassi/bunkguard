@@ -173,7 +173,7 @@ const Dashboard: React.FC = () => {
     const isAtRisk = overallAttendance < 75;
 
     return (
-        <div className="pb-24 space-y-6 md:space-y-10">
+        <div className="pb-24 space-y-6 md:space-y-10 max-w-7xl mx-auto">
             {/* Header Section */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
                 <div>
@@ -213,72 +213,72 @@ const Dashboard: React.FC = () => {
             </header>
 
             {/* Hero Stats */}
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                 {/* Main Metric Card */}
-                <div className="lg:col-span-2 relative overflow-hidden rounded-[20px] md:rounded-[32px] bg-gradient-to-br from-primary to-tertiary p-4 md:p-8 text-on-primary shadow-lg group">
+                <div className="lg:col-span-2 relative overflow-hidden rounded-[24px] md:rounded-[32px] bg-gradient-to-br from-primary to-tertiary p-6 md:p-8 text-on-primary shadow-lg group">
                     <div className="absolute top-0 right-0 p-24 md:p-32 bg-white/5 rounded-full blur-3xl -mr-12 -mt-12 group-hover:scale-110 transition-transform duration-700" />
 
-                    <div className="relative z-10 flex flex-col justify-between h-full min-h-[130px] md:min-h-[220px]">
+                    <div className="relative z-10 flex flex-col justify-between h-full min-h-[140px] md:min-h-[220px]">
                         <div className="flex justify-between items-start">
-                            <div className="p-2 md:p-3 bg-white/10 backdrop-blur-md rounded-xl md:rounded-2xl inline-flex">
-                                <TrendingUp className="w-4 h-4 md:w-6 md:h-6 text-white" />
+                            <div className="p-2.5 md:p-3 bg-white/10 backdrop-blur-md rounded-xl md:rounded-2xl inline-flex">
+                                <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
                             </div>
                             {isAtRisk && (
-                                <div className="px-2 py-1 md:px-4 md:py-1.5 bg-error/90 text-on-error rounded-full text-[10px] md:text-xs font-bold shadow-sm backdrop-blur-md border border-white/10 flex items-center gap-1 md:gap-2">
-                                    <AlertCircle size={10} className="md:w-[14px] md:h-[14px]" /> At Risk
+                                <div className="px-3 py-1.5 md:px-4 md:py-1.5 bg-error/90 text-on-error rounded-full text-xs font-bold shadow-sm backdrop-blur-md border border-white/10 flex items-center gap-1.5 md:gap-2">
+                                    <AlertCircle size={12} className="md:w-[14px] md:h-[14px]" /> At Risk
                                 </div>
                             )}
                         </div>
 
                         <div>
                             <div className="flex items-baseline gap-1 md:gap-2">
-                                <span className="text-3xl md:text-7xl font-bold font-display tracking-tighter">
+                                <span className="text-5xl md:text-7xl font-bold font-display tracking-tighter">
                                     {overallAttendance.toFixed(1)}
                                 </span>
-                                <span className="text-base md:text-3xl opacity-80 font-display">%</span>
+                                <span className="text-xl md:text-3xl opacity-80 font-display">%</span>
                             </div>
-                            <p className="opacity-90 font-medium text-[10px] md:text-lg mt-0.5 md:mt-1">Overall Attendance</p>
+                            <p className="opacity-90 font-medium text-sm md:text-lg mt-1">Overall Attendance</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Secondary Metrics */}
-                <div className="flex flex-col gap-2 md:gap-4">
-                    {/* Quick Stats Row - Stack on very small, grid on mobile */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-3">
-                        <GlassCard className="flex flex-col justify-center p-2 md:p-4 !bg-surface-container-low !border-outline-variant/30 relative overflow-hidden group">
+                <div className="flex flex-col gap-3 md:gap-4">
+                    {/* Quick Stats Row */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                        <GlassCard className="flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30 relative overflow-hidden group">
                             <div className="flex flex-row items-center gap-2 md:gap-1 text-left relative z-10">
-                                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                    <BookOpen className="w-3.5 h-3.5 md:w-5 md:h-5" />
+                                <div className="w-8 h-8 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <BookOpen className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight truncate">Subjects</p>
-                                    <p className="text-lg md:text-2xl font-bold font-display text-on-surface leading-tight truncate">{dashboardData?.total_subjects || 0}</p>
+                                    <p className="text-[10px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight truncate">Subjects</p>
+                                    <p className="text-xl md:text-2xl font-bold font-display text-on-surface leading-tight truncate">{dashboardData?.total_subjects || 0}</p>
                                 </div>
                             </div>
                         </GlassCard>
 
-                        <GlassCard className="flex flex-col justify-center p-2 md:p-4 !bg-surface-container-low !border-outline-variant/30 relative overflow-hidden group">
+                        <GlassCard className="flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30 relative overflow-hidden group">
                             <div className="flex flex-row items-center gap-2 md:gap-1 text-left relative z-10">
-                                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                    <Target className="w-3.5 h-3.5 md:w-5 md:h-5" />
+                                <div className="w-8 h-8 md:w-8 md:h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <Target className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight truncate">Target</p>
-                                    <p className="text-lg md:text-2xl font-bold font-display text-on-surface leading-tight truncate">{targetThreshold}%</p>
+                                    <p className="text-[10px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight truncate">Target</p>
+                                    <p className="text-xl md:text-2xl font-bold font-display text-on-surface leading-tight truncate">{targetThreshold}%</p>
                                 </div>
                             </div>
                         </GlassCard>
 
                         {/* CGPA Card */}
-                        <GlassCard className="col-span-2 md:col-span-1 flex flex-col justify-center p-2 md:p-4 !bg-surface-container-low !border-outline-variant/30 relative overflow-hidden group">
+                        <GlassCard className="col-span-2 md:col-span-1 flex flex-col justify-center p-3 md:p-4 !bg-surface-container-low !border-outline-variant/30 relative overflow-hidden group">
                             <div className="flex flex-row items-center gap-2 md:gap-1 text-left relative z-10">
-                                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
-                                    <Trophy className="w-3.5 h-3.5 md:w-5 md:h-5" />
+                                <div className="w-8 h-8 md:w-8 md:h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                                    <Trophy className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[9px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight truncate">CGPA</p>
-                                    <p className="text-lg md:text-2xl font-bold font-display text-secondary leading-tight truncate">
+                                    <p className="text-[10px] md:text-[10px] font-bold text-on-surface-variant uppercase leading-tight truncate">CGPA</p>
+                                    <p className="text-xl md:text-2xl font-bold font-display text-secondary leading-tight truncate">
                                         {cgpa !== null ? cgpa.toFixed(2) : '—'}
                                     </p>
                                 </div>
@@ -287,27 +287,27 @@ const Dashboard: React.FC = () => {
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="flex gap-1.5 md:gap-2">
+                    <div className="flex gap-2 md:gap-2">
                         <Link
                             to="/calendar"
-                            className="flex-1 flex items-center justify-center md:justify-start gap-1.5 md:gap-3 py-2 px-2 md:py-3 md:px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-xs md:text-sm font-medium text-on-surface"
+                            className="flex-1 flex items-center justify-center md:justify-start gap-2 md:gap-3 py-3 px-3 md:py-3 md:px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-sm font-medium text-on-surface"
                         >
-                            <CalendarDays size={14} className="md:w-[18px] md:h-[18px] text-primary shrink-0" />
+                            <CalendarDays size={18} className="md:w-[18px] md:h-[18px] text-primary shrink-0" />
                             <span className="truncate">Calendar</span>
-                            <ArrowRight size={14} className="text-on-surface-variant shrink-0 hidden md:block" />
+                            <ArrowRight size={16} className="text-on-surface-variant shrink-0 hidden md:block" />
                         </Link>
                         <Link
                             to="/results"
-                            className="flex-1 flex items-center justify-center md:justify-start gap-1.5 md:gap-3 py-2 px-2 md:py-3 md:px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-xs md:text-sm font-medium text-on-surface"
+                            className="flex-1 flex items-center justify-center md:justify-start gap-2 md:gap-3 py-3 px-3 md:py-3 md:px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 transition-colors text-sm font-medium text-on-surface"
                         >
-                            <Trophy size={14} className="md:w-[18px] md:h-[18px] text-secondary shrink-0" />
+                            <Trophy size={18} className="md:w-[18px] md:h-[18px] text-secondary shrink-0" />
                             <span className="truncate">Results</span>
-                            <ArrowRight size={14} className="text-on-surface-variant shrink-0 hidden md:block" />
+                            <ArrowRight size={16} className="text-on-surface-variant shrink-0 hidden md:block" />
                         </Link>
                     </div>
 
                     {/* Notices Widget */}
-                    <div className="flex-1 min-h-[160px] md:min-h-[240px] overflow-hidden">
+                    <div className="flex-1 min-h-[180px] md:min-h-[240px] overflow-hidden">
                         <NoticesWidget />
                     </div>
                 </div>
@@ -315,15 +315,15 @@ const Dashboard: React.FC = () => {
 
             {/* Subject List */}
             <section>
-                <div className="flex items-center justify-between mb-3 md:mb-6">
-                    <h2 className="text-lg md:text-2xl font-bold font-display text-on-surface">Your Subjects</h2>
-                    <Button onClick={() => setIsAddModalOpen(true)} icon={<Plus size={14} />} size="sm" className="!text-xs !px-3 !py-1.5">
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                    <h2 className="text-xl md:text-2xl font-bold font-display text-on-surface">Your Subjects</h2>
+                    <Button onClick={() => setIsAddModalOpen(true)} icon={<Plus size={16} />} size="sm" className="!px-4 !py-2">
                         Add Subject
                     </Button>
                 </div>
 
                 {(!dashboardData?.subjects || dashboardData.subjects.length === 0) ? (
-                    <div className="flex flex-col items-center justify-center py-12 md:py-20 bg-surface-container-low rounded-[24px] md:rounded-[32px] border border-dashed border-outline-variant">
+                    <div className="flex flex-col items-center justify-center py-16 md:py-20 bg-surface-container-low rounded-[24px] md:rounded-[32px] border border-dashed border-outline-variant">
                         <div className="w-16 h-16 md:w-20 md:h-20 bg-surface-container-high rounded-full flex items-center justify-center mb-4 md:mb-6 text-on-surface-variant/50">
                             <BookOpen size={32} className="md:w-10 md:h-10" />
                         </div>
@@ -347,7 +347,7 @@ const Dashboard: React.FC = () => {
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                         <AnimatePresence>
                             {dashboardData?.subjects?.map((subject) => {
                                 const percentage = subject.attendance_percentage;
@@ -355,24 +355,24 @@ const Dashboard: React.FC = () => {
                                 const config = STATUS_CONFIG[status];
 
                                 return (
-                                    <GlassCard key={subject._id} hover className="flex flex-col justify-between p-0 !rounded-[20px] md:!rounded-[24px] border-outline-variant/40">
-                                        <div className="p-3 md:p-4 pb-2">
+                                    <GlassCard key={subject._id} hover className="flex flex-col justify-between p-0 !rounded-[24px] md:!rounded-[24px] border-outline-variant/40">
+                                        <div className="p-4 md:p-4 pb-3">
                                             {/* Header with Emoji and Actions */}
-                                            <div className="flex items-start justify-between mb-2 md:mb-3">
-                                                <div className="flex items-start gap-2 md:gap-3 min-w-0">
-                                                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-2xl bg-surface-container-high flex items-center justify-center text-base md:text-xl shadow-sm border border-outline-variant/20 shrink-0">
+                                            <div className="flex items-start justify-between mb-3 md:mb-3">
+                                                <div className="flex items-start gap-3 md:gap-3 min-w-0">
+                                                    <div className="w-10 h-10 md:w-10 md:h-10 rounded-2xl bg-surface-container-high flex items-center justify-center text-lg md:text-xl shadow-sm border border-outline-variant/20 shrink-0">
                                                         {getSubjectEmoji(subject.name)}
                                                     </div>
-                                                    <div className="min-w-0">
-                                                        <h3 className="text-xs md:text-lg font-bold text-on-surface line-clamp-1 leading-snug" title={subject.name}>{subject.name}</h3>
-                                                        <div className="flex items-center gap-2 mt-0.5 md:mt-1 flex-wrap">
+                                                    <div className="min-w-0 pt-0.5">
+                                                        <h3 className="text-base md:text-lg font-bold text-on-surface line-clamp-1 leading-snug" title={subject.name}>{subject.name}</h3>
+                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                             {subject.code && (
-                                                                <span className="text-[8px] md:text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium border border-outline-variant/30">
+                                                                <span className="text-[10px] md:text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium border border-outline-variant/30">
                                                                     {subject.code}
                                                                 </span>
                                                             )}
                                                             {subject.professor && (
-                                                                <span className="text-[9px] md:text-xs text-on-surface-variant flex items-center gap-1 min-w-0">
+                                                                <span className="text-xs md:text-xs text-on-surface-variant flex items-center gap-1 min-w-0">
                                                                     <span className="w-1 h-1 rounded-full bg-on-surface-variant/50 shrink-0" />
                                                                     <span className="line-clamp-1 max-w-[100px] truncate">{subject.professor}</span>
                                                                 </span>
@@ -382,52 +382,52 @@ const Dashboard: React.FC = () => {
                                                 </div>
                                                 <button
                                                     onClick={() => handleDeleteSubject(subject._id, subject.name)}
-                                                    className="p-1.5 md:p-2 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-full transition-colors -mr-2 -mt-2 shrink-0"
+                                                    className="p-2 md:p-2 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-full transition-colors -mr-2 -mt-2 shrink-0"
                                                 >
-                                                    <Trash2 size={14} className="md:w-4 md:h-4" />
+                                                    <Trash2 size={16} className="md:w-4 md:h-4" />
                                                 </button>
                                             </div>
 
-                                            <div className="flex items-end gap-1.5 md:gap-2 mb-3 md:mb-4">
-                                                <span className={`text-2xl md:text-5xl font-bold font-display tracking-tight ${config.text.split(' ')[0]}`}>
+                                            <div className="flex items-end gap-2 md:gap-2 mb-3 md:mb-4">
+                                                <span className={`text-4xl md:text-5xl font-bold font-display tracking-tight ${config.text.split(' ')[0]}`}>
                                                     {percentage.toFixed(1)}
                                                 </span>
-                                                <span className="text-sm md:text-xl text-on-surface-variant/70 font-medium mb-1">%</span>
+                                                <span className="text-lg md:text-xl text-on-surface-variant/70 font-medium mb-1.5">%</span>
                                             </div>
 
-                                            <div className={`inline-flex items-center px-2 py-0.5 md:px-3 md:py-1.5 rounded-full text-[9px] md:text-xs font-bold border ${config.bg} ${config.text} ${config.border}`}>
+                                            <div className={`inline-flex items-center px-3 py-1 md:px-3 md:py-1.5 rounded-full text-[10px] md:text-xs font-bold border ${config.bg} ${config.text} ${config.border}`}>
                                                 {subject.status_message}
                                             </div>
                                         </div>
 
-                                        <div className="p-2 md:p-3 bg-surface-container-low/50 border-t border-outline-variant/10">
-                                            <div className="grid grid-cols-2 gap-1.5 md:gap-2 mb-1.5 md:mb-2">
+                                        <div className="p-3 md:p-3 bg-surface-container-low/50 border-t border-outline-variant/10">
+                                            <div className="grid grid-cols-2 gap-2 md:gap-2 mb-2 md:mb-2">
                                                 <button
                                                     onClick={() => handleQuickLog(subject._id, 'present')}
-                                                    className="flex items-center justify-center gap-1.5 h-8 md:h-10 rounded-lg md:rounded-xl bg-surface hover:bg-success/10 hover:text-success-dark border border-outline-variant/50 transition-colors font-semibold text-[10px] md:text-sm shadow-sm"
+                                                    className="flex items-center justify-center gap-2 h-10 md:h-10 rounded-xl md:rounded-xl bg-surface hover:bg-success/10 hover:text-success-dark border border-outline-variant/50 transition-colors font-semibold text-xs md:text-sm shadow-sm"
                                                 >
-                                                    <Check size={12} className="md:w-4 md:h-4" /> Present
+                                                    <Check size={14} className="md:w-4 md:h-4" /> Present
                                                 </button>
                                                 <button
                                                     onClick={() => handleQuickLog(subject._id, 'absent')}
-                                                    className="flex items-center justify-center gap-1.5 h-8 md:h-10 rounded-lg md:rounded-xl bg-surface hover:bg-error/10 hover:text-error-dark border border-outline-variant/50 transition-colors font-semibold text-[10px] md:text-sm shadow-sm"
+                                                    className="flex items-center justify-center gap-2 h-10 md:h-10 rounded-xl md:rounded-xl bg-surface hover:bg-error/10 hover:text-error-dark border border-outline-variant/50 transition-colors font-semibold text-xs md:text-sm shadow-sm"
                                                 >
-                                                    <X size={12} className="md:w-4 md:h-4" /> Absent
+                                                    <X size={14} className="md:w-4 md:h-4" /> Absent
                                                 </button>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+                                            <div className="grid grid-cols-2 gap-2 md:gap-2">
                                                 <button
                                                     onClick={() => setEditingSubject(subject)}
-                                                    className="flex items-center justify-center gap-1.5 h-7 md:h-9 rounded-md md:rounded-lg text-[10px] md:text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+                                                    className="flex items-center justify-center gap-2 h-9 md:h-9 rounded-lg md:rounded-lg text-xs md:text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
                                                 >
-                                                    <Edit2 size={10} className="md:w-[14px] md:h-[14px]" /> Edit
+                                                    <Edit2 size={12} className="md:w-[14px] md:h-[14px]" /> Edit
                                                 </button>
                                                 <button
                                                     onClick={() => setMarkingSubjectId(subject._id)}
-                                                    className="flex items-center justify-center gap-1.5 h-7 md:h-9 rounded-md md:rounded-lg text-[10px] md:text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+                                                    className="flex items-center justify-center gap-2 h-9 md:h-9 rounded-lg md:rounded-lg text-xs md:text-xs font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
                                                 >
-                                                    <Calendar size={10} className="md:w-[14px] md:h-[14px]" /> Advanced
+                                                    <Calendar size={12} className="md:w-[14px] md:h-[14px]" /> Advanced
                                                 </button>
                                             </div>
                                         </div>

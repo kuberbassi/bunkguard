@@ -241,7 +241,6 @@ users_collection = db.get_collection('users')
 manual_courses_collection = db.get_collection('manual_courses')
 semester_results_collection = db.get_collection('semester_results')
 skills_collection = db.get_collection('skills')
-deadlines_collection = db.get_collection('deadlines')
 
 
 # --- Helper Functions ---
@@ -431,6 +430,7 @@ def get_current_user():
     return jsonify(session['user'])
 
 @api_bp.route('/dashboard_data')
+@api_bp.route('/dashboard/data')  # Alias for frontend compatibility
 def get_dashboard_data():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     try:
@@ -489,7 +489,7 @@ def get_dashboard_data():
             "current_date": datetime.now().strftime("%B %d, %Y"), 
             "overall_attendance": overall_percent, 
             "subjects_overview": subjects_overview,
-            "subjects": transformed_subjects, # Now sends the fully decorated subjects list
+            "subjects": transformed_subjects,
             "current_semester": current_semester,
             "total_subjects": len(subjects)
         }
@@ -2042,49 +2042,30 @@ def get_notifications():
                     "read": False
                 })
 
-        # 2. Google Classroom Integration (Announcements, Materials, Work)
+        # 2. Google Classroom Integration (Read from Cache)
         google_token = user_data.get('google_token')
         if google_token:
-            from api.classroom import get_cached_courses, make_google_api_request
-            courses = get_cached_courses(google_token, user_email)
-            if courses:
-                # Limit to 3 most active courses for speed
-                for course in courses[:5]:
-                    # Fetch Announcements
-                    success, data, status, error = make_google_api_request(
-                        f'https://classroom.googleapis.com/v1/courses/{course["id"]}/announcements',
-                        {'Authorization': f'Bearer {google_token}'},
-                        {'pageSize': 3}
-                    )
-                    if success:
-                        for ann in data.get('announcements', []):
-                            notifications.append({
-                                "id": ann['id'],
-                                "title": f"📢 {course['name']}",
-                                "message": ann.get('text', 'New Announcement')[:100],
-                                "type": "classroom",
-                                "timestamp": ann.get('creationTime', datetime.utcnow().isoformat()),
-                                "link": ann.get('alternateLink'),
-                                "read": False
-                            })
-                    
-                    # Fetch Coursework (Assignments)
-                    success, data, status, error = make_google_api_request(
-                        f'https://classroom.googleapis.com/v1/courses/{course["id"]}/courseWork',
-                        {'Authorization': f'Bearer {google_token}'},
-                        {'pageSize': 3}
-                    )
-                    if success:
-                        for work in data.get('courseWork', []):
-                            notifications.append({
-                                "id": work['id'],
-                                "title": f"📝 {course['name']}",
-                                "message": f"Assignment: {work.get('title')}",
-                                "type": "classroom",
-                                "timestamp": work.get('creationTime', datetime.utcnow().isoformat()),
-                                "link": work.get('alternateLink'),
-                                "read": False
-                            })
+            try:
+                # Read from MongoDB cache populated by background worker
+                cache_collection = db.get_collection('cache')
+                cached_notifications = cache_collection.find_one({"key": f"notifications_{user_email}"})
+                
+                if cached_notifications and datetime.utcnow() < cached_notifications.get('expires_at', datetime.utcnow()):
+                    # Cache is valid
+                    classroom_items = cached_notifications.get('data', {}).get('items', [])
+                    for item in classroom_items[:10]:  # Limit to 10 items
+                        notifications.append({
+                            "id": item.get('id', str(hash(item.get('title', '')))),
+                            "title": f"{'📢' if item.get('type') == 'announcement' else '📝'} {item.get('courseName', 'Classroom')}",
+                            "message": item.get('text' if item.get('type') == 'announcement' else 'title', 'New Update')[:100],
+                            "type": "classroom",
+                            "timestamp": item.get('creationTime') or item.get('updateTime', datetime.utcnow().isoformat()),
+                            "link": item.get('alternateLink'),
+                            "read": False
+                        })
+            except Exception as e:
+                print(f"⚠️ Error reading classroom cache: {e}")
+                # Silently continue without classroom notifications
 
         # 3. University Notices (IPU)
         notices_col = db.get_collection('notices')

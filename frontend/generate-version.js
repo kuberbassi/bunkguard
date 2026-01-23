@@ -21,6 +21,9 @@ if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir);
 }
 
-fs.writeFileSync(versionFile, JSON.stringify(versionData, null, 2));
-
-console.log(`✅ Generated version.json: ${version}`);
+try {
+    fs.writeFileSync(versionFile, JSON.stringify(versionData, null, 2));
+    console.log(`✅ Generated version.json: ${version}`);
+} catch (error) {
+    console.warn(`⚠️ Could not write version.json: ${error.message}`);
+}

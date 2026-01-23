@@ -1,5 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './queryClient';
 import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -224,19 +226,21 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
-      <BrowserRouter>
-        <ThemeProvider>
-          <AuthProvider>
-            <SemesterProvider>
-              <ToastProvider>
-                <ErrorBoundary>
-                  <AppContent />
-                </ErrorBoundary>
-              </ToastProvider>
-            </SemesterProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <ThemeProvider>
+            <AuthProvider>
+              <SemesterProvider>
+                <ToastProvider>
+                  <ErrorBoundary>
+                    <AppContent />
+                  </ErrorBoundary>
+                </ToastProvider>
+              </SemesterProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
     </GoogleOAuthProvider>
   );
 };

@@ -18,16 +18,12 @@ app = create_app()
 
 # Run the development server
 if __name__ == '__main__':
-    print("🚀 Starting BunkGuard Flask Server...")
+    print("🚀 Starting AcadHub Flask Server...")
     print(f"📍 Server running at: http://localhost:5000")
     print(f"🛑 Press Ctrl+C to stop")
     
     # Start Background Worker (Notification Polling)
-    from api.background_worker import start_worker
-    
-    # Only start worker in the reloader's worker process (or main if no reloader)
-    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        start_worker(app)
+    # Background worker removed as Classroom integration is disabled
 
     app.run(
         debug=True,

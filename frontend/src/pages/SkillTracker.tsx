@@ -174,7 +174,7 @@ const SkillTracker: React.FC = () => {
             <div className="mb-4 md:mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 <button
                     onClick={() => setFilter('all')}
-                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${filter === 'all'
+                    className={`px-3 md:px-4 py-2 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${filter === 'all'
                         ? 'bg-primary text-on-primary shadow-sm'
                         : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                         }`}
@@ -185,7 +185,7 @@ const SkillTracker: React.FC = () => {
                     <button
                         key={cat}
                         onClick={() => setFilter(cat)}
-                        className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${filter === cat
+                        className={`px-3 md:px-4 py-2 md:py-2 rounded-full text-xs md:text-sm font-medium whitespace-nowrap transition-all ${filter === cat
                             ? 'bg-primary text-on-primary shadow-sm'
                             : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                             }`}
@@ -197,12 +197,12 @@ const SkillTracker: React.FC = () => {
 
             {/* Skills Grid */}
             {filteredSkills.length === 0 ? (
-                <div className="text-center py-12 md:py-20 bg-surface-container-low rounded-3xl border border-dashed border-outline-variant">
-                    <p className="text-on-surface-variant mb-4">No skills found. Start adding some!</p>
+                <div className="text-center py-16 md:py-20 bg-surface-container-low rounded-3xl border border-dashed border-outline-variant">
+                    <p className="text-on-surface-variant mb-4 font-medium">No skills found. Start adding some!</p>
                     <Button variant="tonal" onClick={handleAddSkill}>Create First Skill</Button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-4">
                     <AnimatePresence>
                         {filteredSkills.map((skill, index) => {
                             const levelColor = getLevelColor(skill.level);
@@ -219,45 +219,45 @@ const SkillTracker: React.FC = () => {
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <GlassCard hover className="relative overflow-hidden group h-full flex flex-col p-3 md:p-5">
-                                        <div className="flex justify-between items-start mb-2 md:mb-4">
+                                    <GlassCard hover className="relative overflow-hidden group h-full flex flex-col p-4 md:p-5">
+                                        <div className="flex justify-between items-start mb-3 md:mb-4">
                                             <div>
-                                                <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
-                                                    <span className={`text-[9px] md:text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${levelColor}`}>
+                                                <div className="flex items-center gap-2 md:gap-2 mb-1 md:mb-1">
+                                                    <span className={`text-[10px] md:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${levelColor}`}>
                                                         {skill.level}
                                                     </span>
-                                                    <span className={`text-[9px] md:text-xs px-1.5 py-0.5 rounded font-medium ${getCategoryColor(skill.category)}`}>
+                                                    <span className={`text-[10px] md:text-xs px-2 py-0.5 rounded font-medium ${getCategoryColor(skill.category)}`}>
                                                         {skill.category}
                                                     </span>
                                                 </div>
-                                                <h3 className="text-sm md:text-xl font-bold text-on-surface leading-tight">{skill.name}</h3>
+                                                <h3 className="text-base md:text-xl font-bold text-on-surface leading-tight">{skill.name}</h3>
                                             </div>
                                             <div className="flex gap-1 md:gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => handleEditSkill(skill)}
-                                                    className="p-1.5 md:p-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant"
+                                                    className="p-2 md:p-2 rounded-lg hover:bg-surface-container-high text-on-surface-variant transition-colors"
                                                 >
-                                                    <Edit2 size={12} className="md:w-4 md:h-4" />
+                                                    <Edit2 size={14} className="md:w-4 md:h-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteSkill(skillId)}
-                                                    className="p-1.5 md:p-2 rounded-lg hover:bg-error/10 text-error"
+                                                    className="p-2 md:p-2 rounded-lg hover:bg-error/10 text-error transition-colors"
                                                 >
-                                                    <Trash2 size={12} className="md:w-4 md:h-4" />
+                                                    <Trash2 size={14} className="md:w-4 md:h-4" />
                                                 </button>
                                             </div>
                                         </div>
 
-                                        <p className="text-xs md:text-sm text-on-surface-variant mb-3 md:mb-6 line-clamp-2 min-h-[2.5em] leading-snug">
+                                        <p className="text-xs md:text-sm text-on-surface-variant mb-4 md:mb-6 line-clamp-2 min-h-[2.5em] leading-relaxed">
                                             {skill.notes || "No description provided."}
                                         </p>
 
                                         <div className="mt-auto">
-                                            <div className="flex justify-between items-center mb-1 md:mb-2">
-                                                <span className="text-[9px] md:text-xs font-medium text-on-surface-variant">Progress</span>
-                                                <span className="text-[10px] md:text-xs font-bold text-primary">{skill.progress}%</span>
+                                            <div className="flex justify-between items-center mb-1.5 md:mb-2">
+                                                <span className="text-[10px] md:text-xs font-medium text-on-surface-variant">Progress</span>
+                                                <span className="text-xs md:text-xs font-bold text-primary">{skill.progress}%</span>
                                             </div>
-                                            <div className="h-1.5 md:h-2 bg-surface-container-high rounded-full overflow-hidden">
+                                            <div className="h-2 md:h-2 bg-surface-container-high rounded-full overflow-hidden">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${skill.progress}%` }}
@@ -265,7 +265,7 @@ const SkillTracker: React.FC = () => {
                                                     className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
                                                 />
                                             </div>
-                                            <div className="flex justify-between mt-0.5 md:mt-1 text-[8px] md:text-[10px] text-on-surface-variant/70">
+                                            <div className="flex justify-between mt-1 md:mt-1 text-[9px] md:text-[10px] text-on-surface-variant/70 font-medium">
                                                 <span>Beginner</span>
                                                 <span>Expert</span>
                                             </div>

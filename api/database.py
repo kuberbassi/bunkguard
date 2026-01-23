@@ -31,3 +31,5 @@ def get_db():
 
 # Singleton instance for the package
 db = get_db()
+
+
