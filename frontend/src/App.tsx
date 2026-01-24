@@ -31,7 +31,7 @@ const Notifications = lazy(() => import('./pages/Notifications.tsx'));
 const Results = lazy(() => import('./pages/Results.tsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.tsx'));
 const TermsOfService = lazy(() => import('./pages/TermsOfService.tsx'));
-const BrainDump = lazy(() => import('./pages/BrainDump.tsx'));
+
 const SkillTracker = lazy(() => import('./pages/SkillTracker.tsx'));
 
 
@@ -180,16 +180,7 @@ const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/braindump"
-          element={
-            <ProtectedRoute>
-              <Suspense fallback={<LoadingSpinner fullScreen />}>
-                <BrainDump />
-              </Suspense>
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/skills"
           element={

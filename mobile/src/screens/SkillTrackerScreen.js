@@ -201,7 +201,12 @@ const SkillTrackerScreen = ({ navigation }) => {
             <Animated.FlatList
                 data={filteredSkills}
                 renderItem={renderSkillCard}
-                keyExtractor={(item, index) => item._id ? item._id.toString() : `skill_${index}`}
+                keyExtractor={(item, index) => {
+                    if (item._id && typeof item._id === 'string') return item._id;
+                    if (item._id && item._id.$oid) return item._id.$oid; // Handle MongoDB ObjectId format
+                    if (item.id) return item.id;
+                    return `skill_${index}_${Date.now()}`; // Last resort fallback
+                }}
                 contentContainerStyle={styles.list}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />}

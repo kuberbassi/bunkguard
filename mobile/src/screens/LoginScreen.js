@@ -34,10 +34,7 @@ const LoginScreen = () => {
             webClientId: '977241229787-o6enc2sdef4gq5gitl5lgitp1qec0r0r.apps.googleusercontent.com', // Verified Web Client
 
             offlineAccess: true,
-            scopes: [
-                'https://www.googleapis.com/auth/classroom.courses.readonly',
-                'https://www.googleapis.com/auth/classroom.coursework.me.readonly'
-            ],
+            scopes: [],
         });
     }, []);
 
@@ -72,8 +69,13 @@ const LoginScreen = () => {
             } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
                 Alert.alert('Error', 'Google Play Services not available');
             } else {
-                Alert.alert('Login Failed', error.message || 'Unknown error');
-                console.error(error);
+                console.error('Google Sign-In Error:', error);
+                console.error('Error Code:', error.code);
+                Alert.alert('Login Failed', `Google Sign-In failed: ${error.message} (${error.code})`);
+                // Check for Developer Error specifically to give hint
+                if (error.code === '10' || error.toString().includes('DEVELOPER_ERROR')) {
+                     Alert.alert('Configuration Error', 'SHA-1 fingerprint mismatch. Please add the debug SHA-1 to Firebase/Google Cloud Console.');
+                }
             }
         } finally {
             setLoading(false);

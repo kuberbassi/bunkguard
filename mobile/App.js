@@ -19,10 +19,10 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import SubjectDetailScreen from './src/screens/SubjectDetailScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
 import SkillTrackerScreen from './src/screens/SkillTrackerScreen';
-import AssignmentsScreen from './src/screens/AssignmentsScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import ActivityLogScreen from './src/screens/ActivityLogScreen';
 import TimetableSetupScreen from './src/screens/TimetableSetupScreen';
+import AssignmentsScreen from './src/screens/AssignmentsScreen';
 import CourseManagerScreen from './src/screens/CourseManagerScreen';
 
 import { SemesterProvider } from './src/contexts/SemesterContext';
@@ -175,11 +175,11 @@ const AppNavigator = () => {
               <Stack.Screen name="SubjectDetail" component={SubjectDetailScreen} />
               <Stack.Screen name="Results" component={ResultsScreen} />
               <Stack.Screen name="SkillTracker" component={SkillTrackerScreen} />
-              <Stack.Screen name="Assignments" component={AssignmentsScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
-              <Stack.Screen name="CourseManager" component={CourseManagerScreen} />
               <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
               <Stack.Screen name="TimetableSetup" component={TimetableSetupScreen} />
+              <Stack.Screen name="Assignments" component={AssignmentsScreen} />
+              <Stack.Screen name="CourseManager" component={CourseManagerScreen} />
             </>
           )}
         </Stack.Navigator>

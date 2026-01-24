@@ -91,6 +91,7 @@ const AcademicScreen = ({ navigation }) => {
             colors: c.cards.courses,
             route: 'CourseManager',
         },
+
     ];
 
     return (

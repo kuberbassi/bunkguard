@@ -7,14 +7,14 @@ import axios from 'axios';
 // For iOS Simulator, 'http://localhost:5000' works.
 // Physical Device (Your PC IP):
 const PROD_URL = 'https://acadhub.kuberbassi.com';
-const LOCAL_IP = 'http://192.168.0.159:5000';
+const LOCAL_IP = 'http://127.0.0.1:5000'; // For USB Debugging with adb reverse
 const WEB_URL = 'http://localhost:5000';
 
 const API_URL = Platform.select({
     web: (process.env.NODE_ENV === 'production') ? PROD_URL : WEB_URL,
-    android: PROD_URL, // Using Custom Domain for Android testing
-    ios: PROD_URL,
-    default: PROD_URL
+    android: LOCAL_IP, // Dev: Use Local IP
+    ios: LOCAL_IP,     // Dev: Use Local IP
+    default: LOCAL_IP
 });
 
 const api = axios.create({

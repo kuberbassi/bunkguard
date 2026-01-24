@@ -1,0 +1,10 @@
+
+	 SHA1: 5E:8F:16:06:2
+E:A3:CD:2C:4A:0D:54:7
+8:76:BA:A6:F3:8C:AB:F
+6:25
+Signature algorithm 
+name: SHA1withRSA 
+(weak)
+
+

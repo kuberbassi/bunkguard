@@ -32,8 +32,6 @@ const NotificationsScreen = ({ navigation }) => {
     const styles = getStyles(c, isDark);
     const scrollY = useRef(new Animated.Value(0)).current;
 
-    const [activeTab, setActiveTab] = useState('classroom');
-    const [classroomNotifs, setClassroomNotifs] = useState([]);
     const [uniNotices, setUniNotices] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -41,11 +39,7 @@ const NotificationsScreen = ({ navigation }) => {
 
     const fetchData = async () => {
         try {
-            const [notifRes, noticesRes] = await Promise.all([
-                api.get('/api/notifications'),
-                api.get('/api/notices')
-            ]);
-            setClassroomNotifs(notifRes.data || []);
+            const noticesRes = await api.get('/api/notices');
             setUniNotices(noticesRes.data || []);
         } catch (error) { console.error(error); }
         finally { setRefreshing(false); }
@@ -55,40 +49,20 @@ const NotificationsScreen = ({ navigation }) => {
         if (url && await Linking.canOpenURL(url)) await Linking.openURL(url);
     };
 
-    const headerHeight = scrollY.interpolate({ inputRange: [0, 100], outputRange: [120, 80], extrapolate: 'clamp' });
-    const titleSize = scrollY.interpolate({ inputRange: [0, 100], outputRange: [32, 24], extrapolate: 'clamp' });
-    const currentList = activeTab === 'classroom' ? classroomNotifs : uniNotices;
-
     const formatDate = (dateString) => {
         if (!dateString) return '';
         try {
-            // Handle ISO strings (Google Classroom)
-            const date = new Date(dateString);
-            if (!isNaN(date.getTime())) {
-                const now = new Date();
-                const diff = now - date;
-                if (diff < 86400000) return 'Today';
-                if (diff < 172800000) return 'Yesterday';
-                return date.toLocaleDateString('en-GB');
-            }
-
             // Handle DD-MM-YYYY (University scraping common format)
             const parts = dateString.split('-');
             if (parts.length === 3) return `${parts[0]}/${parts[1]}/${parts[2]}`;
-
             return dateString;
         } catch (e) { return dateString; }
     };
 
     const renderItem = ({ item }) => {
-        const isClassroom = activeTab === 'classroom';
-        const Icon = isClassroom ? Megaphone : Info;
-
-        // Standardized from backend: title, message, link, timestamp
-        const displayTitle = item.title || (isClassroom ? 'Classroom Update' : 'Notice');
-        const displayMessage = item.message || item.text || '';
-        const displayLink = item.link || item.alternateLink;
-        const displayTime = formatDate(item.timestamp || item.creationTime || item.date);
+        const displayTitle = item.title || 'Notice';
+        const displayLink = item.link;
+        const displayTime = formatDate(item.date);
 
         return (
             <TouchableOpacity
@@ -98,11 +72,11 @@ const NotificationsScreen = ({ navigation }) => {
                 <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
                     <View style={styles.cardHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                            <View style={[styles.iconBox, { backgroundColor: isClassroom ? c.primary + '20' : c.danger + '20' }]}>
-                                {isClassroom ? <Megaphone size={18} color={c.primary} /> : <Info size={18} color={c.danger} />}
+                            <View style={[styles.iconBox, { backgroundColor: c.danger + '20' }]}>
+                                <Info size={18} color={c.danger} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.cardTitle} numberOfLines={1}>
+                                <Text style={styles.cardTitle} numberOfLines={2}>
                                     {displayTitle}
                                 </Text>
                                 <Text style={styles.cardDate}>
@@ -117,8 +91,6 @@ const NotificationsScreen = ({ navigation }) => {
                             </View>
                         )}
                     </View>
-
-                    <Text style={styles.messageText}>{displayMessage}</Text>
                 </LinearGradient>
             </TouchableOpacity>
         );
@@ -132,41 +104,23 @@ const NotificationsScreen = ({ navigation }) => {
             <AnimatedHeader
                 scrollY={scrollY}
                 title="Notifications"
-                subtitle=""
+                subtitle="UNIVERSITY NOTICES"
                 isDark={isDark}
                 colors={c}
                 onBack={() => navigation.goBack()}
-            >
-                <View style={styles.tabRow}>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'classroom' && { backgroundColor: c.glassBgEnd, borderColor: c.primary }]}
-                        onPress={() => setActiveTab('classroom')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'classroom' && { color: c.primary }]}>Classroom</Text>
-                        <View style={styles.badge}><Text style={styles.badgeText}>{classroomNotifs.length}</Text></View>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'university' && { backgroundColor: c.glassBgEnd, borderColor: c.primary }]}
-                        onPress={() => setActiveTab('university')}
-                    >
-                        <Text style={[styles.tabText, activeTab === 'university' && { color: c.primary }]}>University</Text>
-                        <View style={[styles.badge, { backgroundColor: c.danger + '20' }]}><Text style={[styles.badgeText, { color: c.danger }]}>{uniNotices.length}</Text></View>
-                    </TouchableOpacity>
-                </View>
-            </AnimatedHeader>
+            />
 
             <Animated.FlatList
-                data={currentList}
+                data={uniNotices}
                 renderItem={renderItem}
                 keyExtractor={(item, idx) => (item.id || item._id || idx).toString()}
                 contentContainerStyle={styles.list}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                ListHeaderComponent={<View style={{ height: 140 }} />}
+                ListHeaderComponent={<View style={{ height: 100 }} />}
                 ListEmptyComponent={
                     <View style={{ alignItems: 'center', marginTop: 60 }}>
                         <Bell size={48} color={c.subtext} style={{ opacity: 0.5 }} />
-                        <Text style={{ color: c.subtext, marginTop: 16, fontWeight: '600' }}>No new notifications</Text>
+                        <Text style={{ color: c.subtext, marginTop: 16, fontWeight: '600' }}>No new notices</Text>
                     </View>
                 }
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor={c.primary} />}

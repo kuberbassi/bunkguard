@@ -1260,24 +1260,117 @@ def handle_board():
 @api_bp.route('/courses/manual', methods=['GET', 'POST'])
 def handle_manual_courses():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    # Critical: Check if database is available
+    if db is None:
+        print("❌ ERROR: Database is not available in handle_manual_courses")
+        return jsonify({"error": "Database connection unavailable. Please check MONGO_URI environment variable."}), 500
+    
     user_email = session['user']['email']
+    manual_courses_collection = db.get_collection('manual_courses')
 
     if request.method == 'GET':
-        # Retrieve all manual courses for user
-        # We can store as a single array document or individual documents?
-        # User current logic is array in localStorage. Single doc is easier to sync full state.
-        doc = manual_courses_collection.find_one({"owner_email": user_email})
-        return Response(json_util.dumps(doc['courses'] if doc else []), mimetype='application/json')
+        try:
+            courses = list(manual_courses_collection.find({'owner_email': user_email}))
+            return Response(json_util.dumps(courses), mimetype='application/json')
+        except Exception as e:
+            print(f"ERROR in GET /courses/manual: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
 
     if request.method == 'POST':
-        # Full sync of courses list
-        courses = request.json # Expects array
+        try:
+            data = request.json
+            
+            # Check if it's an array (full sync from web) or single object (mobile add)
+            if isinstance(data, list):
+                # Web version: Full sync - replace all courses
+                # Delete existing courses
+                manual_courses_collection.delete_many({'owner_email': user_email})
+                
+                # Insert new courses
+                if len(data) > 0:
+                    courses_to_insert = []
+                    for course in data:
+                        course_doc = {
+                            "owner_email": user_email,
+                            "title": course.get('title', 'Untitled'),
+                            "platform": course.get('platform', 'custom'),
+                            "url": course.get('url', ''),
+                            "progress": course.get('progress', 0),
+                            "instructor": course.get('instructor', ''),
+                            "targetCompletionDate": course.get('targetCompletionDate', ''),
+                            "enrolledDate": course.get('enrolledDate', datetime.now().strftime("%Y-%m-%d")),
+                            "notes": course.get('notes', ''),
+                            "certificateUrl": course.get('certificateUrl', ''),
+                            "created_at": datetime.utcnow()
+                        }
+                        # Keep existing _id if provided (for updates)
+                        if '_id' in course and course['_id']:
+                            if isinstance(course['_id'], dict) and '$oid' in course['_id']:
+                                course_doc['_id'] = ObjectId(course['_id']['$oid'])
+                            elif isinstance(course['_id'], str):
+                                course_doc['_id'] = ObjectId(course['_id'])
+                        courses_to_insert.append(course_doc)
+                    
+                    manual_courses_collection.insert_many(courses_to_insert)
+                
+                return jsonify({"success": True})
+            else:
+                # Mobile version: Add single course
+                if not data.get('title'): 
+                    return jsonify({"error": "Title required"}), 400
+                
+                new_course = {
+                    "owner_email": user_email,
+                    "title": data.get('title'),
+                    "platform": data.get('platform', 'custom'),
+                    "url": data.get('url', ''),
+                    "progress": data.get('progress', 0),
+                    "instructor": data.get('instructor', ''),
+                    "targetCompletionDate": data.get('targetCompletionDate', ''),
+                    "enrolledDate": data.get('enrolledDate', datetime.now().strftime("%Y-%m-%d")),
+                    "notes": data.get('notes', ''),
+                    "created_at": datetime.utcnow()
+                }
+                result = manual_courses_collection.insert_one(new_course)
+                new_course['_id'] = result.inserted_id
+                return Response(json_util.dumps(new_course), mimetype='application/json')
+        except Exception as e:
+            print(f"ERROR in POST /courses/manual: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/courses/manual/<id>', methods=['PUT', 'DELETE'])
+def manage_manual_course(id):
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    # Critical: Check if database is available
+    if db is None:
+        print("❌ ERROR: Database is not available in manage_manual_course")
+        return jsonify({"error": "Database connection unavailable. Please check MONGO_URI environment variable."}), 500
+    
+    manual_courses_collection = db.get_collection('manual_courses')
+    
+    if request.method == 'DELETE':
+        manual_courses_collection.delete_one({'_id': ObjectId(id), 'owner_email': session['user']['email']})
+        return jsonify({"success": True})
+
+    if request.method == 'PUT':
+        data = request.json
+        # Allow all fields from web frontend
+        allowed_fields = ['title', 'platform', 'url', 'progress', 'instructor', 'targetCompletionDate', 'notes', 'certificateUrl']
+        update_fields = {k: v for k, v in data.items() if k in allowed_fields}
+        
         manual_courses_collection.update_one(
-            {"owner_email": user_email},
-            {"$set": {"courses": courses, "updated_at": datetime.utcnow()}},
-            upsert=True
+            {'_id': ObjectId(id), 'owner_email': session['user']['email']},
+            {'$set': update_fields}
         )
         return jsonify({"success": True})
+
+# Assignments uses 'subjects' collection via update_assignments/update_practicals (see above)
 
 # 3. Timetable Structure (Periods)
 
