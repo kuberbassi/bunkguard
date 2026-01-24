@@ -1,0 +1,64 @@
+{
+  "collections": {
+    "manual_courses": {
+      "count": 9,
+      "sample_docs": [
+        {
+          "_id": "6974808b84cae1d8f33c3fe5",
+          "owner_email": "kuberbassi2007@gmail.com",
+          "title": "Untitled",
+          "platform": "custom",
+          "url": "",
+          "progress": 0,
+          "total_modules": 0,
+          "instructor": "",
+          "created_at": "2026-01-24 08:19:23.731000"
+        },
+        {
+          "_id": "6974808b84cae1d8f33c3fe6",
+          "owner_email": "kuberbassi2007@gmail.com",
+          "title": "Untitled",
+          "platform": "custom",
+          "url": "",
+          "progress": 23,
+          "total_modules": 0,
+          "instructor": "",
+          "created_at": "2026-01-24 08:19:23.772000"
+        },
+        {
+          "_id": "6974808b84cae1d8f33c3fe7",
+          "owner_email": "kuberbassi2007@gmail.com",
+          "title": "Untitled",
+          "platform": "udemy",
+          "url": "",
+          "progress": 91,
+          "total_modules": 0,
+          "instructor": "",
+          "created_at": "2026-01-24 08:19:23.814000"
+        },
+        {
+          "_id": "6974808b84cae1d8f33c3fe8",
+          "owner_email": "kuberbassi2007@gmail.com",
+          "title": "Untitled",
+          "platform": "udemy",
+          "url": "",
+          "progress": 0,
+          "total_modules": 0,
+          "instructor": "",
+          "created_at": "2026-01-24 08:19:23.846000"
+        },
+        {
+          "_id": "6974808b84cae1d8f33c3fe9",
+          "owner_email": "kuberbassi2007@gmail.com",
+          "title": "Untitled",
+          "platform": "udemy",
+          "url": "",
+          "progress": 60,
+          "total_modules": 0,
+          "instructor": "",
+          "created_at": "2026-01-24 08:19:23.903000"
+        }
+      ]
+    }
+  }
+}

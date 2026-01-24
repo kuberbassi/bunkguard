@@ -73,8 +73,14 @@ const Practicals: React.FC = () => {
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
 
     const filteredSubjects = subjects.filter(sub => {
-        if (selectedCategory === 'All') return true;
         const cats = sub.categories || (sub.category ? [sub.category] : ['Theory']); // Compatibility
+
+        // 1. Core Filter: Must have either 'Practical' or 'Assignment' category to be shown here
+        const hasWork = cats.includes('Practical') || cats.includes('Assignment');
+        if (!hasWork) return false;
+
+        // 2. Tab Filter
+        if (selectedCategory === 'All') return true;
         return cats.includes(selectedCategory);
     });
 

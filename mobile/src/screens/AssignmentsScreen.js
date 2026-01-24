@@ -77,10 +77,16 @@ const AssignmentsScreen = ({ navigation }) => {
     };
 
     const filteredSubjects = subjects.filter(s => {
+        // Safe category extraction (handling array or single string)
+        const cats = s.categories || (s.category ? [s.category] : ['Theory']);
+
+        // 1. Core Filter: Must have either 'Practical' or 'Assignment' category to show
+        const hasWork = cats.includes('Practical') || cats.includes('Assignment');
+        if (!hasWork) return false;
+
+        // 2. Tab Filter (if we add tabs later, logic is here)
         if (filter === 'All') return true;
-        // Simple logic: Assuming logic for categories matches names or custom field
-        // Since dashboard data might not have 'categories', we show all for now or filter by type if available
-        return true;
+        return cats.includes(filter);
     });
 
     const renderItem = ({ item }) => {

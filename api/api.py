@@ -1287,7 +1287,23 @@ def handle_manual_courses():
             if isinstance(data, list):
                 # Web version: Full sync - replace all courses
                 
-                # 1. Process all courses first (Safe Step)
+                # 1. Automatic Backup (Data Safety)
+                # Fetch current courses before wiping them
+                current_courses = list(manual_courses_collection.find({'owner_email': user_email}))
+                if current_courses:
+                    backup_doc = {
+                        "owner_email": user_email,
+                        "backup_timestamp": datetime.utcnow(),
+                        "course_count": len(current_courses),
+                        "courses": current_courses
+                    }
+                    # Save into backup collection
+                    db.get_collection('manual_courses_backup').insert_one(backup_doc)
+                    
+                    # Optional: Keep only last 5 backups per user to save space
+                    # (Implementation left simple for now: valid backup created)
+
+                # 2. Process all courses first (Safe Step)
                 courses_to_insert = []
                 for course in data:
                     course_doc = {
@@ -1322,13 +1338,13 @@ def handle_manual_courses():
 
                     courses_to_insert.append(course_doc)
                 
-                # 2. Database Operations (Atomic-ish)
+                # 3. Database Operations (Atomic-ish)
                 if len(courses_to_insert) > 0:
                     # Delete existing courses only if we have new valid data to insert
                     manual_courses_collection.delete_many({'owner_email': user_email})
                     manual_courses_collection.insert_many(courses_to_insert)
                 elif len(data) == 0:
-                    # If empty list sent, clear courses
+                    # If empty list sent, clear courses (Backup still saved above)
                     manual_courses_collection.delete_many({'owner_email': user_email})
                 
                 return jsonify({"success": True})
