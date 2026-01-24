@@ -1286,35 +1286,50 @@ def handle_manual_courses():
             # Check if it's an array (full sync from web) or single object (mobile add)
             if isinstance(data, list):
                 # Web version: Full sync - replace all courses
-                # Delete existing courses
-                manual_courses_collection.delete_many({'owner_email': user_email})
                 
-                # Insert new courses
-                if len(data) > 0:
-                    courses_to_insert = []
-                    for course in data:
-                        course_doc = {
-                            "owner_email": user_email,
-                            "title": course.get('title', 'Untitled'),
-                            "platform": course.get('platform', 'custom'),
-                            "url": course.get('url', ''),
-                            "progress": course.get('progress', 0),
-                            "instructor": course.get('instructor', ''),
-                            "targetCompletionDate": course.get('targetCompletionDate', ''),
-                            "enrolledDate": course.get('enrolledDate', datetime.now().strftime("%Y-%m-%d")),
-                            "notes": course.get('notes', ''),
-                            "certificateUrl": course.get('certificateUrl', ''),
-                            "created_at": datetime.utcnow()
-                        }
-                        # Keep existing _id if provided (for updates)
-                        if '_id' in course and course['_id']:
-                            if isinstance(course['_id'], dict) and '$oid' in course['_id']:
-                                course_doc['_id'] = ObjectId(course['_id']['$oid'])
-                            elif isinstance(course['_id'], str):
-                                course_doc['_id'] = ObjectId(course['_id'])
-                        courses_to_insert.append(course_doc)
+                # 1. Process all courses first (Safe Step)
+                courses_to_insert = []
+                for course in data:
+                    course_doc = {
+                        "owner_email": user_email,
+                        "title": course.get('title', 'Untitled'),
+                        "platform": course.get('platform', 'custom'),
+                        "url": course.get('url', ''),
+                        "progress": course.get('progress', 0),
+                        "instructor": course.get('instructor', ''),
+                        "targetCompletionDate": course.get('targetCompletionDate', ''),
+                        "enrolledDate": course.get('enrolledDate', datetime.now().strftime("%Y-%m-%d")),
+                        "notes": course.get('notes', ''),
+                        "certificateUrl": course.get('certificateUrl', ''),
+                        "created_at": datetime.utcnow()
+                    }
                     
+                    # Safely handle _id
+                    # Only use provided _id if it is a VALID ObjectId string
+                    if '_id' in course and course['_id']:
+                        oid_str = None
+                        if isinstance(course['_id'], dict) and '$oid' in course['_id']:
+                            oid_str = course['_id']['$oid']
+                        elif isinstance(course['_id'], str):
+                            oid_str = course['_id']
+                            
+                        # Validate ObjectId format (24 hex chars)
+                        if oid_str and ObjectId.is_valid(oid_str):
+                            course_doc['_id'] = ObjectId(oid_str)
+                        else:
+                            # Drop invalid IDs (like timestamps from frontend) -> Mongo will generate new ones
+                            pass
+
+                    courses_to_insert.append(course_doc)
+                
+                # 2. Database Operations (Atomic-ish)
+                if len(courses_to_insert) > 0:
+                    # Delete existing courses only if we have new valid data to insert
+                    manual_courses_collection.delete_many({'owner_email': user_email})
                     manual_courses_collection.insert_many(courses_to_insert)
+                elif len(data) == 0:
+                    # If empty list sent, clear courses
+                    manual_courses_collection.delete_many({'owner_email': user_email})
                 
                 return jsonify({"success": True})
             else:
