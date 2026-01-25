@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, Animated, RefreshContr
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
-import api from '../services/api';
+import { attendanceService } from '../services';
 import MarkAttendanceModal from '../components/MarkAttendanceModal';
 import { ChevronLeft, ChevronRight, Calendar as CalIcon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -124,9 +124,13 @@ const CalendarScreen = ({ navigation }) => {
     const fetchClassesForDate = async (date) => {
         setLoadingClasses(true);
         try {
-            const response = await api.get(`/api/classes_for_date?date=${date}&semester=${selectedSemester}`);
-            setDayClasses(response.data);
-        } catch (error) { console.error(error); } finally { setLoadingClasses(false); }
+            const data = await attendanceService.getClassesForDate(date, selectedSemester);
+            setDayClasses(data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoadingClasses(false);
+        }
     };
 
     const handleMarkAttendance = async (subjectId, status, note = '', logId = null, skipRefresh = false) => {
@@ -161,14 +165,14 @@ const CalendarScreen = ({ navigation }) => {
 
             // 3. API Call
             if (status === 'pending' && logId) {
-                await api.delete(`/api/delete_attendance/${logId}`);
+                await attendanceService.deleteAttendance(logId);
             } else {
-                await api.post('/api/mark_attendance', {
-                    subject_id: subjectId,
+                await attendanceService.markAttendance(
+                    subjectId,
                     status,
-                    date: selectedDate,
-                    notes: note
-                });
+                    selectedDate,
+                    note
+                );
             }
 
             // 4. Background Refresh (Correctness)

@@ -9,7 +9,7 @@ const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 import { useTheme } from '../contexts/ThemeContext';
 import { theme, Layout } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import api from '../services/api';
+import { attendanceService } from '../services';
 import { NotificationService } from '../services/NotificationService';
 import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell, Clock, CheckCircle2, XCircle, MinusCircle } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,16 +60,15 @@ const DashboardScreen = ({ navigation }) => {
 
     const fetchDashboardData = async () => {
         try {
-            const [dashRes] = await Promise.all([
-                api.get(`/api/dashboard_data?semester=${selectedSemester}`),
-            ]);
-            setDashboardData(dashRes.data);
+            const data = await attendanceService.getDashboardData(selectedSemester);
+            setDashboardData(data);
 
-            if (dashRes.data?.subjects) {
-                NotificationService.checkAndNotify(dashRes.data.subjects);
+            if (data?.subjects) {
+                NotificationService.checkAndNotify(data.subjects);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+            Alert.alert('Error', 'Failed to load dashboard data');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -91,39 +90,41 @@ const DashboardScreen = ({ navigation }) => {
         try {
             if (editingSubject) {
                 if (data.isOverride) {
-                    await api.post('/api/update_attendance_count', {
-                        subject_id: data.subject_id,
-                        attended: data.attended,
-                        total: data.total
-                    });
+                    await attendanceService.updateAttendanceCount(
+                        data.subject_id,
+                        data.attended,
+                        data.total
+                    );
                 }
-                await api.post('/api/update_subject_full_details', data);
+                await attendanceService.updateSubjectFullDetails(data.subject_id, data);
             } else {
-                await api.post('/api/add_subject', {
-                    subject_name: data.name,
-                    semester: selectedSemester,
-                    ...data
-                });
+                await attendanceService.addSubject(
+                    data.name,
+                    selectedSemester,
+                    data.categories,
+                    data.code,
+                    data.professor,
+                    data.classroom
+                );
             }
             setModalVisible(false);
             setEditingSubject(null);
             fetchDashboardData();
         } catch (error) {
             console.error("Save subject failed", error);
-            alert("Failed to save subject. Please check your connection.");
+            Alert.alert('Error', 'Failed to save subject. Please check your connection.');
         }
     };
 
-
     const handleDeleteSubject = async (subjectId) => {
         try {
-            await api.delete(`/api/delete_subject/${subjectId}`);
+            await attendanceService.deleteSubject(subjectId);
             setModalVisible(false);
             setEditingSubject(null);
             fetchDashboardData();
         } catch (error) {
             console.error("Delete subject failed", error);
-            alert("Failed to delete subject.");
+            Alert.alert('Error', 'Failed to delete subject.');
         }
     };
 
