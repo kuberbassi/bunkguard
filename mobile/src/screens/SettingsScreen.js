@@ -85,23 +85,29 @@ const SettingsScreen = ({ navigation }) => {
     // Fetch preferences on mount
     const loadPrefs = async () => {
         try {
-            const profileRes = await api.get('/api/profile');
+            const profileRes = await attendanceService.getPreferences();
 
-            if (profileRes.data) {
+            if (profileRes) {
                 // Update profile data with proper type conversion
                 const profileData = {
-                    ...profileRes.data,
-                    semester: profileRes.data.semester ? String(profileRes.data.semester) : '1', // Convert number to string
+                    ...profileRes,
+                    semester: profileRes.semester ? String(profileRes.semester) : '1', // Convert number to string
                 };
 
                 setProfileData(prev => ({ ...prev, ...profileData }));
 
                 // Set attendance thresholds from profile response
-                if (profileRes.data.attendance_threshold) {
-                    setMinAttendance(String(profileRes.data.attendance_threshold));
+                if (profileRes.attendance_threshold) {
+                    setAttendanceThreshold(String(profileRes.attendance_threshold));
                 }
-                if (profileRes.data.min_attendance) {
-                    setWarningThreshold(String(profileRes.data.min_attendance));
+                if (profileRes.warning_threshold) {
+                    setWarningThreshold(String(profileRes.warning_threshold));
+                }
+                if (profileRes.notifications_enabled !== undefined) {
+                    setNotificationsEnabled(profileRes.notifications_enabled);
+                }
+                if (profileRes.profile_pic_url) {
+                    setProfilePic(profileRes.profile_pic_url);
                 }
             }
         } catch (e) {
@@ -114,14 +120,14 @@ const SettingsScreen = ({ navigation }) => {
     const onRefresh = async () => {
         setRefreshing(true);
         try {
-            await Promise.all([
-                api.get('/api/profile').then(res => {
-                    if (res.data) {
-                        setProfileData(prev => ({ ...prev, ...res.data }));
-                    }
-                }),
-                loadPrefs()
-            ]);
+            // Load latest profile on mount (for PFP)
+            if (user?.email) {
+                const profileRes = await attendanceService.getPreferences();
+                if (profileRes?.profile_pic_url) {
+                    setProfilePic(profileRes.profile_pic_url);
+                }
+            }
+            await loadPrefs(); // Reload all preferences
         } catch (e) {
             console.error(e);
         } finally {
@@ -140,15 +146,14 @@ const SettingsScreen = ({ navigation }) => {
             };
 
             // 1. Update Profile
-            await api.put('/api/update_profile', updatedUser);
+            await attendanceService.updateProfile(updatedUser);
 
             // 2. Update Preferences (Min Attendance / Warning)
-            // Swapped to match Read logic:
-            // Min Attendance UI -> attendance_threshold API
-            // Warning UI -> min_attendance API
-            await api.post('/api/preferences', {
-                attendance_threshold: Number(minAttendance),
-                min_attendance: Number(warningThreshold)
+            // Save preferences
+            await attendanceService.updatePreferences({
+                attendance_threshold: parseInt(attendanceThreshold),
+                warning_threshold: parseInt(warningThreshold),
+                notifications_enabled: notificationsEnabled,
             });
 
             // 3. Update global semester context
@@ -231,16 +236,13 @@ const SettingsScreen = ({ navigation }) => {
 
             // Create form data
             const formData = new FormData();
-            formData.append('file', {
-                uri: file.uri,
-                name: file.name || 'profile.jpg',
-                type: file.mimeType || 'image/jpeg'
-            });
+            const blob = await (await fetch(file.uri)).blob(); // Convert file URI to blob
+            formData.append('profile_pic', blob);
 
-            const response = await api.post('/api/upload_pfp', formData);
-
-            if (response.data.url) {
-                await updateUser({ ...user, picture: response.data.url });
+            const response = await attendanceService.uploadPfp(formData);
+            if (response?.url) {
+                setProfilePic(response.url);
+                await updateUser({ ...user, picture: response.url });
                 Alert.alert("Success", "Profile picture updated.");
             }
         } catch (error) {
