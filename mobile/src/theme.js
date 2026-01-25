@@ -73,13 +73,13 @@ export const theme = {
 
 export const Layout = {
   header: {
-    maxHeight: 170, // Increased to accommodate Title + Subtitle + Tabs/Filters
-    minHeight: 80, // Slightly taller for better collapsible breathing room
-    maxTitleSize: 32,
-    minTitleSize: 20,
-    contentHeight: 80, // New constant for roomier title/icon area
+    maxHeight: 130, // Reduced from 170 to fix "too much gap"
+    minHeight: 70, // Slightly reduced
+    maxTitleSize: 26, // Slightly smaller title
+    minTitleSize: 18,
+    contentHeight: 50, // Reduced from 80 for tighter layout
     // Spacing
     paddingHorizontal: 24,
-    paddingBottom: 16
+    paddingBottom: 12
   }
 };
