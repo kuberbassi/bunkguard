@@ -273,7 +273,7 @@ const SettingsScreen = ({ navigation }) => {
             console.log("Upload response:", response.data);
 
             if (response?.data?.url) {
-                setProfilePic(response.data.url);
+                // setProfilePic is not defined, relying on updateUser context
                 await updateUser({ ...user, picture: response.data.url });
                 Alert.alert("Success", "Profile picture updated.");
             }
