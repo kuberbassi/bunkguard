@@ -114,10 +114,22 @@ const SettingsScreen = ({ navigation }) => {
 
                 // CRITICAL FIX: Update global context with fetched picture so Avatar refreshes
                 // Backend sends 'picture', not 'profile_pic_url'
+                // ALSO Update other fields (Name, Course, etc.) so Header syncs with Desktop changes
+                const updatedUser = {
+                    ...user,
+                    name: profileResponse.data.name || user.name,
+                    email: profileResponse.data.email || user.email,
+                    course: profileResponse.data.course || user.course,
+                    batch: profileResponse.data.batch || user.batch,
+                    college: profileResponse.data.college || user.college,
+                    semester: profileResponse.data.semester,
+                };
+
                 if (profileResponse.data.picture) {
-                    // Update global user context (which updates the header image)
-                    updateUser({ ...user, picture: profileResponse.data.picture });
+                    updatedUser.picture = profileResponse.data.picture;
                 }
+
+                updateUser(updatedUser);
             }
         } catch (e) {
             console.log("Error loading profile", e);
