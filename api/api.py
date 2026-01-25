@@ -222,6 +222,7 @@ users_collection = db.get_collection('users')
 manual_courses_collection = db.get_collection('manual_courses')
 semester_results_collection = db.get_collection('semester_results')
 skills_collection = db.get_collection('skills')
+deadlines_collection = db.get_collection('deadlines')
 
 @api_bp.route('/upload_pfp', methods=['POST'])
 def upload_pfp():
