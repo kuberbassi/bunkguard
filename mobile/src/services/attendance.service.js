@@ -252,9 +252,8 @@ export const attendanceService = {
 
     // ==================== Data Management ====================
     exportData: async () => {
-        const response = await api.get('/api/export_data', {
-            responseType: 'blob',
-        });
+        // Mobile needs JSON directly to write to file
+        const response = await api.get('/api/export_data');
         return response.data;
     },
 
