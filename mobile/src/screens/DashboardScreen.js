@@ -1,14 +1,17 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, RefreshControl,
-    Platform, StatusBar, Animated, Dimensions
+    Platform, StatusBar, Animated, Dimensions, Alert, ScrollView as RNScrollView
 } from 'react-native';
+
+const ScrollView = RNScrollView;
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
 import { useTheme } from '../contexts/ThemeContext';
 import { theme, Layout } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
 import { NotificationService } from '../services/NotificationService';
-import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell } from 'lucide-react-native';
+import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell, Clock, CheckCircle2, XCircle, MinusCircle } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import SemesterSelector from '../components/SemesterSelector';
@@ -57,11 +60,13 @@ const DashboardScreen = ({ navigation }) => {
 
     const fetchDashboardData = async () => {
         try {
-            const response = await api.get(`/api/dashboard_data?semester=${selectedSemester}`);
-            setDashboardData(response.data);
+            const [dashRes] = await Promise.all([
+                api.get(`/api/dashboard_data?semester=${selectedSemester}`),
+            ]);
+            setDashboardData(dashRes.data);
 
-            if (response.data?.subjects) {
-                NotificationService.checkAndNotify(response.data.subjects);
+            if (dashRes.data?.subjects) {
+                NotificationService.checkAndNotify(dashRes.data.subjects);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -108,6 +113,7 @@ const DashboardScreen = ({ navigation }) => {
             alert("Failed to save subject. Please check your connection.");
         }
     };
+
 
     const handleDeleteSubject = async (subjectId) => {
         try {
@@ -194,7 +200,7 @@ const DashboardScreen = ({ navigation }) => {
                 }
             />
 
-            <Animated.ScrollView
+            <AnimatedScrollView
                 contentContainerStyle={styles.scrollContent}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
                 onScroll={Animated.event(
@@ -204,7 +210,7 @@ const DashboardScreen = ({ navigation }) => {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />
+                <View style={{ height: Layout.header.maxHeight + insets.top - 20 }} />
 
                 {/* LIQUID HERO CARD */}
                 <LinearGradient
@@ -279,6 +285,7 @@ const DashboardScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
 
+
                 {/* SECTION TITLE & FILTER */}
                 <View style={styles.sectionHeader}>
                     <Text style={styles.sectionTitle}>My Courses</Text>
@@ -293,7 +300,7 @@ const DashboardScreen = ({ navigation }) => {
                 <View style={styles.list}>
                     {dashboardData?.subjects?.map((subject, index) => (
                         <EnhancedSubjectCard
-                            key={subject._id || `subj_${index}`}
+                            key={`subj_item_${subject._id?.$oid || subject._id}_${index}`}
                             subject={subject}
                             isDark={isDark}
                             onPress={() => {
@@ -311,7 +318,7 @@ const DashboardScreen = ({ navigation }) => {
                 </View>
 
                 <View style={{ height: 100 }} />
-            </Animated.ScrollView>
+            </AnimatedScrollView>
 
             <AddSubjectModal
                 visible={modalVisible}
@@ -546,7 +553,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
     emptyText: {
         color: c.subtext,
         fontSize: 15
-    }
+    },
 });
 
 export default DashboardScreen;

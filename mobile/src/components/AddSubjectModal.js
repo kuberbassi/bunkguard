@@ -91,6 +91,7 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+                <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
                 <LinearGradient colors={c.glassBg} style={styles.modalContent}>
 
                     {/* Header */}
@@ -269,7 +270,8 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
 const getStyles = (c, isDark) => StyleSheet.create({
     modalContent: {
         height: '95%', borderTopLeftRadius: 32, borderTopRightRadius: 32,
-        paddingTop: 24, paddingHorizontal: 4, borderWidth: 1, borderColor: c.glassBorder
+        paddingTop: 24, paddingHorizontal: 4, borderWidth: 1, borderColor: c.glassBorder,
+        borderBottomLeftRadius: 0, borderBottomRightRadius: 0
     },
     header: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',

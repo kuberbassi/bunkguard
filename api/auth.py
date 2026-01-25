@@ -123,10 +123,16 @@ def google_auth():
             
         # 5. Also set session for web compatibility
         # Update: Store tokens INSIDE user dict for Classroom API compatibility
+        
+        # Avoid storing Base64 images in session
+        session_picture = db_user.get('picture')
+        if session_picture and session_picture.startswith('data:image'):
+            session_picture = None # Fetch from API instead
+            
         session['user'] = {
             'email': db_user['email'],
             'name': db_user.get('name'),
-            'picture': db_user.get('picture'),
+            'picture': session_picture,
             'google_token': access_token,
             'google_refresh_token': refresh_token,
             'google_token_expiry': time.time() + expires_in
@@ -138,16 +144,28 @@ def google_auth():
             session['google_refresh_token'] = refresh_token
         
         # Convert non-serializable objects (ObjectId, datetime) to strings
-        if '_id' in db_user:
-            db_user['_id'] = str(db_user['_id'])
-        if 'last_login' in db_user and isinstance(db_user['last_login'], datetime):
-            db_user['last_login'] = db_user['last_login'].isoformat()
-        if 'created_at' in db_user and isinstance(db_user['created_at'], datetime):
-            db_user['created_at'] = db_user['created_at'].isoformat()
+        # Create a copy to avoid mutating the cursor result
+        user_data = dict(db_user)
+        
+        if '_id' in user_data:
+            user_data['_id'] = str(user_data['_id'])
+        
+        # Remove large fields to prevent session bloat and huge responses
+        # These should be fetched separately via dedicated endpoints
+        fields_to_exclude = ['subjects', 'timetable', 'assignments', 'profile_image', 'notifications']
+        for field in fields_to_exclude:
+            user_data.pop(field, None)  # Use pop with default to avoid KeyError
+        
+        if 'last_login' in user_data and isinstance(user_data['last_login'], datetime):
+            user_data['last_login'] = user_data['last_login'].isoformat()
+        if 'created_at' in user_data and isinstance(user_data['created_at'], datetime):
+            user_data['created_at'] = user_data['created_at'].isoformat()
+        if 'token_expiry' in user_data and isinstance(user_data['token_expiry'], datetime):
+            user_data['token_expiry'] = user_data['token_expiry'].isoformat()
 
         return jsonify({
             "token": jwt_token,
-            "user": db_user
+            "user": user_data
         }), 200
         
     except Exception as e:

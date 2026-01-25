@@ -44,14 +44,14 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
 
     const handleConfirmAdvanced = () => {
         if (advancedClass) {
-            onMark(advancedClass._id, selectedStatus, note);
+            onMark(advancedClass._id, selectedStatus, note, advancedClass.log_id);
             closeAdvanced();
         }
     };
 
     const handleClearMark = () => {
         if (advancedClass) {
-            onMark(advancedClass._id, 'pending', '');
+            onMark(advancedClass._id, 'pending', '', advancedClass.log_id);
             closeAdvanced();
         }
     };
@@ -123,6 +123,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
         <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
             {/* Backdrop */}
             <View style={styles.backdrop}>
+                <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
                 {advancedClass ? (
                     <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
                         {renderAdvancedContent()}
@@ -170,10 +171,10 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
                                                     </TouchableOpacity>
                                                 ) : (
                                                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.success + '15' }]} onPress={() => onMark(cls._id, 'present')}>
+                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.success + '15' }]} onPress={() => onMark(cls._id, 'present', '', cls.log_id)}>
                                                             <Check size={20} color={c.success} />
                                                         </TouchableOpacity>
-                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.danger + '15' }]} onPress={() => onMark(cls._id, 'absent')}>
+                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.danger + '15' }]} onPress={() => onMark(cls._id, 'absent', '', cls.log_id)}>
                                                             <XIcon size={20} color={c.danger} />
                                                         </TouchableOpacity>
                                                     </View>
@@ -206,7 +207,11 @@ const getStyles = (c, isDark) => StyleSheet.create({
         borderTopLeftRadius: 32, borderTopRightRadius: 32,
         padding: 24, height: height * 0.80,
         borderWidth: 1, borderColor: c.glassBorder,
-        borderBottomWidth: 0
+        borderBottomWidth: 0,
+        // Flush Bottom Change
+        paddingBottom: 24 + 34, // Safe Area estimate or use insets from hook
+        borderBottomLeftRadius: 0,
+        borderBottomRightRadius: 0
     },
     dragHandle: {
         width: 40, height: 4, backgroundColor: c.glassBorder, borderRadius: 2,

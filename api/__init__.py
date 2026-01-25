@@ -1,11 +1,10 @@
-# api/__init__.py
-
 import os
 from flask import Flask, request, session, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import nest_asyncio
+from datetime import datetime
 
 nest_asyncio.apply()
 
@@ -86,11 +85,20 @@ def create_app():
                     if db_user:
                         # Convert ObjectId and datetimes to serializable
                         from bson import ObjectId
-                        if '_id' in db_user: db_user['_id'] = str(db_user['_id'])
-                        for k, v in db_user.items():
-                            if isinstance(v, datetime): db_user[k] = v.isoformat()
+                        # Create copy to avoid mutating cursor
+                        user_data = dict(db_user)
                         
-                        session['user'] = db_user
+                        if '_id' in user_data: user_data['_id'] = str(user_data['_id'])
+                        
+                        # Remove typically large fields to prevent cookie bloat
+                        fields_to_exclude = ['subjects', 'timetable', 'assignments', 'profile_image', 'picture', 'notifications']
+                        for field in fields_to_exclude:
+                            user_data.pop(field, None)
+                        
+                        for k, v in user_data.items():
+                            if isinstance(v, datetime): user_data[k] = v.isoformat()
+                        
+                        session['user'] = user_data
                     else:
                         # Fallback to minimal data if user not in DB yet
                         session['user'] = {

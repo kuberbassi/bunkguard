@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, Alert, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, Alert, Animated, Platform, RefreshControl } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +26,7 @@ const CourseManagerScreen = ({ navigation }) => {
 
     const [courses, setCourses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [formData, setFormData] = useState({ title: '', platform: 'coursera', url: '', progress: '0', instructor: '', targetCompletionDate: '' });
     const [editingItem, setEditingItem] = useState(null);
@@ -50,7 +51,15 @@ const CourseManagerScreen = ({ navigation }) => {
             const res = await api.get('/api/courses/manual');
             setCourses(res.data);
         } catch (e) { console.error(e); }
-        finally { setLoading(false); }
+        finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchCourses();
     };
 
     const handleSave = async () => {
@@ -187,6 +196,7 @@ const CourseManagerScreen = ({ navigation }) => {
                 renderItem={renderItem}
                 keyExtractor={item => item._id?.$oid || item._id || Math.random().toString()}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
             />
 
             <TouchableOpacity style={styles.fab} onPress={() => { setFormData({ platform: 'coursera' }); setEditingItem(null); setModalVisible(true); }}>
@@ -195,59 +205,75 @@ const CourseManagerScreen = ({ navigation }) => {
                 </LinearGradient>
             </TouchableOpacity>
 
-            <Modal visible={modalVisible} animationType="slide" transparent>
-                <View style={styles.modalView}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
-                        <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>{editingItem ? 'Edit' : 'Add'} Course</Text>
-                        <TouchableOpacity onPress={() => setModalVisible(false)}><X color={c.text} /></TouchableOpacity>
-                    </View>
+            {/* MODAL - Flush Bottom Sheet */}
+            <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setModalVisible(false)} />
+                    <LinearGradient colors={[isDark ? '#1C1C1E' : '#F2F2F7', isDark ? '#1C1C1E' : '#FFFFFF']}
+                        style={{
+                            borderTopLeftRadius: 20,
+                            borderTopRightRadius: 20,
+                            padding: 24,
+                            maxHeight: '90%',
+                            paddingBottom: 24 + insets.bottom // Flush bottom with internal padding
+                        }}
+                    >
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+                            <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>{editingItem ? 'Edit' : 'Add'} Course</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)}><X color={c.text} /></TouchableOpacity>
+                        </View>
 
-                    <Text style={styles.label}>TITLE</Text>
-                    <TextInput style={styles.input} value={formData.title} onChangeText={t => setFormData({ ...formData, title: t })} placeholder="Course Name" placeholderTextColor={c.subtext} />
+                        <Animated.ScrollView showsVerticalScrollIndicator={false}>
+                            <Text style={styles.label}>TITLE</Text>
+                            <TextInput style={styles.input} value={formData.title} onChangeText={t => setFormData({ ...formData, title: t })} placeholder="Course Name" placeholderTextColor={c.subtext} />
 
-                    <Text style={styles.label}>PLATFORM</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 }}>
-                        {PLATFORMS.map(p => (
-                            <TouchableOpacity
-                                key={p.value}
-                                style={[styles.platformChip, {
-                                    backgroundColor: formData.platform === p.value ? p.bg : 'transparent',
-                                    borderColor: formData.platform === p.value ? p.color : c.border
-                                }]}
-                                onPress={() => setFormData({ ...formData, platform: p.value })}
-                            >
-                                <p.icon size={14} color={formData.platform === p.value ? p.color : c.subtext} />
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: formData.platform === p.value ? p.color : c.subtext }}>{p.label}</Text>
+                            <Text style={styles.label}>PLATFORM</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 }}>
+                                {PLATFORMS.map(p => (
+                                    <TouchableOpacity
+                                        key={p.value}
+                                        style={[styles.platformChip, {
+                                            backgroundColor: formData.platform === p.value ? p.bg : 'transparent',
+                                            borderColor: formData.platform === p.value ? p.color : c.border
+                                        }]}
+                                        onPress={() => setFormData({ ...formData, platform: p.value })}
+                                    >
+                                        <p.icon size={14} color={formData.platform === p.value ? p.color : c.subtext} />
+                                        <Text style={{ fontSize: 12, fontWeight: '600', color: formData.platform === p.value ? p.color : c.subtext }}>{p.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.label}>PROGRESS (%)</Text>
+                                    <TextInput style={styles.input} keyboardType="numeric" value={String(formData.progress || '')} onChangeText={t => setFormData({ ...formData, progress: t })} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.label}>TARGET DATE</Text>
+                                    <TextInput style={styles.input} value={formData.targetCompletionDate} onChangeText={t => setFormData({ ...formData, targetCompletionDate: t })} placeholder="YYYY-MM-DD" placeholderTextColor={c.subtext} />
+                                </View>
+                            </View>
+
+                            <Text style={styles.label}>INSTRUCTOR</Text>
+                            <TextInput style={styles.input} value={formData.instructor} onChangeText={t => setFormData({ ...formData, instructor: t })} placeholder="Instructor Name" placeholderTextColor={c.subtext} />
+
+                            <Text style={styles.label}>URL (Optional)</Text>
+                            <TextInput style={styles.input} value={formData.url} onChangeText={t => setFormData({ ...formData, url: t })} placeholder="https://..." placeholderTextColor={c.subtext} />
+
+                            <TouchableOpacity onPress={handleSave} style={{ backgroundColor: c.primary, padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 20 }}>
+                                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>SAVE COURSE</Text>
                             </TouchableOpacity>
-                        ))}
-                    </View>
 
-                    <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.label}>PROGRESS (%)</Text>
-                            <TextInput style={styles.input} keyboardType="numeric" value={String(formData.progress || '')} onChangeText={t => setFormData({ ...formData, progress: t })} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.label}>TARGET DATE</Text>
-                            <TextInput style={styles.input} value={formData.targetCompletionDate} onChangeText={t => setFormData({ ...formData, targetCompletionDate: t })} placeholder="YYYY-MM-DD" placeholderTextColor={c.subtext} />
-                        </View>
-                    </View>
-
-                    <Text style={styles.label}>INSTRUCTOR</Text>
-                    <TextInput style={styles.input} value={formData.instructor} onChangeText={t => setFormData({ ...formData, instructor: t })} placeholder="Instructor Name" placeholderTextColor={c.subtext} />
-
-                    <Text style={styles.label}>URL (Optional)</Text>
-                    <TextInput style={styles.input} value={formData.url} onChangeText={t => setFormData({ ...formData, url: t })} placeholder="https://..." placeholderTextColor={c.subtext} />
-
-                    <TouchableOpacity onPress={handleSave} style={{ backgroundColor: c.primary, padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 20 }}>
-                        <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>SAVE COURSE</Text>
-                    </TouchableOpacity>
-
-                    {editingItem && (
-                        <TouchableOpacity onPress={() => { handleDelete(editingItem._id); setModalVisible(false); }} style={{ padding: 16, alignItems: 'center', marginTop: 8 }}>
-                            <Text style={{ color: '#FF3B30', fontWeight: '600' }}>Delete Course</Text>
-                        </TouchableOpacity>
-                    )}
+                            {editingItem && (
+                                <TouchableOpacity onPress={() => { handleDelete(editingItem._id); setModalVisible(false); }} style={{ padding: 16, alignItems: 'center', marginTop: 8 }}>
+                                    <Text style={{ color: '#FF3B30', fontWeight: '600' }}>Delete Course</Text>
+                                </TouchableOpacity>
+                            )}
+                            {/* Extra spacing for scrolling comfortably above chin */}
+                            <View style={{ height: 20 }} />
+                        </Animated.ScrollView>
+                    </LinearGradient>
                 </View>
             </Modal>
         </View>

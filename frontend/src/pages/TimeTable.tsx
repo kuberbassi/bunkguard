@@ -28,8 +28,45 @@ const DEFAULT_PERIODS: GridPeriod[] = [
 ];
 
 const TimeTable: React.FC = () => {
+    // Helper to convert "09:00 AM" -> "09:00" for input[type="time"]
+    const to24 = (time12: string) => {
+        if (!time12) return '';
+        const [time, modifier] = time12.split(' ');
+        if (!modifier) return time; // Already 24h or invalid?
+        let [hours, minutes] = time.split(':');
+        if (hours === '12') hours = '00';
+        if (modifier === 'PM') hours = (parseInt(hours, 10) + 12).toString();
+        return `${hours.padStart(2, '0')}:${minutes}`;
+    };
+
+    // Helper to convert "13:40" -> "01:40 PM" for consistent display
+    const to12 = (time24: string) => {
+        if (!time24) return '';
+        if (time24.includes('AM') || time24.includes('PM')) return time24; // Already 12-hour
+        const [hourStr, minutes] = time24.split(':');
+        let hour = parseInt(hourStr, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        if (hour === 0) hour = 12;
+        else if (hour > 12) hour -= 12;
+        return `${hour.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+    };
     const { showToast } = useToast();
     const { currentSemester } = useSemester();
+
+    // Helper to convert time string to minutes from midnight for sorting/comparison
+    const getMinutes = (t: string) => {
+        if (!t) return -1;
+        // Handle both "08:30 AM" and "08:30" formats
+        const parts = t.split(' ');
+        const time = parts[0];
+        const modifier = parts[1]; // AM/PM
+
+        let [h, m] = time.split(':').map(Number);
+        if (modifier === 'PM' && h < 12) h += 12;
+        if (modifier === 'AM' && h === 12) h = 0;
+        return h * 60 + (m || 0);
+    };
+
     const [loading, setLoading] = useState(true);
     const [timetable, setTimetable] = useState<Record<string, TimetableSlot[]>>({});
     const [subjects, setSubjects] = useState<any[]>([]);
@@ -115,18 +152,27 @@ const TimeTable: React.FC = () => {
 
     // Helper to filter valid slots for current period configuration
     const isSlotValid = (slot: TimetableSlot) => {
-        const normalize = (t: string) => t.includes(':') && t.length === 4 ? `0${t}` : t;
-        const slotStart = normalize(slot.start_time);
+        const slotStart = getMinutes(slot.start_time);
+        if (slotStart === -1) return false;
 
         return periods.some(period => {
-            const pStart = normalize(period.startTime);
-            const pEnd = normalize(period.endTime);
-            return slotStart >= pStart && slotStart < pEnd;
+            const pStart = getMinutes(period.startTime);
+            const pEnd = getMinutes(period.endTime);
+            // Relaxed matching: Slot matches if it starts AT the period start
+            // or falls within the period (start >= pStart && start < pEnd)
+            return Math.abs(slotStart - pStart) < 5 || (slotStart >= pStart && slotStart < pEnd);
         });
     };
 
     const handleQuickSave = async (overrides: Partial<TimetableSlot>) => {
-        const payload = { ...currentSlot, ...overrides, semester: currentSemester };
+        const payload = {
+            ...currentSlot,
+            ...overrides,
+            semester: currentSemester,
+            // Normalize times to 12-hour AM/PM format for consistency
+            start_time: to12(currentSlot.start_time || ''),
+            end_time: to12(currentSlot.end_time || '')
+        };
         try {
             setIsSaving(true);
             if (isEditing && payload._id) {
@@ -251,9 +297,9 @@ const TimeTable: React.FC = () => {
                     const daySchedule = timetable[day] || [];
                     const rawSlots = Array.isArray(daySchedule) ? daySchedule : [];
 
-                    // Filter slots to show only valid ones for current periods
+                    // Filter slots to show only valid ones for current periods and sort chronologically
                     const slots = rawSlots.filter(isSlotValid).sort((a, b) =>
-                        a.start_time.localeCompare(b.start_time)
+                        getMinutes(a.start_time) - getMinutes(b.start_time)
                     );
 
                     const classSlots = slots.filter((slot: any) => !slot.type || slot.type === 'class');
@@ -352,7 +398,7 @@ const TimeTable: React.FC = () => {
             >
                 <div className="space-y-4">
                     <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
-                        {periods.map((p, idx) => (
+                        {[...periods].sort((a, b) => getMinutes(a.startTime) - getMinutes(b.startTime)).map((p, idx) => (
                             <div key={p.id} className="flex gap-3 items-start bg-surface-container-low p-3 rounded-xl border border-outline-variant/30">
                                 <div className="mt-2 text-xs font-bold text-on-surface-variant w-4 text-center">
                                     {idx + 1}
@@ -383,26 +429,27 @@ const TimeTable: React.FC = () => {
                                             {p.type}
                                         </button>
                                     </div>
+                                    {/* ... inside modal render ... */}
                                     <div className="flex items-center gap-2 text-sm bg-surface-container p-1.5 rounded-lg w-fit">
                                         <Clock size={14} className="text-on-surface-variant ml-1" />
                                         <input
                                             type="time"
-                                            value={p.startTime}
+                                            value={to24(p.startTime)}
                                             className="bg-transparent border-none p-0 w-20 text-center font-medium text-on-surface focus:ring-0"
                                             onChange={(e) => {
                                                 const newPeriods = [...periods];
-                                                newPeriods[idx].startTime = e.target.value;
+                                                newPeriods[idx].startTime = to12(e.target.value);
                                                 setPeriods(newPeriods);
                                             }}
                                         />
                                         <span className="text-on-surface-variant">-</span>
                                         <input
                                             type="time"
-                                            value={p.endTime}
+                                            value={to24(p.endTime)}
                                             className="bg-transparent border-none p-0 w-20 text-center font-medium text-on-surface focus:ring-0"
                                             onChange={(e) => {
                                                 const newPeriods = [...periods];
-                                                newPeriods[idx].endTime = e.target.value;
+                                                newPeriods[idx].endTime = to12(e.target.value);
                                                 setPeriods(newPeriods);
                                             }}
                                         />

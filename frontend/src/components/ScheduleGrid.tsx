@@ -16,15 +16,21 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 // Helper to check if a slot overlaps/belongs to a period
 const isSlotInPeriod = (slot: TimetableSlot, period: GridPeriod) => {
-    // Normalize times to ensure matching works ("8:30" vs "08:30")
-    const normalize = (t: string) => t.includes(':') && t.length === 4 ? `0${t}` : t;
+    const getMinutes = (t: string) => {
+        if (!t) return -1;
+        const [time, modifier] = t.split(' ');
+        let [h, m] = time.split(':', 2).map(Number);
+        if (isNaN(h) || isNaN(m)) return -1;
+        if (modifier === 'PM' && h < 12) h += 12;
+        if (modifier === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+    };
 
-    const slotStart = normalize(slot.start_time);
-    const pStart = normalize(period.startTime);
-    const pEnd = normalize(period.endTime);
+    const slotStart = getMinutes(slot.start_time);
+    const pStart = getMinutes(period.startTime);
 
-    // Loose matching: Slot belongs to period if it starts within the period
-    return slotStart >= pStart && slotStart < pEnd;
+    // Robust match: Start times within 5 mins of each other
+    return Math.abs(slotStart - pStart) < 5;
 };
 
 const ScheduleGrid: React.FC<ScheduleGridProps> = ({
@@ -66,10 +72,12 @@ const ScheduleGrid: React.FC<ScheduleGridProps> = ({
 
                         {/* Columns */}
                         {periods.map((period) => (
-                            <div key={period.id} className="flex-1 min-w-0 flex flex-col items-center">
-                                <div className="text-sm font-bold text-on-surface mb-1">{period.name}</div>
-                                <div className="text-[10px] bg-surface-container px-2 py-0.5 rounded-full text-on-surface-variant font-medium whitespace-nowrap">
-                                    {period.startTime} - {period.endTime}
+                            <div key={period.id} className="flex-1 min-w-0 flex flex-col items-center justify-end pb-2 border-b border-outline-variant/10">
+                                <div className="text-sm font-bold text-primary mb-1.5">{period.name}</div>
+                                <div className="flex flex-col items-center text-[10px] font-medium text-on-surface-variant/70 leading-tight">
+                                    <span>{period.startTime}</span>
+                                    <span className="h-3 w-[1px] bg-outline-variant/20 my-0.5 transform rotate-12"></span>
+                                    <span>{period.endTime}</span>
                                 </div>
                             </div>
                         ))}

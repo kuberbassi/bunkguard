@@ -24,6 +24,7 @@ import ActivityLogScreen from './src/screens/ActivityLogScreen';
 import TimetableSetupScreen from './src/screens/TimetableSetupScreen';
 import AssignmentsScreen from './src/screens/AssignmentsScreen';
 import CourseManagerScreen from './src/screens/CourseManagerScreen';
+import TimetableScreen from './src/screens/TimetableScreen';
 
 import { SemesterProvider } from './src/contexts/SemesterContext';
 import NetInfo from '@react-native-community/netinfo';
@@ -180,6 +181,7 @@ const AppNavigator = () => {
               <Stack.Screen name="TimetableSetup" component={TimetableSetupScreen} />
               <Stack.Screen name="Assignments" component={AssignmentsScreen} />
               <Stack.Screen name="CourseManager" component={CourseManagerScreen} />
+              <Stack.Screen name="Timetable" component={TimetableScreen} />
             </>
           )}
         </Stack.Navigator>

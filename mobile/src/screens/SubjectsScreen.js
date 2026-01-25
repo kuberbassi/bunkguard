@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, useColorScheme } from 'react-native';
 import { theme } from '../theme';
+import { useSemester } from '../contexts/SemesterContext';
 import api from '../services/api';
 import { ChevronRight, Percent } from 'lucide-react-native';
 
 const SubjectsScreen = ({ navigation }) => {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
+    const { selectedSemester } = useSemester();
     const colors = isDark ? theme.dark : theme.light;
     const styles = getStyles(colors);
 
@@ -17,7 +19,7 @@ const SubjectsScreen = ({ navigation }) => {
 
     const fetchSubjects = async () => {
         try {
-            const response = await api.get('/api/subjects?semester=1');
+            const response = await api.get(`/api/subjects?semester=${selectedSemester}`);
             setSubjects(response.data);
         } catch (error) {
             console.error(error);
@@ -29,7 +31,7 @@ const SubjectsScreen = ({ navigation }) => {
 
     useEffect(() => {
         fetchSubjects();
-    }, []);
+    }, [selectedSemester]);
 
     const onRefresh = () => {
         setRefreshing(true);

@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             if (Platform.OS !== 'web') {
-                const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+                const { GoogleSignin } = require('../utils/GoogleSigninSafe');
                 const isSignedIn = await GoogleSignin.isSignedIn();
                 if (isSignedIn) {
                     await GoogleSignin.signOut();

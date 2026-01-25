@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, Alert, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, Alert, Animated, RefreshControl } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSemester } from '../contexts/SemesterContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme';
@@ -10,11 +11,13 @@ import AnimatedHeader from '../components/AnimatedHeader';
 
 const AssignmentsScreen = ({ navigation }) => {
     const { isDark } = useTheme();
+    const { selectedSemester } = useSemester();
     const insets = useSafeAreaInsets();
     const scrollY = useRef(new Animated.Value(0)).current;
 
     const [subjects, setSubjects] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState('All');
 
     const c = {
@@ -31,14 +34,12 @@ const AssignmentsScreen = ({ navigation }) => {
         glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
     };
 
-    useEffect(() => { fetchSubjects(); }, []);
+    useEffect(() => { fetchSubjects(); }, [selectedSemester]);
 
     const fetchSubjects = async () => {
         try {
-            // Reusing dashboard data or getting subjects specifically
-            // Dashboard data includes subjects, but full data might be needed.
-            // Using /dashboard/data as a proxy for subjects list
-            const res = await api.get('/api/dashboard_data');
+            // Fetch subjects for the selected semester
+            const res = await api.get(`/api/dashboard_data?semester=${selectedSemester}`);
             if (res.data && res.data.subjects) {
                 setSubjects(res.data.subjects);
             }
@@ -46,7 +47,15 @@ const AssignmentsScreen = ({ navigation }) => {
             console.error(e);
             Alert.alert("Error", "Failed to load subjects");
         }
-        finally { setLoading(false); }
+        finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchSubjects();
     };
 
     const updatePracticals = async (subjectId, updates) => {
@@ -93,14 +102,16 @@ const AssignmentsScreen = ({ navigation }) => {
         const practicals = item.practicals || { total: 10, completed: 0, hardcopy: false };
         const assignments = item.assignments || { total: 4, completed: 0, hardcopy: false };
 
-        // Determine layout based on subject type or just show both if relevant
-        // Web version conditionally renders. We'll show sections if total > 0 or default to showing both if unknown.
-        const showPracticals = true;
-        const showAssignments = true;
+        // Determine what to show based on subject categories (matching web logic)
+        const cats = item.categories || (item.category ? [item.category] : ['Theory']);
+        const hasPracticals = cats.includes('Practical');
+        const hasAssignments = cats.includes('Assignment');
 
-        // Calculate Progress
-        let total = practicals.total + assignments.total;
-        let completed = practicals.completed + assignments.completed;
+        // Calculate Progress ONLY for active tracks (matching web)
+        let total = 0;
+        let completed = 0;
+        if (hasPracticals) { total += practicals.total; completed += practicals.completed; }
+        if (hasAssignments) { total += assignments.total; completed += assignments.completed; }
         const progress = total > 0 ? (completed / total) * 100 : 0;
 
         return (
@@ -117,7 +128,7 @@ const AssignmentsScreen = ({ navigation }) => {
                     </View>
 
                     {/* Practicals Section */}
-                    {showPracticals && (
+                    {hasPracticals && (
                         <View style={{ marginBottom: 16 }}>
                             <View style={styles.sectionHeader}>
                                 <Text style={[styles.sectionTitle, { color: c.subtext }]}>PRACTICALS</Text>
@@ -152,8 +163,13 @@ const AssignmentsScreen = ({ navigation }) => {
                         </View>
                     )}
 
+                    {/* Separator if both sections are present */}
+                    {hasPracticals && hasAssignments && (
+                        <View style={{ height: 1, backgroundColor: c.border, width: '100%', opacity: 0.3, marginBottom: 16 }} />
+                    )}
+
                     {/* Assignments Section */}
-                    {showAssignments && (
+                    {hasAssignments && (
                         <View>
                             <View style={styles.sectionHeader}>
                                 <Text style={[styles.sectionTitle, { color: c.subtext }]}>ASSIGNMENTS</Text>
@@ -219,7 +235,7 @@ const AssignmentsScreen = ({ navigation }) => {
         <View style={{ flex: 1 }}>
             <LinearGradient colors={[c.bgStart, c.bgEnd]} style={StyleSheet.absoluteFill} />
             <AnimatedHeader
-                title="Practicals"
+                title="Assignments"
                 subtitle="TRACK YOUR WORK"
                 scrollY={scrollY}
                 isDark={isDark}
@@ -233,6 +249,7 @@ const AssignmentsScreen = ({ navigation }) => {
                 renderItem={renderItem}
                 keyExtractor={item => item._id}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
             />
         </View>
     );

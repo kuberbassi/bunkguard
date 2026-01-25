@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import * as WebBrowser from 'expo-web-browser';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '../utils/GoogleSigninSafe';
 import api from '../services/api';
 import { LogIn, GraduationCap, ArrowRight, ShieldCheck } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -41,25 +41,35 @@ const LoginScreen = () => {
     const handleGoogleSignIn = async () => {
         setLoading(true);
         try {
-            await GoogleSignin.hasPlayServices();
-            const userInfo = await GoogleSignin.signIn();
+            // Check for Expo Go via the Mock property or catching error
+            // Actually, we can check Constants.appOwnership or if GoogleSignin.signIn throws specific error
 
-            // For older versions of the library, the code might be in different places
-            // but in recent ones userInfo contains the serverAuthCode
-            const code = userInfo.data.serverAuthCode;
+            try {
+                await GoogleSignin.hasPlayServices();
+                const userInfo = await GoogleSignin.signIn();
+                // ... rest of logic
+                const code = userInfo.data.serverAuthCode;
+                if (!code) throw new Error('No server auth code received');
 
-            if (!code) throw new Error('No server auth code received');
+                const backendResponse = await api.post('/api/auth/google', {
+                    code,
+                    redirect_uri: ""
+                });
 
-            const backendResponse = await api.post('/api/auth/google', {
-                code,
-                redirect_uri: "" // Native sign-in doesn't use a redirect URI for exchange
-            });
-
-            const { user, token } = backendResponse.data;
-            if (user && token) {
-                await login(user, token);
-            } else {
-                throw new Error('Invalid response from server');
+                const { user, token } = backendResponse.data;
+                if (user && token) {
+                    await login(user, token);
+                } else {
+                    throw new Error('Invalid response from server');
+                }
+            } catch (googleError) {
+                // If mocked or not supported (Expo Go), fallback to Dev Login
+                if (googleError.message.includes("Expo Go")) {
+                    Alert.alert("Expo Go Detected", "Google Sign-In is not supported in Expo Go. Signing in as Developer...");
+                    await handleDevLogin();
+                    return;
+                }
+                throw googleError;
             }
         } catch (error) {
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -70,12 +80,7 @@ const LoginScreen = () => {
                 Alert.alert('Error', 'Google Play Services not available');
             } else {
                 console.error('Google Sign-In Error:', error);
-                console.error('Error Code:', error.code);
-                Alert.alert('Login Failed', `Google Sign-In failed: ${error.message} (${error.code})`);
-                // Check for Developer Error specifically to give hint
-                if (error.code === '10' || error.toString().includes('DEVELOPER_ERROR')) {
-                     Alert.alert('Configuration Error', 'SHA-1 fingerprint mismatch. Please add the debug SHA-1 to Firebase/Google Cloud Console.');
-                }
+                Alert.alert('Login Failed', `Google Sign-In failed: ${error.message}`);
             }
         } finally {
             setLoading(false);

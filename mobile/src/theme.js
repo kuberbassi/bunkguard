@@ -73,7 +73,7 @@ export const theme = {
 
 export const Layout = {
   header: {
-    maxHeight: 150,
+    maxHeight: 120,
     minHeight: 70, // Thinner for a more professional mobile feel
     maxTitleSize: 32,
     minTitleSize: 20,

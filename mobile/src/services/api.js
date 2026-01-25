@@ -12,8 +12,9 @@ const WEB_URL = 'http://localhost:5000';
 
 const API_URL = Platform.select({
     web: (process.env.NODE_ENV === 'production') ? PROD_URL : WEB_URL,
-    android: LOCAL_IP, // Dev: Use Local IP
-    ios: LOCAL_IP,     // Dev: Use Local IP
+    // REPLACE '192.168.1.X' with your PC's IP address (run `ipconfig` to find it)
+    android: 'http://192.168.0.159:5000',
+    ios: 'http://192.168.0.159:5000',
     default: LOCAL_IP
 });
 

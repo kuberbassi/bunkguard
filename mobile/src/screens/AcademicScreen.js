@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     View, Text, StyleSheet, SafeAreaView, Platform,
     StatusBar, useTheme as useRNTheme, ScrollView, TouchableOpacity,
-    Animated, Dimensions
+    Animated, Dimensions, RefreshControl
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ const { width } = Dimensions.get('window');
 const AcademicScreen = ({ navigation }) => {
     const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
+    const [refreshing, setRefreshing] = useState(false);
 
     // Modern Color Palette
     const c = {
@@ -128,8 +129,19 @@ const AcademicScreen = ({ navigation }) => {
                 )}
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => {
+                            setRefreshing(true);
+                            // Just visual feedback for a menu screen
+                            setTimeout(() => setRefreshing(false), 500);
+                        }}
+                        tintColor={c.text}
+                    />
+                }
             >
-                <View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />
+                <View style={{ height: Layout.header.maxHeight + insets.top - 20 }} />
 
                 <View style={styles.grid}>
                     {menuItems.map((item) => (

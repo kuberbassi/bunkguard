@@ -115,27 +115,31 @@ def get_profile():
     if db is None:
         return jsonify({"error": "Database not available"}), 500
     
-    user_email = session['user']['email']
+    user_email = session['user']['email']  # CRITICAL FIX: Define user_email before using it
+    
+    users_collection = db.get_collection('users')
     preferences_collection = db.get_collection('user_preferences')
     
-    # Get user preferences which contains semester and other profile data
-    user_prefs = preferences_collection.find_one({'owner_email': user_email})
+    # Get Core User Data (Course, Batch, College, Picture)
+    user_data = users_collection.find_one({'email': user_email}) or {}
     
-    if user_prefs:
-        return jsonify({
-            "email": user_email,
-            "name": session['user'].get('name', 'User'),
-            "semester": user_prefs.get('preferences', {}).get('semester', 1),
-            "min_attendance": user_prefs.get('preferences', {}).get('min_attendance', 75)
-        })
-    else:
-        # Default profile if no preferences exist yet
-        return jsonify({
-            "email": user_email,
-            "name": session['user'].get('name', 'User'),
-            "semester": 1,
-            "min_attendance": 75
-        })
+    # Get User Preferences (Semester, Thresholds)
+    user_prefs = preferences_collection.find_one({'owner_email': user_email})
+    prefs = user_prefs.get('preferences', {}) if user_prefs else {}
+    
+    return jsonify({
+        "email": user_email,
+        "name": user_data.get('name', session['user'].get('name', 'User')),
+        "picture": user_data.get('picture'),
+        "course": user_data.get('course'),
+        "batch": user_data.get('batch'),
+        "college": user_data.get('college'),
+        
+        # Preferences
+        "semester": prefs.get('semester', 1),
+        "attendance_threshold": prefs.get('attendance_threshold', 75), # Minimum Attendance
+        "min_attendance": prefs.get('min_attendance', 76)              # Warning Threshold
+    })
 
 
 @api_bp.route('/update_profile', methods=['PUT'])
@@ -181,20 +185,35 @@ def update_profile():
     return jsonify({"success": True})
 
 
+
+# --- Collections (Global Scope) ---
+subjects_collection = db.get_collection('subjects')
+attendance_log_collection = db.get_collection('attendance_logs')
+timetable_collection = db.get_collection('timetable')
+system_logs_collection = db.get_collection('system_logs')
+holidays_collection = db.get_collection('holidays')
+academic_records_collection = db.get_collection('users_collection') # Legacy name check?
+users_collection = db.get_collection('users')
+# Collections for Persistence
+manual_courses_collection = db.get_collection('manual_courses')
+semester_results_collection = db.get_collection('semester_results')
+skills_collection = db.get_collection('skills')
+
 @api_bp.route('/upload_pfp', methods=['POST'])
 def upload_pfp():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-        
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+    try:
+        if db is None:
+             print("❌ Upload Error: Database connection is None")
+             return jsonify({"error": "Database not connected"}), 500
 
-    if file:
-        try:
-            # Check file size (max 5MB for base64 safety in Mongo)
-            # Read first to check size
+        if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+        if 'file' not in request.files: return jsonify({"error": "No file part"}), 400
+            
+        file = request.files['file']
+        if file.filename == '': return jsonify({"error": "No selected file"}), 400
+
+        if file:
+            # Check file size (max 5MB)
             file.seek(0, os.SEEK_END)
             size = file.tell()
             file.seek(0)
@@ -222,25 +241,13 @@ def upload_pfp():
             
             return jsonify({"url": data_url})
             
-        except Exception as e:
-            print(f"Upload Error: {e}")
-            return jsonify({"error": "Failed to upload image"}), 500
+    except Exception as e:
+        print(f"Upload Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to upload image: {str(e)}"}), 500
         
     return jsonify({"error": "Upload failed"}), 500
-
-
-# --- Collections ---
-subjects_collection = db.get_collection('subjects')
-attendance_log_collection = db.get_collection('attendance_logs')
-timetable_collection = db.get_collection('timetable')
-system_logs_collection = db.get_collection('system_logs')
-holidays_collection = db.get_collection('holidays')
-academic_records_collection = db.get_collection('users_collection')
-users_collection = db.get_collection('users')
-# Collections for Persistence
-manual_courses_collection = db.get_collection('manual_courses')
-semester_results_collection = db.get_collection('semester_results')
-skills_collection = db.get_collection('skills')
 
 
 # --- Helper Functions ---
@@ -596,6 +603,10 @@ def get_attendance_logs():
 
         user_email = session['user']['email']
         query = {'owner_email': user_email}
+        
+        semester = request.args.get('semester')
+        if semester:
+            query['semester'] = int(semester)
 
         total_logs = attendance_log_collection.count_documents(query)
         pipeline = [
@@ -620,18 +631,27 @@ def get_attendance_logs():
 def mark_attendance():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    subject_id = ObjectId(data.get('subject_id'))
+    subject_id_str = data.get('subject_id')
     status = data.get('status')
     notes = data.get('notes', None)
     date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
-    substituted_by_id = data.get('substituted_by_id', None) # New field
+    substituted_by_id = data.get('substituted_by_id', None)
+
+    print(f"🎯 DEBUG: Marking attendance for subject_id: {subject_id_str} | Status: {status} | Date: {date_str}")
+    
+    try:
+        subject_id = ObjectId(subject_id_str)
+    except:
+        print(f"❌ ERROR: Invalid ObjectId format: {subject_id_str}")
+        return jsonify({"error": "Invalid Subject ID format"}), 400
 
     subject = subjects_collection.find_one({'_id': subject_id})
-    if not subject: return jsonify({"error": "Subject not found"}), 404
+    if not subject: 
+        print(f"❌ ERROR: Subject not found in DB: {subject_id}")
+        return jsonify({"error": "Subject not found"}), 404
     
-    existing_log = attendance_log_collection.find_one({"subject_id": subject_id, "date": date_str})
-    if existing_log:
-        return jsonify({"error": f"'{subject.get('name')}' has already been marked for this day."}), 400
+    # allow multiple marks per day (for multi-period subjects)
+    # The get_classes_for_date logic matches logs to slots by order of timestamp.
     
     # 1. Handle Primary Log
     log_entry = {
@@ -746,43 +766,67 @@ def mark_all_attendance():
 def get_todays_classes():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     user_email = session['user']['email']
-    today_name = calendar.day_name[datetime.now().weekday()]
-    timetable_doc = timetable_collection.find_one({'owner_email': user_email})
+    
+    # Support overriding date for testing logic
+    date_str = request.args.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d")
+        except:
+            return jsonify({"error": "Invalid date format"}), 400
+    else:
+        target_date = datetime.now()
+
+    # Python weekday: Mon=0 ... Sun=6
+    day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    today_name = day_names[target_date.weekday()]
+    today_str = target_date.strftime("%Y-%m-%d")
+    
+    semester = request.args.get('semester', type=int)
+    timetable_doc = timetable_collection.find_one({'owner_email': user_email, 'semester': semester})
+    if not timetable_doc and not semester:
+        timetable_doc = timetable_collection.find_one({'owner_email': user_email})
+
     if not timetable_doc:
         return Response(json_util.dumps([]), mimetype='application/json')
 
-    todays_subject_ids = []
+    classes = []
     schedule = timetable_doc.get('schedule', {})
-    
-    # Support New Format: Day -> List of Slots
+
+    # Fetch subjects in batch for performance
+    subjects_cursor = subjects_collection.find({"owner_email": user_email})
+    subjects_map = {str(s['_id']): s for s in subjects_cursor}
+
+    day_slots = []
     if isinstance(schedule, dict):
-        # Check if it's the new format (Day names as keys)
-        if any(d in schedule for d in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']):
+        if any(d in schedule for d in day_names):
             day_slots = schedule.get(today_name, [])
-            if isinstance(day_slots, list):
-                for slot in day_slots:
-                    if slot.get('subject_id'):
-                        todays_subject_ids.append(ObjectId(slot['subject_id']))
         else:
-            # Fallback to Old Format: Time -> Day -> Slot
+            # Fallback for old nesting
             for time_slot, days in schedule.items():
                 if isinstance(days, dict) and today_name in days:
-                    slot_data = days[today_name]
-                    if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
-                        todays_subject_ids.append(ObjectId(slot_data['subjectId']))
-    
-    if not todays_subject_ids:
-        return Response(json_util.dumps([]), mimetype='application/json')
+                    day_slots.append({**days[today_name], 'time': time_slot})
 
-    subjects = list(subjects_collection.find({"owner_email": user_email, "_id": {"$in": todays_subject_ids}}))
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    for subject in subjects:
-        log = attendance_log_collection.find_one({"subject_id": subject["_id"], "date": today_str})
-        subject["marked_status"] = log["status"] if log else "pending"
-        if log:
-            subject["log_id"] = str(log["_id"])
+    for slot in day_slots:
+        if slot.get('type') in ['break', 'free']: continue
+        
+        sid = slot.get('subject_id') or slot.get('subjectId')
+        if not sid: continue
+        
+        subject = subjects_map.get(str(sid))
+        if subject:
+            log = attendance_log_collection.find_one({"subject_id": ObjectId(sid), "date": today_str})
+            classes.append({
+                "_id": str(sid),
+                "id": str(sid),
+                "name": subject.get('name'),
+                "start_time": slot.get('start_time') or (slot.get('time', '').split('-')[0].strip() if slot.get('time') else '09:00 AM'),
+                "end_time": slot.get('end_time') or (slot.get('time', '').split('-')[1].strip() if slot.get('time') and '-' in slot.get('time') else '10:00 AM'),
+                "marked_status": log["status"] if log else "pending",
+                "log_id": str(log["_id"]) if log else None
+            })
 
-    return Response(json_util.dumps(subjects), mimetype='application/json')
+    return Response(json_util.dumps(classes), mimetype='application/json')
 
 
 @api_bp.route('/classes_for_date')
@@ -798,7 +842,6 @@ def get_classes_for_date():
     except ValueError:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
 
-    user_email = session['user']['email']
     user_email = session['user']['email']
     semester = request.args.get('semester', type=int)
     
@@ -818,55 +861,56 @@ def get_classes_for_date():
     if not timetable_doc:
         return Response(json_util.dumps([]), mimetype='application/json')
 
-    subject_ids = set()
+    slots_to_return = []
     schedule = timetable_doc.get('schedule', {})
-    # Note: duplicate line removed in replacement
     
     if isinstance(schedule, dict):
-        # Support New Format: Day -> List of Slots
+        day_slots = []
         if any(d in schedule for d in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']):
             day_slots = schedule.get(day_name, [])
-            if isinstance(day_slots, list):
-                for slot in day_slots:
-                    if slot.get('subject_id'):
-                        subject_ids.add(ObjectId(slot['subject_id']))
         else:
             # Fallback to Old Format
-            for days in schedule.values():
+            for time_slot, days in schedule.items():
                 if isinstance(days, dict) and day_name in days:
-                    slot_data = days[day_name]
-                    if isinstance(slot_data, dict) and slot_data.get('type') == 'class' and slot_data.get('subjectId'):
-                        subject_ids.add(ObjectId(slot_data['subjectId']))
+                    day_slots.append({**days[day_name], 'time': time_slot})
+        
+        for slot in day_slots:
+            if slot.get('subject_id') or slot.get('subjectId'):
+                sid = str(slot.get('subject_id') or slot.get('subjectId'))
+                subject = subjects_collection.find_one({"_id": ObjectId(sid)})
+                if subject:
+                    slots_to_return.append({
+                        "_id": sid,
+                        "id": sid,
+                        "name": subject.get('name'),
+                        "time": slot.get('start_time') or (slot.get('time', '').split('-')[0].strip() if slot.get('time') else ''),
+                        "end_time": slot.get('end_time') or (slot.get('time', '').split('-')[1].strip() if slot.get('time') and '-' in slot.get('time') else ''),
+                        "type": slot.get('type', 'Lecture'),
+                        "marked_status": "pending"
+                    })
     
-    # 2. Get Subjects with Attendance Logs on this Date (to handle extras/phantom marks)
+    # 2. Get Attendance Logs on this Date
     logs = list(attendance_log_collection.find({'owner_email': user_email, 'date': date_str}))
-    for log in logs:
-        if 'subject_id' in log:
-            subject_ids.add(log['subject_id'])
-            
-    if not subject_ids:
+    
+    if not slots_to_return and not logs:
         return Response(json_util.dumps([]), mimetype='application/json')
     
-    # Filter only by subjects of the requested semester (if provided)
-    query = {"owner_email": user_email, "_id": {"$in": list(subject_ids)}}
-    if semester:
-        query["semester"] = semester
+    processed_log_ids = set()
+    # Simple matching by ID and order
+    for sid in set([s['id'] for s in slots_to_return]):
+        subj_slots = [s for s in slots_to_return if s['id'] == sid]
+        # Sort logs by timestamp to match sequence
+        subj_logs = sorted([l for l in logs if str(l.get('subject_id')) == sid], key=lambda x: x.get('timestamp', datetime.min))
         
-    subjects = list(subjects_collection.find(query))
+        for i, slot in enumerate(subj_slots):
+            if i < len(subj_logs):
+                slot['marked_status'] = subj_logs[i]['status']
+                slot['log_id'] = str(subj_logs[i]['_id'])
+                processed_log_ids.add(subj_logs[i]['_id'])
     
-    # Attach attendance status to each subject
-    for subject in subjects:
-        subject_id = subject['_id']
-        # Find log for this subject on this date
-        log = next((l for l in logs if l.get('subject_id') == subject_id), None)
-        
-        if log:
-            subject['marked_status'] = log['status']
-            subject['log_id'] = str(log['_id'])
-        else:
-            subject['marked_status'] = 'pending'
+    return Response(json_util.dumps(slots_to_return), mimetype='application/json')
 
-    return Response(json_util.dumps(subjects), mimetype='application/json')
+
 
 
 
@@ -1785,6 +1829,31 @@ def update_attendance_count():
     log_user_action(session['user']['email'], "Data Overridden", f"Manually set attendance for '{subject.get('name')}' to {attended}/{total}.")
     return jsonify({"success": True})
 
+def normalize_time(time_str):
+    """
+    Normalizes time strings to 'hh:mm AM/PM' format (e.g., '09:00 AM').
+    Handles '9:00 am', '9:00', '09:00', '14:00'.
+    Returns None if invalid.
+    """
+    if not time_str: return None
+    time_str = time_str.strip().upper()
+    try:
+        # Expect "09:00 AM" or "9:00 AM"
+        dt = datetime.strptime(time_str, '%I:%M %p')
+        return dt.strftime('%I:%M %p')
+    except Exception as e:
+        # print(f"DEBUG: normalize_time failed 1: {e}")
+        pass
+        
+    try:
+        # Fallback for 24h "14:00" -> "02:00 PM"
+        dt = datetime.strptime(time_str, '%H:%M')
+        return dt.strftime('%I:%M %p')
+    except Exception as e:
+        # print(f"DEBUG: normalize_time failed 2: {e}")
+        return None # Return None if invalid format
+
+
 @api_bp.route('/timetable', methods=['GET', 'POST'])
 def handle_timetable():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
@@ -1823,7 +1892,14 @@ def handle_timetable():
             timetable_doc = legacy_doc
             
     schedule = timetable_doc.get('schedule', {}) if timetable_doc else {}
-    periods = timetable_doc.get('periods', []) if timetable_doc else [] # Retrieve periods
+    periods = timetable_doc.get('periods', []) if timetable_doc else []
+    
+    # Auto-fix bad data (e.g. "--:-- --" placeholders) on read
+    for p in periods:
+        start = normalize_time(p.get('startTime'))
+        end = normalize_time(p.get('endTime'))
+        p['startTime'] = start if start else '09:00 AM'
+        p['endTime'] = end if end else '10:00 AM'
     
     print(f"📅 GET /timetable for {user_email} (Sem {semester}):")
     print(f"   Document exists: {timetable_doc is not None}")
@@ -1858,7 +1934,29 @@ def save_timetable_structure():
         semester = int(request.args.get('semester', 1))
     except (ValueError, TypeError):
         semester = 1
-        
+
+    # Normalize periods and Polyfill missing fields (Sync Fix)
+    if isinstance(periods, list):
+        for idx, p in enumerate(periods):
+            # Time Normalization
+            start = normalize_time(p.get('startTime'))
+            end = normalize_time(p.get('endTime'))
+            
+            p['startTime'] = start if start else '09:00 AM'
+            p['endTime'] = end if end else '10:00 AM'
+            
+            # Polyfill ID if missing (Essential for Web App key)
+            if not p.get('id'):
+                p['id'] = f"p-{int(time()*1000)}-{idx}"
+            
+            # Polyfill Name if missing (Essential for Web App label)
+            if not p.get('name'):
+                 p['name'] = str(idx + 1)
+                 
+            # Polyfill Type and Normalize
+            raw_type = p.get('type', 'class')
+            p['type'] = raw_type.lower() if raw_type else 'class'
+
     timetable_collection.update_one(
         {'owner_email': user_email, 'semester': semester},
         {'$set': {'periods': periods, 'semester': semester}}, # Ensure semester is set if upserting
@@ -1882,16 +1980,29 @@ def add_timetable_slot():
     
     # Ensure _id for the slot
     data['_id'] = str(ObjectId())
-    # Remove semester from slot data itself to keep it clean (optional, but good practice)
-    slot_data = {k: v for k, v in data.items() if k != 'semester'}
+    
+    # Handle varying key formats (camelCase from frontend, snake_case in backend)
+    raw_start = data.get('start_time') or data.get('startTime')
+    raw_end = data.get('end_time') or data.get('endTime')
+    
+    start_time = normalize_time(raw_start)
+    end_time = normalize_time(raw_end)
+    
+    if not start_time or not end_time:
+         return jsonify({"error": "Invalid time format"}), 400
+    
+    # Standardize log data for DB
+    slot_data = {k: v for k, v in data.items() if k not in ['semester', 'startTime', 'endTime']}
+    slot_data['start_time'] = start_time
+    slot_data['end_time'] = end_time
     
     print(f"➕ Adding timetable slot for {user_email} (Sem {semester}):")
-    print(f"   Day: {day}")
+    print(f"   Day: {day} | Time: {start_time} - {end_time}")
     
     # Remove any existing slot at the same time to prevent duplicates (Auto-replace)
     timetable_collection.update_one(
         {'owner_email': user_email, 'semester': semester},
-        {'$pull': {f'schedule.{day}': {'start_time': slot_data['start_time']}}}
+        {'$pull': {f'schedule.{day}': {'start_time': start_time}}}
     )
 
     # Push to specific day array within the schedule object
@@ -2236,58 +2347,10 @@ def get_notifications():
 
 # --- CALENDAR & LOGS ---
 
-@api_bp.route('/todays_classes')
-def todays_classes():
-    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    
-    user_email = session['user']['email']
-    
-    try:
-        # Get today's date
-        today = datetime.now()
-        
-        # Python's weekday(): Monday=0, Sunday=6
-        # JavaScript's getDay(): Sunday=0, Monday=1, ..., Saturday=6
-        # Our timetable uses: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-        
-        # Map Python weekday to day names
-        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        day_name = day_names[today.weekday()]  # Python weekday() already gives Mon=0
-        
-        print(f"📅 Today's classes: {today.strftime('%Y-%m-%d')} → {day_name} (weekday={today.weekday()})")
-        
-        # Fetch timetable
-        tt_doc = db.timetable.find_one({'owner_email': user_email})
-        schedule = tt_doc.get('schedule', {}) if tt_doc else {}
-        
-        # Get today's slots
-        todays_slots = schedule.get(day_name, [])
-        
-        # Fetch subjects
-        subjects_cursor = db.subjects.find({'owner_email': user_email})
-        subjects_map = {str(s['_id']): s for s in subjects_cursor}
-        
-        # Build response with subject details
-        classes = []
-        for slot in todays_slots:
-            if slot.get('type') in ['break', 'free']:
-                continue
-                
-            subject_id = slot.get('subject_id')
-            if subject_id and str(subject_id) in subjects_map:
-                subject = subjects_map[str(subject_id)]
-                classes.append({
-                    'id': str(subject['_id']),
-                    'name': subject.get('name'),
-                    'start_time': slot.get('start_time'),
-                    'end_time': slot.get('end_time')
-                })
-        
-        return Response(json_util.dumps(classes), mimetype='application/json')
-    except Exception as e:
-        print(f"Error in todays_classes: {e}")
-        traceback.print_exc()
-        return jsonify({"error": "Failed to fetch classes"}), 500
+# Consolidated into the /api/todays_classes route at line ~756
+@api_bp.route('/todays_classes_deprecated') 
+def todays_classes_old():
+    return jsonify({"error": "Use /api/todays_classes"}), 404
 
 @api_bp.route('/calendar_data')
 def calendar_data():

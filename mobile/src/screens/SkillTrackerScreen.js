@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, TextInput,
     Alert, ScrollView, Animated, LayoutAnimation, UIManager, Platform,
-    StatusBar, Dimensions
+    StatusBar, Dimensions, RefreshControl
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -56,6 +56,7 @@ const SkillTrackerScreen = ({ navigation }) => {
 
     const [skills, setSkills] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState('All');
 
     // Modal
@@ -74,39 +75,85 @@ const SkillTrackerScreen = ({ navigation }) => {
             const data = Array.isArray(response.data) ? response.data : (response.data.skills || []);
             setSkills(data);
         } catch (error) { console.error(error); }
-        finally { setLoading(false); }
+        finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchSkills();
     };
 
     const handleSave = async () => {
         if (!formData.name.trim()) return Alert.alert("Error", "Name required");
+
+        // Optimistic UI Setup
+        const isEdit = !!editingSkill;
+        const tempId = isEdit ? (editingSkill._id?.$oid || editingSkill._id) : 'temp-' + Date.now();
+        const payload = { ...formData, progress: Number(formData.progress) };
+        const previousSkills = [...skills];
+
+        setModalVisible(false); // Close immediately
+        setSaving(true); // Background loading state if needed elsewhere
+
+        // 1. Update State Immediately
+        setSkills(prev => {
+            if (isEdit) {
+                return prev.map(s => {
+                    const sId = s._id?.$oid || s._id;
+                    return sId === tempId ? { ...s, ...payload } : s;
+                });
+            } else {
+                return [...prev, { ...payload, _id: tempId }];
+            }
+        });
+
         try {
-            setSaving(true);
-            const payload = { ...formData, progress: Number(formData.progress) };
-            if (editingSkill) {
-                const id = typeof editingSkill._id === 'string' ? editingSkill._id : (editingSkill._id?.$oid || editingSkill.id);
-                if (id) await api.put(`/api/skills/${id}`, payload);
+            if (isEdit) {
+                await api.put(`/api/skills/${tempId}`, payload);
             } else {
                 await api.post('/api/skills', payload);
             }
-            setModalVisible(false);
-            fetchSkills();
-        } catch (error) { Alert.alert("Error", "Failed to save."); }
-        finally { setSaving(false); }
+            fetchSkills(); // Sync with server for real IDs
+        } catch (error) {
+            console.error("Skill Save Error", error);
+            setSkills(previousSkills); // Revert
+            Alert.alert("Error", "Failed to save. Changes reverted.");
+        } finally {
+            setSaving(false);
+            setEditingSkill(null);
+            setFormData({ name: '', category: 'Technical', level: 'beginner', progress: 0, notes: '' });
+        }
     };
 
     const handleDelete = (skill) => {
         const id = typeof skill._id === 'string' ? skill._id : (skill._id?.$oid || skill.id);
         if (!id) return;
+
         Alert.alert("Delete", "Are you sure?", [
-            { text: "Cancel" },
+            { text: "Cancel", style: "cancel" },
             {
                 text: "Delete", style: 'destructive', onPress: async () => {
-                    await api.delete(`/api/skills/${id}`);
-                    fetchSkills();
+                    // Optimistic Delete
+                    const previousSkills = [...skills];
+                    setSkills(prev => prev.filter(s => {
+                        const sId = typeof s._id === 'string' ? s._id : (s._id?.$oid || s.id);
+                        return sId !== id;
+                    }));
+
+                    try {
+                        await api.delete(`/api/skills/${id}`);
+                    } catch (error) {
+                        console.error(error);
+                        setSkills(previousSkills); // Revert
+                        Alert.alert("Error", "Failed to delete.");
+                    }
                 }
             }
         ]);
-    }
+    };
 
     const getCategoryMeta = (catName) => SKILL_CATEGORIES.find(c => c.name === catName) || SKILL_CATEGORIES[5];
     const filteredSkills = filter === 'All' ? skills : skills.filter(s => s.category === filter);
@@ -209,7 +256,8 @@ const SkillTrackerScreen = ({ navigation }) => {
                 }}
                 contentContainerStyle={styles.list}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />}
+                ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top - 0 }} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
             />
 
             {/* FAB */}
@@ -226,10 +274,19 @@ const SkillTrackerScreen = ({ navigation }) => {
                 </LinearGradient>
             </TouchableOpacity>
 
-            {/* MODAL */}
+            {/* MODAL - Flush Bottom Sheet */}
             <Modal animationType="slide" visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
-                <View style={styles.modalOverlay}>
-                    <LinearGradient colors={[isDark ? '#1a1a1a' : '#fff', isDark ? '#1a1a1a' : '#f0f0f0']} style={styles.modalContent}>
+                <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.75)' }}>
+                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setModalVisible(false)} />
+                    <LinearGradient colors={[isDark ? '#1a1a1a' : '#fff', isDark ? '#1a1a1a' : '#f0f0f0']}
+                        style={[styles.modalContent, {
+                            paddingBottom: 24 + insets.bottom,
+                            borderBottomLeftRadius: 0,
+                            borderBottomRightRadius: 0,
+                            height: 'auto',
+                            maxHeight: '90%'
+                        }]}
+                    >
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>{editingSkill ? 'Edit Skill' : 'New Skill'}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -237,7 +294,7 @@ const SkillTrackerScreen = ({ navigation }) => {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={{ flex: 1 }}>
+                        <ScrollView style={{ marginBottom: 20 }} showsVerticalScrollIndicator={false}>
                             <Text style={styles.label}>SKILL NAME</Text>
                             <TextInput
                                 style={styles.input}
@@ -297,6 +354,8 @@ const SkillTrackerScreen = ({ navigation }) => {
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
+                            {/* Extra spacing for scrolling comfortably above chin */}
+                            <View style={{ height: 20 }} />
                         </ScrollView>
                     </LinearGradient>
                 </View>

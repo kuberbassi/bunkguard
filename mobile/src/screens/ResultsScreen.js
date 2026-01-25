@@ -90,6 +90,17 @@ const ResultsScreen = ({ navigation }) => {
     };
 
     const calculateOverallStats = (data) => {
+        // High Parity: Prioritize CGPA calculated by the server if available
+        const latestResult = data.length > 0 ? data.sort((a, b) => b.semester - a.semester)[0] : null;
+
+        if (latestResult && latestResult.cgpa !== undefined) {
+            setStats({
+                cgpa: parseFloat(latestResult.cgpa).toFixed(2),
+                totalCredits: data.reduce((acc, r) => acc + (r.total_credits || 0), 0)
+            });
+            return;
+        }
+
         let totalCredits = 0;
         let weightedSum = 0;
 
@@ -180,15 +191,56 @@ const ResultsScreen = ({ navigation }) => {
                 sgpa: parseFloat(sgpa),
                 total_credits: credits
             };
-            await api.post('/api/semester_results', payload);
+
+            // Optimistic Update
+            const prevResults = [...results];
+            setResults(prev => {
+                const idx = prev.findIndex(r => r.semester === editData.semester);
+                if (idx !== -1) {
+                    const newRes = [...prev];
+                    newRes[idx] = { ...newRes[idx], ...payload };
+                    return newRes;
+                } else {
+                    return [...prev, payload];
+                }
+            });
+
             setIsEditing(false);
             setEditData(null);
-            fetchResults();
+
+            await api.post('/api/semester_results', payload);
+            fetchResults(); // Background Sync
         } catch (e) {
+            console.error(e);
+            Analytics.logError("Save Result Failed");
+            // We could revert here, but for now we just rely on next fetch or alert
+            // Ideally revert `setResults(prevResults)`
             Alert.alert("Error", "Failed to save results");
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleDeleteSemester = () => {
+        Alert.alert("Delete Semester", `Clear all data for Semester ${selectedSemester}?`, [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete", style: "destructive", onPress: async () => {
+                    // Optimistic Delete
+                    const prevResults = [...results];
+                    setResults(prev => prev.filter(r => r.semester !== selectedSemester));
+                    setIsEditing(false);
+                    setEditData(null);
+
+                    try {
+                        await api.delete(`/api/semester_results/${selectedSemester}`);
+                    } catch (e) {
+                        setResults(prevResults); // Revert
+                        Alert.alert("Error", "Failed to delete.");
+                    }
+                }
+            }
+        ]);
     };
 
     const handleSubjectChange = (text, index, field) => {
@@ -406,7 +458,7 @@ const ResultsScreen = ({ navigation }) => {
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 scrollEventThrottle={16}
             >
-                <View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />
+                <View style={{ height: Layout.header.maxHeight + insets.top - 20 }} />
 
                 {/* STATS ROW */}
                 <View style={styles.statsRow}>
@@ -453,6 +505,9 @@ const ResultsScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     ) : (
                         <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity onPress={handleDeleteSemester} style={{ marginRight: 8 }}>
+                                <Trash2 size={24} color={c.danger} />
+                            </TouchableOpacity>
                             <TouchableOpacity onPress={() => { setIsEditing(false); setEditData(null); }}>
                                 <X size={24} color={c.subtext} />
                             </TouchableOpacity>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, Image, Switch,
-    ScrollView, TextInput, Alert, ActivityIndicator, Animated
+    ScrollView, TextInput, Alert, ActivityIndicator, Animated, RefreshControl
 } from 'react-native';
 import { theme, Layout as AppLayout } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,6 +48,8 @@ const SettingsScreen = ({ navigation }) => {
 
     // ... state ...
     const [editingProfile, setEditingProfile] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [profileData, setProfileData] = useState({
         name: user?.name || '',
         course: user?.course || '',
@@ -60,7 +62,6 @@ const SettingsScreen = ({ navigation }) => {
     const [minAttendance, setMinAttendance] = useState('75');
     const [warningThreshold, setWarningThreshold] = useState('76');
     const [accentColor, setAccentColor] = useState(c.primary);
-    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -82,18 +83,51 @@ const SettingsScreen = ({ navigation }) => {
     }, [user]);
 
     // Fetch preferences on mount
-    useEffect(() => {
-        const loadPrefs = async () => {
-            try {
-                const res = await api.get('/api/preferences');
-                if (res.data) {
-                    if (res.data.min_attendance) setMinAttendance(String(res.data.min_attendance));
-                    if (res.data.attendance_threshold) setWarningThreshold(String(res.data.attendance_threshold));
+    const loadPrefs = async () => {
+        try {
+            const profileRes = await api.get('/api/profile');
+
+            if (profileRes.data) {
+                // Update profile data with proper type conversion
+                const profileData = {
+                    ...profileRes.data,
+                    semester: profileRes.data.semester ? String(profileRes.data.semester) : '1', // Convert number to string
+                };
+
+                setProfileData(prev => ({ ...prev, ...profileData }));
+
+                // Set attendance thresholds from profile response
+                if (profileRes.data.attendance_threshold) {
+                    setMinAttendance(String(profileRes.data.attendance_threshold));
                 }
-            } catch (e) { console.log("Error loading prefs", e) }
-        };
-        loadPrefs();
-    }, []);
+                if (profileRes.data.min_attendance) {
+                    setWarningThreshold(String(profileRes.data.min_attendance));
+                }
+            }
+        } catch (e) {
+            console.log("Error loading profile", e);
+        }
+    };
+
+    useEffect(() => { loadPrefs(); }, []);
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                api.get('/api/profile').then(res => {
+                    if (res.data) {
+                        setProfileData(prev => ({ ...prev, ...res.data }));
+                    }
+                }),
+                loadPrefs()
+            ]);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     // ... Actions (Keep as is) ...
     const handleSaveProfile = async () => {
@@ -109,9 +143,12 @@ const SettingsScreen = ({ navigation }) => {
             await api.put('/api/update_profile', updatedUser);
 
             // 2. Update Preferences (Min Attendance / Warning)
+            // Swapped to match Read logic:
+            // Min Attendance UI -> attendance_threshold API
+            // Warning UI -> min_attendance API
             await api.post('/api/preferences', {
-                min_attendance: Number(minAttendance),
-                attendance_threshold: Number(warningThreshold)
+                attendance_threshold: Number(minAttendance),
+                min_attendance: Number(warningThreshold)
             });
 
             // 3. Update global semester context
@@ -261,19 +298,23 @@ const SettingsScreen = ({ navigation }) => {
                 )}
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
             >
-                <View style={{ height: 180 }} />
+                <View style={{ height: 140 }} />
 
                 {/* NEW HERO PROFILE CARD */}
+                {/* NEW HERO PROFILE CARD */}
                 <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                    <TouchableOpacity style={styles.heroAvatar} onPress={handleUploadPFP}>
-                        {user?.picture ? (
-                            <Image source={{ uri: user.picture }} style={{ width: '100%', height: '100%' }} />
-                        ) : (
-                            <LinearGradient colors={[c.primary, c.accent]} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                <User size={40} color="#FFF" />
-                            </LinearGradient>
-                        )}
+                    <TouchableOpacity onPress={handleUploadPFP} style={{ position: 'relative', marginBottom: 16 }}>
+                        <View style={styles.heroAvatar}>
+                            {user?.picture ? (
+                                <Image source={{ uri: user.picture }} style={{ width: '100%', height: '100%' }} />
+                            ) : (
+                                <LinearGradient colors={[c.primary, c.accent]} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                    <User size={40} color="#FFF" />
+                                </LinearGradient>
+                            )}
+                        </View>
                         <View style={styles.editBadge}>
                             <Camera size={14} color="#FFF" />
                         </View>
@@ -358,10 +399,10 @@ const SettingsScreen = ({ navigation }) => {
                         />
                     </View>
 
-                </LinearGradient>
+                </LinearGradient >
 
                 {/* PREFERENCES */}
-                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                < LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card} >
                     <Text style={styles.sectionTitle}>Preferences</Text>
 
                     <View style={[styles.row, { alignItems: 'center', marginBottom: 16 }]}>
@@ -394,10 +435,10 @@ const SettingsScreen = ({ navigation }) => {
                             />
                         </View>
                     </View>
-                </LinearGradient>
+                </LinearGradient >
 
                 {/* SYSTEM & LOGS */}
-                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                < LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card} >
                     <Text style={styles.sectionTitle}>System</Text>
                     <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('ActivityLog')}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -408,10 +449,10 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                         <ChevronRight size={20} color={c.subtext} />
                     </TouchableOpacity>
-                </LinearGradient>
+                </LinearGradient >
 
                 {/* DATA ACTIONS */}
-                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
+                < LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card} >
                     <Text style={styles.sectionTitle}>Data & Sync</Text>
 
                     <TouchableOpacity style={styles.actionRow} onPress={handleExportData}>
@@ -435,10 +476,10 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                         <ChevronRight size={20} color={c.subtext} />
                     </TouchableOpacity>
-                </LinearGradient>
+                </LinearGradient >
 
                 {/* DANGER ZONE */}
-                <LinearGradient colors={[c.danger + '10', c.danger + '05']} style={[styles.card, { borderColor: c.danger + '40' }]}>
+                < LinearGradient colors={[c.danger + '10', c.danger + '05']} style={[styles.card, { borderColor: c.danger + '40' }]} >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                         <AlertTriangle size={18} color={c.danger} />
                         <Text style={[styles.sectionTitle, { color: c.danger, marginBottom: 0 }]}>Danger Zone</Text>
@@ -453,17 +494,19 @@ const SettingsScreen = ({ navigation }) => {
                         <Trash2 size={18} color={c.danger} />
                         <Text style={styles.dangerText}>Reset All Data</Text>
                     </TouchableOpacity>
-                </LinearGradient>
+                </LinearGradient >
 
                 <View style={{ height: 100 }} />
-            </Animated.ScrollView>
+            </Animated.ScrollView >
 
-            {loading && (
-                <View style={styles.loader}>
-                    <ActivityIndicator size="large" color={c.primary} />
-                </View>
-            )}
-        </View>
+            {
+                loading && (
+                    <View style={styles.loader}>
+                        <ActivityIndicator size="large" color={c.primary} />
+                    </View>
+                )
+            }
+        </View >
     );
 };
 
@@ -498,7 +541,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
     heroAvatar: {
         width: 100, height: 100,
         borderRadius: 50, borderWidth: 3, borderColor: c.glassBorder,
-        overflow: 'hidden', marginBottom: 16,
+        overflow: 'hidden',
         shadowColor: c.primary, shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.2, shadowRadius: 16, elevation: 8
     },

@@ -18,9 +18,10 @@ import { attendanceService } from '@/services/attendance.service';
 import { authService } from '@/services/auth.service';
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
+
 interface UserPreferences {
     attendance_threshold: number;
-    warning_threshold: number;
+    min_attendance: number;  // Changed from warning_threshold to match API/Mobile
     counting_mode: 'classes' | 'percentage';
 
     accent_color: string;
@@ -113,7 +114,7 @@ const Settings: React.FC = () => {
 
     const [preferences, setPreferences] = useState<UserPreferences>({
         attendance_threshold: 75,
-        warning_threshold: 76,
+        min_attendance: 76,
         counting_mode: 'percentage',
 
         accent_color: accentColor || '#6750A4'
@@ -123,17 +124,17 @@ const Settings: React.FC = () => {
     const [isEditingProfile, setIsEditingProfile] = useState(false);
 
     const [profileForm, setProfileForm] = useState({
-        branch: '',
+        course: '',
         college: '',
         semester: 1,
         batch: '',
-        picture: '' // Added picture
+        picture: ''
     });
 
     useEffect(() => {
         if (user) {
             setProfileForm({
-                branch: user.branch || '',
+                course: user.course || '',
                 college: user.college || '',
                 semester: user.semester || 1,
                 batch: user.batch || '',
@@ -158,7 +159,7 @@ const Settings: React.FC = () => {
                 const updatedUser = {
                     ...user,
                     name,
-                    branch: profileForm.branch,
+                    course: profileForm.course,
                     college: profileForm.college,
                     semester: profileForm.semester,
                     batch: profileForm.batch,
@@ -167,9 +168,9 @@ const Settings: React.FC = () => {
                 authService.storeUser(updatedUser);
             }
 
-            showToast('success', 'Profile updated');
+            // Mark as saved BEFORE forcing any navigation/updates to avoid guard
             setIsEditingProfile(false);
-            window.location.reload();
+            showToast('success', 'Profile updated');
         } catch (error) {
             showToast('error', 'Failed to update profile');
         }
@@ -186,7 +187,7 @@ const Settings: React.FC = () => {
                 setPreferences(prev => ({
                     ...prev,
                     attendance_threshold: prefs.attendance_threshold ?? prev.attendance_threshold,
-                    warning_threshold: prefs.warning_threshold ?? prev.warning_threshold,
+                    min_attendance: prefs.min_attendance ?? prev.min_attendance,
                     counting_mode: prefs.counting_mode ?? prev.counting_mode,
                     accent_color: prefs.accent_color ?? accentColor // Use context as fallback
                 }));
@@ -414,9 +415,9 @@ const Settings: React.FC = () => {
                                             <Input
                                                 label="Course/Branch"
                                                 placeholder="e.g. B.Tech CSE"
-                                                value={isEditingProfile ? profileForm.branch : (user?.branch || '')}
+                                                value={isEditingProfile ? profileForm.course : (user?.course || '')}
                                                 disabled={!isEditingProfile}
-                                                onChange={(e) => setProfileForm({ ...profileForm, branch: e.target.value })}
+                                                onChange={(e) => setProfileForm({ ...profileForm, course: e.target.value })}
                                             />
                                             <Input
                                                 label="College"
@@ -447,8 +448,8 @@ const Settings: React.FC = () => {
                                             value={user?.email || ''}
                                             disabled
                                         />
-                                    </div>
-                                </div>
+                                    </div >
+                                </div >
                                 <div className="mt-4 md:mt-6 flex justify-end gap-2">
                                     {isEditingProfile ? (
                                         <>
@@ -461,11 +462,11 @@ const Settings: React.FC = () => {
                                         <Button variant="outlined" size="sm" onClick={() => setIsEditingProfile(true)}>Edit Profile</Button>
                                     )}
                                 </div>
-                            </GlassCard>
-                        </section>
+                            </GlassCard >
+                        </section >
 
                         {/* Appearance */}
-                        <section>
+                        < section >
                             <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4 flex items-center gap-2">
                                 <Palette className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                 Appearance
@@ -537,10 +538,10 @@ const Settings: React.FC = () => {
                                     </div>
                                 </GlassCard>
                             </div>
-                        </section>
+                        </section >
 
                         {/* Attendance Preferences */}
-                        <section>
+                        < section >
                             <h2 className="text-lg md:text-xl font-bold text-on-surface mb-3 md:mb-4 flex items-center gap-2">
                                 <SettingsIcon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
                                 Attendance Preferences
@@ -579,8 +580,8 @@ const Settings: React.FC = () => {
                                                     type="number"
                                                     min={preferences.attendance_threshold}
                                                     max="100"
-                                                    value={preferences.warning_threshold}
-                                                    onChange={(e) => debouncedSave({ warning_threshold: Math.min(100, Math.max(preferences.attendance_threshold, parseInt(e.target.value) || 76)) })}
+                                                    value={preferences.min_attendance}
+                                                    onChange={(e) => debouncedSave({ min_attendance: Math.min(100, Math.max(preferences.attendance_threshold, parseInt(e.target.value) || 76)) })}
                                                     onBlur={() => savePreferencesToAPI(preferences)}
                                                     className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-surface-container-highest text-orange-500 border-2 border-orange-500/30 focus:border-orange-500 outline-none"
                                                 />
@@ -593,7 +594,7 @@ const Settings: React.FC = () => {
                                     </div>
                                 </div>
                             </GlassCard>
-                        </section>
+                        </section >
                     </>
                 ) : (
                     <>
@@ -667,8 +668,8 @@ const Settings: React.FC = () => {
                         </GlassCard>
                     </div>
                 </section>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

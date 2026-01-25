@@ -2,7 +2,7 @@ export interface User {
     email: string;
     name: string;
     picture?: string;
-    branch?: string;
+    course?: string;
     college?: string;
     semester?: number;
     batch?: string;
@@ -166,9 +166,11 @@ export interface GridPeriod {
     type: 'class' | 'break';
 }
 
+
 export interface Preferences {
     attendance_threshold?: number;
-    warning_threshold?: number;
+    warning_threshold?: number; // Legacy - being replaced by min_attendance
+    min_attendance?: number;    // New field matching API/Mobile
     counting_mode?: 'classes' | 'percentage';
     notifications_enabled?: boolean;
     accent_color?: string;
