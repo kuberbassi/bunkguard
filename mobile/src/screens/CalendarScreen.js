@@ -73,11 +73,11 @@ const CalendarScreen = ({ navigation }) => {
     const fetchMonthData = useCallback(async (year, month) => {
         try {
             const key = `${year}-${String(month).padStart(2, '0')}`;
-            const res = await api.get(`/api/calendar_data?year=${year}&month=${month}&semester=${selectedSemester}`);
+            const data = await attendanceService.getCalendarData(year, month, selectedSemester);
 
             setCalendarData(prev => ({
                 ...prev,
-                [key]: res.data || {}
+                [key]: data || {}
             }));
         } catch (e) {
             console.error(`Failed to fetch month ${year}-${month}`, e);

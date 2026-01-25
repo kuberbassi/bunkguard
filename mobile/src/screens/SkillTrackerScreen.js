@@ -11,7 +11,7 @@ import {
     Plus, Edit2, Trash2, Zap, Palette, Globe, Briefcase, Heart, Grid, X, Save, TrendingUp
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import api from '../services/api';
+import { skillsService } from '../services';
 import AnimatedHeader from '../components/AnimatedHeader';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -71,9 +71,9 @@ const SkillTrackerScreen = ({ navigation }) => {
 
     const fetchSkills = async () => {
         try {
-            const response = await api.get('/api/skills');
-            const data = Array.isArray(response.data) ? response.data : (response.data.skills || []);
-            setSkills(data);
+            const data = await skillsService.getSkills();
+            const skills = Array.isArray(data) ? data : (data.skills || []);
+            setSkills(skills);
         } catch (error) { console.error(error); }
         finally {
             setLoading(false);
@@ -112,9 +112,9 @@ const SkillTrackerScreen = ({ navigation }) => {
 
         try {
             if (isEdit) {
-                await api.put(`/api/skills/${tempId}`, payload);
+                await skillsService.updateSkill(tempId, payload);
             } else {
-                await api.post('/api/skills', payload);
+                await skillsService.addSkill(payload);
             }
             fetchSkills(); // Sync with server for real IDs
         } catch (error) {
