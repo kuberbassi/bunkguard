@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
             api.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
 
             await setStorageItem('auth_token', authToken);
-            await setStorageItem('user_data', JSON.stringify(userData));
+            await storeUserSecurely(userData); // Use the new helper
         } catch (error) {
             console.error("Login persistence error:", error);
         }
