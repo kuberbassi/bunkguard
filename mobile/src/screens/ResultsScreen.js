@@ -487,10 +487,20 @@ const ResultsScreen = ({ navigation }) => {
 
                 {showGradingRef && (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
-                        {[{ g: 'O', r: '90+' }, { g: 'A+', r: '75+' }, { g: 'A', r: '65+' }, { g: 'B+', r: '55+' }, { g: 'F', r: '<40' }].map((g, i) => (
+                        {[
+                            { g: 'O', r: '90-100', p: 10 },
+                            { g: 'A+', r: '75-89', p: 9 },
+                            { g: 'A', r: '65-74', p: 8 },
+                            { g: 'B+', r: '55-64', p: 7 },
+                            { g: 'B', r: '50-54', p: 6 },
+                            { g: 'C', r: '45-49', p: 5 },
+                            { g: 'P', r: '40-44', p: 4 },
+                            { g: 'F', r: '<40', p: 0 }
+                        ].map((item, i) => (
                             <LinearGradient key={i} colors={[c.glassBgStart, c.glassBgEnd]} style={styles.refChip}>
-                                <Text style={{ fontWeight: 'bold', color: c.text }}>{g.g}</Text>
-                                <Text style={{ fontSize: 10, color: c.subtext }}>{g.r}</Text>
+                                <Text style={{ fontWeight: 'bold', color: c.text, fontSize: 14 }}>{item.g}</Text>
+                                <Text style={{ fontSize: 10, color: c.subtext }}>{item.r}</Text>
+                                <Text style={{ fontSize: 9, color: c.primary, fontWeight: '600' }}>GP: {item.p}</Text>
                             </LinearGradient>
                         ))}
                     </ScrollView>
