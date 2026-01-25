@@ -166,7 +166,7 @@ def get_profile():
     return jsonify(response_data)
 
 
-@api_bp.route('/update_profile', methods=['PUT'])
+@api_bp.route('/update_profile', methods=['PUT', 'POST'])
 def update_profile():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     user_email = session['user']['email']
