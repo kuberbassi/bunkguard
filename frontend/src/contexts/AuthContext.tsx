@@ -46,6 +46,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         initAuth();
     }, []);
 
+    // CRITICAL: Refetch user data when returning to the tab (Cross-Device Sync)
+    // If user updates PFP on mobile, focusing the web tab will now update the header instantly.
+    useEffect(() => {
+        const handleFocus = async () => {
+            // Only fetch if tab is visible and we think we are logged in
+            if (document.visibilityState === 'visible') {
+                try {
+                    const freshUser = await authService.getCurrentUser();
+                    if (freshUser) {
+                        // Only update if something changed (optional optimization, but React handles diffing)
+                        setUser(freshUser);
+                    }
+                } catch (e) {
+                    // Ignore errors (don't logout on background fetch failure)
+                }
+            }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        document.addEventListener('visibilitychange', handleFocus);
+
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            document.removeEventListener('visibilitychange', handleFocus);
+        };
+    }, []);
+
     const login = () => {
         // Legacy login (redirect) - largely unused now
         authService.initiateLogin();
