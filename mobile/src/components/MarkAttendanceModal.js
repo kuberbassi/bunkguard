@@ -5,7 +5,7 @@ import { theme } from '../theme';
 import { X, Check, X as XIcon, MoreHorizontal, Calendar as CalendarIcon, Trash2, Edit2, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSemester } from '../contexts/SemesterContext';
-import api from '../services/api';
+import { attendanceService } from '../services';
 
 
 const { height } = Dimensions.get('window');
