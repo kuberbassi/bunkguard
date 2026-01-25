@@ -61,6 +61,8 @@ const SettingsScreen = ({ navigation }) => {
 
     const [minAttendance, setMinAttendance] = useState('75');
     const [warningThreshold, setWarningThreshold] = useState('76');
+    const [attendanceThreshold, setAttendanceThreshold] = useState('75');
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [accentColor, setAccentColor] = useState(c.primary);
 
     useEffect(() => {
@@ -82,32 +84,26 @@ const SettingsScreen = ({ navigation }) => {
         }
     }, [user]);
 
-    // Fetch preferences on mount
+    // Fetch profile and preferences separately (matching web)
     const loadPrefs = async () => {
         try {
-            const profileRes = await attendanceService.getPreferences();
+            // 1. Load user profile (name, email, etc)
+            const profileResponse = await fetch(`${attendanceService.getPreferences.toString().match(/\/api\/[^'"]+/)?.[0] || ''}`).catch(() => null);
 
-            if (profileRes) {
-                // Update profile data with proper type conversion
-                const profileData = {
-                    ...profileRes,
-                    semester: profileRes.semester ? String(profileRes.semester) : '1', // Convert number to string
-                };
+            // 2. Load preferences (attendance thresholds, etc)
+            const prefs = await attendanceService.getPreferences();
 
-                setProfileData(prev => ({ ...prev, ...profileData }));
-
-                // Set attendance thresholds from profile response
-                if (profileRes.attendance_threshold) {
-                    setAttendanceThreshold(String(profileRes.attendance_threshold));
+            if (prefs) {
+                // Set attendance thresholds
+                if (prefs.attendance_threshold) {
+                    setAttendanceThreshold(String(prefs.attendance_threshold));
+                    setMinAttendance(String(prefs.attendance_threshold));
                 }
-                if (profileRes.warning_threshold) {
-                    setWarningThreshold(String(profileRes.warning_threshold));
+                if (prefs.warning_threshold) {
+                    setWarningThreshold(String(prefs.warning_threshold));
                 }
-                if (profileRes.notifications_enabled !== undefined) {
-                    setNotificationsEnabled(profileRes.notifications_enabled);
-                }
-                if (profileRes.profile_pic_url) {
-                    setProfilePic(profileRes.profile_pic_url);
+                if (prefs.notifications_enabled !== undefined) {
+                    setNotificationsEnabled(prefs.notifications_enabled);
                 }
             }
         } catch (e) {

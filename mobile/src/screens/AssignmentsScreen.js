@@ -241,45 +241,36 @@ const AssignmentsScreen = ({ navigation }) => {
                 isDark={isDark}
                 colors={c}
                 onBack={() => navigation.goBack()}
-            />
-
-            {/* Filter Tabs */}
-            <View style={{
-                position: 'absolute',
-                top: 90 + insets.top,
-                left: 20,
-                right: 20,
-                zIndex: 10,
-                flexDirection: 'row',
-                gap: 8,
-                backgroundColor: 'transparent'
-            }}>
-                {['All', 'Assignment', 'Practical'].map(tab => (
-                    <TouchableOpacity
-                        key={tab}
-                        onPress={() => setFilter(tab)}
-                        style={{
-                            paddingVertical: 8,
-                            paddingHorizontal: 16,
-                            borderRadius: 20,
-                            backgroundColor: filter === tab ? c.primary : c.card,
-                            borderWidth: 1,
-                            borderColor: filter === tab ? c.primary : c.border,
-                        }}
-                    >
-                        <Text style={{
-                            color: filter === tab ? '#FFF' : c.text,
-                            fontSize: 13,
-                            fontWeight: '700'
-                        }}>
-                            {tab}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+            >
+                {/* Filter Tabs - Inside Header Like ResultsScreen */}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                    {['All', 'Assignment', 'Practical'].map(tab => (
+                        <TouchableOpacity
+                            key={tab}
+                            onPress={() => setFilter(tab)}
+                            style={{
+                                paddingVertical: 6,
+                                paddingHorizontal: 14,
+                                borderRadius: 16,
+                                backgroundColor: filter === tab ? c.primary : c.card,
+                                borderWidth: 1,
+                                borderColor: filter === tab ? c.primary : c.border,
+                            }}
+                        >
+                            <Text style={{
+                                color: filter === tab ? '#FFF' : c.text,
+                                fontSize: 12,
+                                fontWeight: '700'
+                            }}>
+                                {tab}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </AnimatedHeader>
 
             <Animated.FlatList
-                contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 140 + insets.top }}
+                contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 100 + insets.top }}
                 data={filteredSubjects}
                 renderItem={renderItem}
                 keyExtractor={item => item._id}
