@@ -73,7 +73,8 @@ const CalendarScreen = ({ navigation }) => {
     const fetchMonthData = useCallback(async (year, month) => {
         try {
             const key = `${year}-${String(month).padStart(2, '0')}`;
-            const data = await attendanceService.getCalendarData(year, month, selectedSemester);
+            const safeSemester = selectedSemester || 1;
+            const data = await attendanceService.getCalendarData(year, month, safeSemester);
 
             setCalendarData(prev => ({
                 ...prev,
@@ -258,7 +259,7 @@ const CalendarScreen = ({ navigation }) => {
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
 
