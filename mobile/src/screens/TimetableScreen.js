@@ -573,7 +573,7 @@ const TimetableScreen = ({ navigation }) => {
 
 const getStyles = (c, isDark) => StyleSheet.create({
     container: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 },
     backBtn: { padding: 8, backgroundColor: c.glassBgEnd, borderRadius: 12 },
     title: { fontSize: 20, fontWeight: '800', color: c.text },
     addBtn: { padding: 8, backgroundColor: c.glassBgEnd, borderRadius: 12 },
