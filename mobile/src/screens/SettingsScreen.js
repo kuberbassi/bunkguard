@@ -144,28 +144,31 @@ const SettingsScreen = ({ navigation }) => {
     const handleSaveProfile = async () => {
         setLoading(true);
         try {
+            // Import api for direct endpoint access
+            const api = require('../services/api').default;
+
             const updatedSemester = Number(profileData.semester);
-            const updatedUser = {
-                ...profileData,
-                semester: updatedSemester
-            };
 
-            // 1. Update Profile
-            await attendanceService.updateProfile(updatedUser);
-
-            // 2. Update Preferences (Min Attendance / Warning)
-            // Save preferences
-            await attendanceService.updatePreferences({
-                attendance_threshold: parseInt(attendanceThreshold),
+            // Send to backend using /api/update_profile endpoint (POST method, not PUT)
+            await api.post('/api/update_profile', {
+                name: profileData.name,
+                course: profileData.course,
+                batch: profileData.batch,
+                college: profileData.college,
+                semester: updatedSemester,
+                attendance_threshold: parseInt(minAttendance),
                 warning_threshold: parseInt(warningThreshold),
-                notifications_enabled: notificationsEnabled,
             });
 
-            // 3. Update global semester context
+            // Update global semester context
             await updateSemester(updatedSemester);
 
-            // 4. Update Local Context
-            await updateUser(updatedUser);
+            // Update Local Context
+            await updateUser({
+                ...user,
+                ...profileData,
+                semester: updatedSemester
+            });
 
             setEditingProfile(false);
             Alert.alert("Success", "Profile and settings updated.");
