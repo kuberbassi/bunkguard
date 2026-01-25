@@ -474,9 +474,13 @@ def get_current_user():
     user_data = session['user'].copy()
     try:
         if 'email' in user_data:
+            print(f"🔍 Checking DB for picture of {user_data['email']}")
             db_user = users_collection.find_one({'email': user_data['email']}, {'picture': 1})
             if db_user and 'picture' in db_user and db_user['picture']:
+                print(f"✅ Picture found in DB (Length: {len(db_user['picture'])})")
                 user_data['picture'] = db_user['picture']
+            else:
+                print("⚠️ No picture found in DB")
     except Exception as e:
         print(f"⚠️ Error fetching picture for current_user: {e}")
         
