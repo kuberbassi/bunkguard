@@ -292,32 +292,35 @@ def calculate_subject_result(subject):
     IPU formula: Theory (40 internal + 60 external) + Practical (40 internal + 60 external)
     """
     subject_type = subject.get('type', 'theory')
+    """Calculate total marks, percentage, grade, and grade point for a subject."""
+    s_type = subject.get('type', 'theory')
+    
+    # Convert to int, handling both None and string values
+    internal_theory = int(subject.get('internal_theory') or 0) if subject.get('internal_theory') else 0
+    external_theory = int(subject.get('external_theory') or 0) if subject.get('external_theory') else 0
+    internal_practical = int(subject.get('internal_practical') or 0) if subject.get('internal_practical') else 0
+    external_practical = int(subject.get('external_practical') or 0) if subject.get('external_practical') else 0
+    
     total_marks = 0
     max_marks = 0
     
-    if subject_type == 'nues':
-        internal_theory = subject.get('internal_theory', 0) or 0
-        total_marks += internal_theory
-        max_marks += 100
-    elif subject_type in ['theory', 'both']:
-        internal_theory = subject.get('internal_theory', 0) or 0
-        external_theory = subject.get('external_theory', 0) or 0
-        total_marks += internal_theory + external_theory
-        max_marks += 100  # 40 internal + 60 external
+    if s_type == 'theory':
+        total_marks = internal_theory + external_theory
+        max_marks = 100
+    elif s_type == 'practical':
+        total_marks = internal_practical + external_practical
+        max_marks = 100
+    elif s_type == 'nues':
+        total_marks = internal_theory
+        max_marks = 100
     
-    if subject_type in ['practical', 'both']:
-        internal_practical = subject.get('internal_practical', 0) or 0
-        external_practical = subject.get('external_practical', 0) or 0
-        total_marks += internal_practical + external_practical
-        max_marks += 100  # 40 internal + 60 external
-    
-    percentage = round((total_marks / max_marks) * 100, 2) if max_marks > 0 else 0
+    percentage = (total_marks / max_marks * 100) if max_marks > 0 else 0
     grade, grade_point = get_ipu_grade(percentage)
     
     return {
         'total_marks': total_marks,
         'max_marks': max_marks,
-        'percentage': percentage,
+        'percentage': round(percentage, 2),
         'grade': grade,
         'grade_point': grade_point
     }
