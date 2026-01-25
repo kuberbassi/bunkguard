@@ -1220,6 +1220,25 @@ def update_profile_post():
     
     # Update Session
     session['user'].update(update_data)
+    
+    # CRITICAL FIX: Also update preferences (semester, thresholds)
+    preferences_collection = db.get_collection('user_preferences')
+    pref_updates = {}
+    
+    if 'semester' in data:
+        pref_updates['preferences.semester'] = int(data['semester'])
+    if 'attendance_threshold' in data:
+        pref_updates['preferences.attendance_threshold'] = int(data['attendance_threshold'])
+    if 'warning_threshold' in data:
+        pref_updates['preferences.warning_threshold'] = int(data['warning_threshold'])
+        
+    if pref_updates:
+        preferences_collection.update_one(
+            {'owner_email': user_email},
+            {'$set': pref_updates},
+            upsert=True
+        )
+        
     session.modified = True
     
     return jsonify({"success": True, "user": session['user']})
