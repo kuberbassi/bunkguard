@@ -140,10 +140,7 @@ const LoginScreen = () => {
                         </TouchableOpacity>
                     )}
 
-                    <TouchableOpacity style={styles.devBtn} onPress={handleDevLogin} disabled={loading}>
-                        <ShieldCheck size={16} color={c.text} style={{ opacity: 0.6 }} />
-                        <Text style={styles.devText}>Developer Mode Login</Text>
-                    </TouchableOpacity>
+                    {/* Developer Login Removed for Production */}
                 </LinearGradient>
 
                 <Text style={styles.footerText}>Secure Login provided by Google OAuth</Text>
