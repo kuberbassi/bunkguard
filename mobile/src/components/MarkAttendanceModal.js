@@ -44,14 +44,26 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
 
     const handleConfirmAdvanced = () => {
         if (advancedClass) {
-            onMark(advancedClass._id, selectedStatus, note, advancedClass.log_id);
+            if (advancedClass.isMerged) {
+                advancedClass.originalClasses.forEach(cls => {
+                    onMark(cls._id, selectedStatus, note, cls.log_id);
+                });
+            } else {
+                onMark(advancedClass._id, selectedStatus, note, advancedClass.log_id);
+            }
             closeAdvanced();
         }
     };
 
     const handleClearMark = () => {
         if (advancedClass) {
-            onMark(advancedClass._id, 'pending', '', advancedClass.log_id);
+            if (advancedClass.isMerged) {
+                advancedClass.originalClasses.forEach(cls => {
+                    onMark(cls._id, 'pending', '', cls.log_id);
+                });
+            } else {
+                onMark(advancedClass._id, 'pending', '', advancedClass.log_id);
+            }
             closeAdvanced();
         }
     };
@@ -119,6 +131,46 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
         </LinearGradient>
     );
 
+    // --- Helper: Group Consecutive Classes ---
+    const groupConsecutiveClasses = (classesList) => {
+        if (!classesList || classesList.length === 0) return [];
+        const grouped = [];
+        let currentGroup = null;
+
+        classesList.forEach((slot) => {
+            const subjectId = typeof slot.subject_id === 'object' ? (slot.subject_id.$oid || slot.subject_id.toString()) : (slot.subject_id || slot.subjectId);
+            const groupSubId = currentGroup ? (typeof currentGroup.subject_id === 'object' ? (currentGroup.subject_id.$oid || currentGroup.subject_id.toString()) : (currentGroup.subject_id || currentGroup.subjectId)) : null;
+
+            if (currentGroup && groupSubId === subjectId && slot.type === currentGroup.type) {
+                // Merge
+                currentGroup.originalClasses.push(slot);
+                // Update End Time
+                if (slot.time && currentGroup.startTime) {
+                    const parts = slot.time.split(' - ');
+                    const end = parts[1] || parts[0];
+                    currentGroup.time = `${currentGroup.startTime} - ${end}`;
+                }
+                // Status Priority: If any present, show present? No, show first.
+                currentGroup.marked_status = currentGroup.originalClasses[0].marked_status;
+            } else {
+                // New Group
+                const timeParts = slot.time ? slot.time.split(' - ') : [];
+                const startTime = timeParts[0] || '10:00 AM';
+                currentGroup = {
+                    ...slot,
+                    isMerged: true,
+                    originalClasses: [slot],
+                    startTime
+                };
+                grouped.push(currentGroup);
+            }
+        });
+
+        return grouped.map(g => ({ ...g, isMerged: g.originalClasses.length > 1 }));
+    };
+
+    const groupedClasses = groupConsecutiveClasses(classes);
+
     return (
         <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
             {/* Backdrop */}
@@ -148,20 +200,33 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
                         </View>
 
                         <ScrollView style={{ marginTop: 10 }} showsVerticalScrollIndicator={false}>
-                            {classes.length === 0 ? (
+                            {groupedClasses.length === 0 ? (
                                 <View style={styles.emptyState}>
                                     <Text style={{ color: c.subtext }}>No classes scheduled.</Text>
                                 </View>
                             ) : (
-                                classes.map((cls, index) => {
+                                groupedClasses.map((cls, index) => {
                                     const isMarked = cls.marked_status && cls.marked_status !== 'pending';
                                     const statusColor = cls.marked_status === 'absent' ? c.danger : c.success;
+
+                                    // Helper for bulk mark
+                                    const handleBulkMark = (status) => {
+                                        if (cls.isMerged) {
+                                            cls.originalClasses.forEach(original => {
+                                                onMark(original._id, status, '', original.log_id);
+                                            });
+                                        } else {
+                                            onMark(cls._id, status, '', cls.log_id);
+                                        }
+                                    };
 
                                     return (
                                         <View key={index} style={styles.classItem}>
                                             <View style={{ flex: 1 }}>
                                                 <Text style={styles.className}>{cls.name || cls.code}</Text>
-                                                <Text style={styles.classTime}>{cls.time || '10:00 AM'} • {cls.type || 'Lecture'}</Text>
+                                                <Text style={styles.classTime}>
+                                                    {cls.time || '10:00 AM'}
+                                                </Text>
                                             </View>
 
                                             <View style={styles.actions}>
@@ -171,16 +236,24 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
                                                     </TouchableOpacity>
                                                 ) : (
                                                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.success + '15' }]} onPress={() => onMark(cls._id, 'present', '', cls.log_id)}>
+                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.success + '15' }]} onPress={() => handleBulkMark('present')}>
                                                             <Check size={20} color={c.success} />
                                                         </TouchableOpacity>
-                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.danger + '15' }]} onPress={() => onMark(cls._id, 'absent', '', cls.log_id)}>
+                                                        <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.danger + '15' }]} onPress={() => handleBulkMark('absent')}>
                                                             <XIcon size={20} color={c.danger} />
                                                         </TouchableOpacity>
                                                     </View>
                                                 )}
 
-                                                <TouchableOpacity style={styles.moreBtn} onPress={() => openAdvanced(cls)}>
+                                                <TouchableOpacity style={styles.moreBtn} onPress={() => {
+                                                    // For advanced edit, we might need to handle merged specifically?
+                                                    // Maybe just open advanced for the FIRST slot, or custom UI?
+                                                    // For now, let's just open the "merged" representative, but on confirm,
+                                                    // we need to know if we should bulk update.
+                                                    // current logic `handleConfirmAdvanced` uses `advancedClass._id`.
+                                                    // We should update `handleConfirmAdvanced` to handle bulk too.
+                                                    openAdvanced(cls);
+                                                }}>
                                                     <ValidMoreIcon size={20} color={c.subtext} />
                                                 </TouchableOpacity>
                                             </View>

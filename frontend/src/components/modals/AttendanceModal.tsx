@@ -192,18 +192,30 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                             <h3 className="text-sm font-bold text-on-surface-variant mb-3 uppercase tracking-wider">Scheduled Classes</h3>
                             {scheduledClasses.length > 0 ? (
                                 <div className="space-y-3">
-                                    {scheduledClasses.map(subject => {
-                                        const subId = typeof subject._id === 'object'
-                                            ? (subject._id as any).$oid
-                                            : (subject._id?.toString() || subject.id?.toString() || String(subject._id));
+                                    {groupConsecutiveClasses(scheduledClasses).map((subject, idx) => {
+                                        const subId = subject._id; // Is now the ID of the first slot (or merged ID logic?)
                                         return (
                                             <SubjectRow
-                                                key={`scheduled-${subId}`}
-                                                subject={{ ...subject, _id: subId }}
+                                                key={`scheduled-${subId}-${idx}`} // Unique key using Index
+                                                subject={subject}
                                                 status={subject.marked_status}
                                                 expanded={expandedSubjectId === subId}
-                                                onSimpleMark={markSimple}
-                                                onDelete={handleDelete}
+                                                // Wrapper for bulk mark
+                                                onSimpleMark={(id: string, status: string) => {
+                                                    if (subject.isMerged) {
+                                                        // Bulk mark all underlying slots
+                                                        subject.originalClasses.forEach((cls: any) => markSimple(cls._id || cls.id, status as any));
+                                                    } else {
+                                                        markSimple(id, status as any);
+                                                    }
+                                                }}
+                                                onDelete={(subj: any) => {
+                                                    if (subj.isMerged) {
+                                                        subj.originalClasses.forEach((cls: any) => handleDelete(cls));
+                                                    } else {
+                                                        handleDelete(subj);
+                                                    }
+                                                }}
                                                 onOpenDetails={openDetails}
                                                 onCloseDetails={() => setExpandedSubjectId(null)}
 
@@ -215,7 +227,36 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 detailSubstitutedBy={detailSubstitutedBy}
                                                 setDetailSubstitutedBy={setDetailSubstitutedBy}
                                                 allSubjects={allSubjects}
-                                                onSubmitDetail={submitDetailedMark}
+                                                onSubmitDetail={(id: string) => {
+                                                    if (subject.isMerged) {
+                                                        // For detailed submit, we loop manually
+                                                        // But submitDetailedMark uses state (detailStatus etc) which is global to modal
+                                                        // So we just call the API for each ID.
+                                                        // Wait, submitDetailedMark calls loadClassesForDate which resets state.
+                                                        // We should maybe promise.all
+                                                        const promises = subject.originalClasses.map((cls: any) => {
+                                                            const dateStr = getDateStr(selectedDate);
+                                                            return attendanceService.markAttendance(
+                                                                cls._id || cls.id,
+                                                                detailStatus,
+                                                                dateStr,
+                                                                detailNotes,
+                                                                detailStatus === 'substituted' ? detailSubstitutedBy : undefined
+                                                            );
+                                                        });
+
+                                                        Promise.all(promises).then(() => {
+                                                            showToast('success', 'Attendance marked for all slots');
+                                                            setExpandedSubjectId(null);
+                                                            resetDetailForm();
+                                                            loadClassesForDate(selectedDate, true);
+                                                            if (onSuccess) onSuccess();
+                                                        }).catch(err => showToast('error', 'Failed to mark some slots'));
+
+                                                    } else {
+                                                        submitDetailedMark(id);
+                                                    }
+                                                }}
                                             />
                                         );
                                     })}
@@ -379,6 +420,69 @@ const SubjectRow = ({
             </div>
         </div>
     );
+};
+
+const groupConsecutiveClasses = (classes: any[]) => {
+    if (!classes || classes.length === 0) return [];
+
+    const grouped: any[] = [];
+    let currentGroup: any = null;
+
+    classes.forEach((slot, index) => {
+        // Robust ID Extraction
+        const getSafeId = (val: any) => {
+            if (!val) return '';
+            if (typeof val === 'object') return val.$oid || val.toString();
+            return String(val);
+        };
+
+        const slotId = getSafeId(slot._id || slot.id);
+        const subjectId = getSafeId(slot.subject_id || slot.subjectId);
+
+        const currentGroupSubId = currentGroup ? getSafeId(currentGroup.subject_id || currentGroup.subjectId) : null;
+
+        // Merge Condition:
+        // 1. Same Subject ID (if present)
+        // 2. OR Same Name (Fallback if IDs missing/messy) - Strong signal for consecutive slots
+        // 3. MUST be same Type
+        const isSameSubject = (subjectId && currentGroupSubId && subjectId === currentGroupSubId) ||
+            (slot.name === currentGroup?.name);
+
+        if (currentGroup && isSameSubject && slot.type === currentGroup.type) {
+            // Merge
+            currentGroup.originalClasses.push(slot);
+            // Update time range
+            if (slot.time && currentGroup.startTime) {
+                const parts = slot.time.split(' - ');
+                const end = parts[1] || parts[0];
+                currentGroup.time = `${currentGroup.startTime} - ${end}`;
+            }
+            // Status Priority: Show first slot's status
+            currentGroup.marked_status = currentGroup.originalClasses[0].marked_status;
+
+        } else {
+            // New Group
+            const timeParts = slot.time ? slot.time.split(' - ') : [];
+            const startTime = timeParts[0] || '';
+
+            currentGroup = {
+                ...slot,
+                _id: slotId,
+                isMerged: true,
+                originalClasses: [slot],
+                startTime: startTime
+            };
+            grouped.push(currentGroup);
+        }
+    });
+
+    return grouped.map(g => ({
+        ...g,
+        isMerged: g.originalClasses.length > 1, // Only true if actually merged > 1
+        // If meant to be single, revert isMerged? No, consistent struct is fine.
+        // Actually if length is 1, treat as normal?
+        // Logic above sets isMerged=true always. Let's fix.
+    }));
 };
 
 export default AttendanceModal;

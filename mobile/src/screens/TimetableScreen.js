@@ -4,6 +4,7 @@ import {
     TouchableOpacity, FlatList, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Animated
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
 import api from '../services/api';
 import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, CheckCircle2, XCircle } from 'lucide-react-native';
@@ -16,6 +17,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const TimetableScreen = ({ navigation }) => {
     const { isDark } = useTheme();
     const { selectedSemester } = useSemester();
+    const insets = useSafeAreaInsets();
 
     // AMOLED Theme
     const c = {
@@ -405,11 +407,37 @@ const TimetableScreen = ({ navigation }) => {
         <View style={styles.container}>
             <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
-            {/* UNIVERSAL ANIMATED HEADER */}
+            {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
+
+            {/* Content */}
+            {loading ? (
+                <View style={styles.center}><ActivityIndicator size="large" color={c.primary} /></View>
+            ) : (
+                <Animated.FlatList
+                    data={currentSlots}
+                    renderItem={renderSlotItem}
+                    keyExtractor={(item, idx) => item.id || item._id || idx.toString()}
+                    contentContainerStyle={styles.listContent}
+                    ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 25 }} />}
+                    ListEmptyComponent={
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyText}>No classes for {selectedDay}</Text>
+                            <Text style={styles.emptySubText}>Tap + to add a class</Text>
+                        </View>
+                    }
+                    onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                    onRefresh={fetchData} refreshing={refreshing}
+                    progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                    tintColor={c.primary}
+                />
+            )}
+
+            {/* UNIVERSAL ANIMATED HEADER - MOVED TO FRONT LAYER */}
             <AnimatedHeader
                 scrollY={scrollY}
                 title="Timetable"
-                subtitle="MANAGE SCHEDULE"
+                badge={`SEM ${selectedSemester}`}
+                subtitle="DAILY SCHEDULE"
                 isDark={isDark}
                 colors={c}
                 // No onBack for main tab
@@ -442,28 +470,6 @@ const TimetableScreen = ({ navigation }) => {
                     </ScrollView>
                 </View>
             </AnimatedHeader>
-
-            {/* Content */}
-            {loading ? (
-                <View style={styles.center}><ActivityIndicator size="large" color={c.primary} /></View>
-            ) : (
-                <Animated.FlatList
-                    data={currentSlots}
-                    renderItem={renderSlotItem}
-                    keyExtractor={(item, idx) => item.id || item._id || idx.toString()}
-                    contentContainerStyle={styles.listContent}
-                    ListHeaderComponent={<View style={{ height: 130 }} />}
-                    ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No classes for {selectedDay}</Text>
-                            <Text style={styles.emptySubText}>Tap + to add a class</Text>
-                        </View>
-                    }
-                    onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                    onRefresh={fetchData} refreshing={refreshing}
-                    tintColor={c.primary}
-                />
-            )}
 
             {/* ADD SLOT MODAL */}
             <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>

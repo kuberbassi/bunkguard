@@ -73,10 +73,11 @@ export const theme = {
 
 export const Layout = {
   header: {
-    maxHeight: 120,
-    minHeight: 70, // Thinner for a more professional mobile feel
+    maxHeight: 170, // Increased to accommodate Title + Subtitle + Tabs/Filters
+    minHeight: 80, // Slightly taller for better collapsible breathing room
     maxTitleSize: 32,
     minTitleSize: 20,
+    contentHeight: 80, // New constant for roomier title/icon area
     // Spacing
     paddingHorizontal: 24,
     paddingBottom: 16

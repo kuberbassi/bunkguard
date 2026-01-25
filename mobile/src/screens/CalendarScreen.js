@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Animated, RefreshControl } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import api from '../services/api';
 import MarkAttendanceModal from '../components/MarkAttendanceModal';
@@ -8,6 +9,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalIcon } from 'lucide-react-nat
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSemester } from '../contexts/SemesterContext';
+import { Layout } from '../theme';
 
 // Helper: Get YYYY-MM key from date string or Date object
 const getMonthKey = (date) => {
@@ -35,6 +37,7 @@ const LegendItem = React.memo(({ color, label, isBorder }) => (
 const CalendarScreen = ({ navigation }) => {
     const { isDark } = useTheme();
     const { selectedSemester } = useSemester();
+    const insets = useSafeAreaInsets();
 
     // Theme setup
     const c = useMemo(() => ({
@@ -240,25 +243,19 @@ const CalendarScreen = ({ navigation }) => {
         <View style={{ flex: 1 }}>
             <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
-            <AnimatedHeader
-                scrollY={scrollY}
-                title="Schedule"
-                subtitle="TRACK ATTENDANCE"
-                isDark={isDark}
-                colors={c}
-                rightComponent={
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity onPress={() => navigation.navigate('TimetableSetup')} style={styles.manageBtn}>
-                            <Text style={styles.manageText}>Manage</Text>
-                        </TouchableOpacity>
-                    </View>
-                }
-            />
+            {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
 
             <Animated.ScrollView
                 contentContainerStyle={styles.scrollContent}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.text}
+                        progressViewOffset={Layout.header.minHeight + (insets.top || 0) + 20}
+                    />
+                }
             >
                 <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.calendarCard}>
                     {/* Header */}
@@ -269,6 +266,7 @@ const CalendarScreen = ({ navigation }) => {
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <TouchableOpacity onPress={() => {
                                 const d = new Date(currentMonth);
+                                d.setDate(1); // Safety: Start from 1st to avoid month-end skips
                                 d.setMonth(d.getMonth() - 1);
                                 setCurrentMonth(d.toISOString().split('T')[0]);
                             }} style={styles.navBtn}>
@@ -276,6 +274,7 @@ const CalendarScreen = ({ navigation }) => {
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => {
                                 const d = new Date(currentMonth);
+                                d.setDate(1); // Safety: Start from 1st to avoid month-end skips
                                 d.setMonth(d.getMonth() + 1);
                                 setCurrentMonth(d.toISOString().split('T')[0]);
                             }} style={styles.navBtn}>
@@ -285,9 +284,10 @@ const CalendarScreen = ({ navigation }) => {
                     </View>
 
                     <Calendar
-                        // KEY PROP: Forces re-render on theme change to prevent artifacts
-                        key={isDark ? 'dark' : 'light'}
+                        // KEY PROP: Forces re-render on theme/month change to prevent artifacts/sync issues
+                        key={`${isDark ? 'dark' : 'light'}-${currentMonth}`}
                         current={currentMonth}
+                        renderHeader={() => null} // Hide default header (removes double month text)
                         onMonthChange={onMonthChange}
                         dayComponent={({ date, state }) => {
                             const dateStr = date.dateString;
@@ -329,6 +329,22 @@ const CalendarScreen = ({ navigation }) => {
                 </View>
             </Animated.ScrollView>
 
+            {/* UNIVERSAL ANIMATED HEADER - MOVED TO FRONT LAYER */}
+            <AnimatedHeader
+                scrollY={scrollY}
+                title="Schedule"
+                subtitle="TRACK ATTENDANCE"
+                isDark={isDark}
+                colors={c}
+                rightComponent={
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <TouchableOpacity onPress={() => navigation.navigate('TimetableSetup')} style={styles.manageBtn}>
+                            <Text style={styles.manageText}>Manage</Text>
+                        </TouchableOpacity>
+                    </View>
+                }
+            />
+
             <MarkAttendanceModal
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
@@ -342,7 +358,7 @@ const CalendarScreen = ({ navigation }) => {
 };
 
 const getStyles = (c, isDark) => StyleSheet.create({
-    scrollContent: { padding: 16, paddingTop: 115, paddingBottom: 40 },
+    scrollContent: { padding: 16, paddingTop: Layout.header.maxHeight + 25, paddingBottom: 40 },
     manageBtn: { backgroundColor: c.glassBgEnd, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: c.glassBorder },
     manageText: { color: c.primary, fontWeight: '700', fontSize: 12 },
     calendarCard: {

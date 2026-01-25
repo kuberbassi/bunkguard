@@ -39,16 +39,24 @@ export const NotificationService = {
                 const { status } = await Notifications.requestPermissionsAsync();
                 finalStatus = status;
             }
-            if (finalStatus !== 'granted') {
-                console.log('Failed to get push token for push notification!');
-                return;
+            // Expo SDK 53+ in Expo Go has limited push notification support for remote tokens.
+            // We use a try-catch and check environment to avoid crashing in Expo Go.
+            try {
+                if (Constants.appOwnership === 'expo') {
+                    console.log('Skipping remote push token registration (Expo Go environment)');
+                    return null;
+                }
+                const token = (await Notifications.getExpoPushTokenAsync({
+                    projectId: Constants.expoConfig?.extra?.eas?.projectId
+                })).data;
+                return token;
+            } catch (error) {
+                console.log('Push token registration skipped/failed:', error.message);
+                return null;
             }
-            // We are focusing on LOCAL notifications first as requested ("keep it simple")
-            // But obtaining token is good for future.
-            const token = (await Notifications.getExpoPushTokenAsync({ projectId: Constants.expoConfig?.extra?.eas?.projectId })).data;
-            return token;
         } else {
             console.log('Must use physical device for Push Notifications');
+            return null;
         }
     },
 

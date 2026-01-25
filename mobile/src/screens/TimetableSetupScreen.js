@@ -375,10 +375,37 @@ const TimetableSetupScreen = ({ navigation }) => {
             <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* UNIVERSAL ANIMATED HEADER */}
+            {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
+
+            {/* Content */}
+            {loading ? (
+                <View style={styles.center}><ActivityIndicator size="large" color={c.primary} /></View>
+            ) : (
+                <Animated.FlatList
+                    data={currentSlots}
+                    renderItem={renderSlotItem}
+                    keyExtractor={(item, idx) => item.id || item._id || idx.toString()}
+                    contentContainerStyle={styles.listContent}
+                    ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 25 }} />}
+                    ListEmptyComponent={
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyText}>No classes for {selectedDay}</Text>
+                            <Text style={styles.emptySubText}>Tap + to add a class</Text>
+                        </View>
+                    }
+                    onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                    onRefresh={fetchData} refreshing={refreshing}
+                    progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                    tintColor={c.primary}
+                />
+            )}
+
+            {/* UNIVERSAL ANIMATED HEADER - MOVED TO FRONT LAYER */}
             <AnimatedHeader
                 scrollY={scrollY}
                 title="Timetable"
-                subtitle={`MANAGE SCHEDULE • SEM ${selectedSemester}`}
+                badge={`SEM ${selectedSemester}`}
+                subtitle="MANAGE SCHEDULE"
                 isDark={isDark}
                 colors={c}
                 onBack={() => navigation.goBack()}
@@ -410,28 +437,6 @@ const TimetableSetupScreen = ({ navigation }) => {
                     </ScrollView>
                 </View>
             </AnimatedHeader>
-
-            {/* Content */}
-            {loading ? (
-                <View style={styles.center}><ActivityIndicator size="large" color={c.primary} /></View>
-            ) : (
-                <Animated.FlatList
-                    data={currentSlots}
-                    renderItem={renderSlotItem}
-                    keyExtractor={(item, idx) => item.id || item._id || idx.toString()}
-                    contentContainerStyle={styles.listContent}
-                    ListHeaderComponent={<View style={{ height: 130 }} />}
-                    ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No classes for {selectedDay}</Text>
-                            <Text style={styles.emptySubText}>Tap + to add a class</Text>
-                        </View>
-                    }
-                    onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                    onRefresh={fetchData} refreshing={refreshing}
-                    tintColor={c.primary}
-                />
-            )}
 
             {/* Structure Editor Modal - Flush Bottom Sheet */}
             <Modal animationType="slide" transparent visible={structureModalVisible} onRequestClose={() => setStructureModalVisible(false)}>

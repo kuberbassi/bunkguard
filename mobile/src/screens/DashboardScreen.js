@@ -180,29 +180,18 @@ const DashboardScreen = ({ navigation }) => {
             />
 
             {/* UNIVERSAL ANIMATED HEADER */}
-            <AnimatedHeader
-                scrollY={scrollY}
-                title={getGreeting()}
-                subtitle={`Welcome back, ${userName}!`}
-                isDark={isDark}
-                colors={c}
-                rightComponent={
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('Notifications')}
-                            style={styles.bellBtn}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <Bell size={24} color={c.text} />
-                            {hasUnread && <View style={styles.badgeDot} />}
-                        </TouchableOpacity>
-                    </View>
-                }
-            />
+            {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
 
             <AnimatedScrollView
                 contentContainerStyle={styles.scrollContent}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.text}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                    />
+                }
                 onScroll={Animated.event(
                     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
                     { useNativeDriver: false }
@@ -210,7 +199,7 @@ const DashboardScreen = ({ navigation }) => {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={{ height: Layout.header.maxHeight + insets.top - 20 }} />
+                <View style={{ height: Layout.header.maxHeight + insets.top + 25 }} />
 
                 {/* LIQUID HERO CARD */}
                 <LinearGradient
@@ -319,6 +308,27 @@ const DashboardScreen = ({ navigation }) => {
 
                 <View style={{ height: 100 }} />
             </AnimatedScrollView>
+
+            {/* UNIVERSAL ANIMATED HEADER - MOVED TO FRONT LAYER */}
+            <AnimatedHeader
+                scrollY={scrollY}
+                title={getGreeting()}
+                subtitle={`Welcome back, ${userName}!`}
+                isDark={isDark}
+                colors={c}
+                rightComponent={
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('Notifications')}
+                            style={styles.bellBtn}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <Bell size={24} color={c.text} />
+                            {hasUnread && <View style={styles.badgeDot} />}
+                        </TouchableOpacity>
+                    </View>
+                }
+            />
 
             <AddSubjectModal
                 visible={modalVisible}

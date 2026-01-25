@@ -16,6 +16,7 @@ const AnimatedHeader = ({
     colors,
     rightComponent,
     onBack,
+    badge,
     children
 }) => {
     const insets = useSafeAreaInsets();
@@ -94,9 +95,16 @@ const AnimatedHeader = ({
                     </TouchableOpacity>
                 )}
                 <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Animated.Text style={[styles.headerTitle, { fontSize: titleSize, color: colors.text }]} numberOfLines={1}>
-                        {title}
-                    </Animated.Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Animated.Text style={[styles.headerTitle, { fontSize: titleSize, color: colors.text }]} numberOfLines={1}>
+                            {title}
+                        </Animated.Text>
+                        {badge && (
+                            <Animated.View style={[styles.badgeContainer, { opacity: subOpacity, transform: [{ scale: subOpacity }] }]}>
+                                <Text style={styles.badgeText}>{badge}</Text>
+                            </Animated.View>
+                        )}
+                    </View>
                     {subtitle && (
                         <Animated.View style={{ height: subHeight, opacity: subOpacity, marginTop: 2 }}>
                             <Text style={[styles.headerSubtitle, { color: colors.subtext }]} numberOfLines={1}>
@@ -112,8 +120,8 @@ const AnimatedHeader = ({
                 )}
             </Animated.View>
 
-            {/* SPACER (Fades out on scroll) */}
-            <Animated.View style={{ height: scrollY.interpolate({ inputRange: [0, 50], outputRange: [12, 0], extrapolate: 'clamp' }), opacity: childrenOpacity }} />
+            {/* SPACER (Fades out on scroll) - Increased range for better clearance when collapsed */}
+            <Animated.View style={{ height: scrollY.interpolate({ inputRange: [0, 80], outputRange: [20, 8], extrapolate: 'clamp' }), opacity: childrenOpacity }} />
 
             {/* Additional children (e.g., tabs, filters) */}
             {children && (
@@ -137,14 +145,14 @@ const getStyles = (colors, insets) => StyleSheet.create({
         right: 0,
         zIndex: 100,
         paddingHorizontal: Layout.header.paddingHorizontal,
-        paddingTop: insets.top + 25, // Increased top padding for professional clearance
+        paddingTop: insets.top + 10, // Tighter top for more modern feel
         justifyContent: 'flex-start',
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 65, // Increased from 40 to accommodate title + subtitle
+        height: Layout.header.contentHeight || 80, // Substantially roomier for premium feel
     },
     headerTitle: {
         fontWeight: '900',
@@ -157,15 +165,35 @@ const getStyles = (colors, insets) => StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 1,
     },
+    badgeContainer: {
+        marginLeft: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+        borderRadius: 20, // Capsule shape
+        backgroundColor: colors.primary + '12',
+        borderWidth: 1,
+        borderColor: colors.primary + '25',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 4,
+    },
+    badgeText: {
+        fontSize: 9,
+        fontWeight: '900',
+        color: colors.primary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
     backBtn: {
-        marginRight: 10,
-        padding: 4,
-        marginLeft: -10,
+        marginRight: 12,
+        padding: 6,
+        marginLeft: -8,
     },
     rightSection: {
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: 16
+        marginLeft: 20,
+        paddingVertical: 4, // Ensures icons stay centered in large area
     }
 });
 

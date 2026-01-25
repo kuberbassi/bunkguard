@@ -208,7 +208,31 @@ const SkillTrackerScreen = ({ navigation }) => {
             {/* BACKGROUND */}
             <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
-            {/* UNIVERSAL ANIMATED HEADER */}
+            {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
+
+            <Animated.FlatList
+                data={filteredSkills}
+                renderItem={renderSkillCard}
+                keyExtractor={(item, index) => {
+                    if (item._id && typeof item._id === 'string') return item._id;
+                    if (item._id && item._id.$oid) return item._id.$oid; // Handle MongoDB ObjectId format
+                    if (item.id) return item.id;
+                    return `skill_${index}_${Date.now()}`; // Last resort fallback
+                }}
+                contentContainerStyle={styles.list}
+                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 25 }} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.text}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                    />
+                }
+            />
+
+            {/* UNIVERSAL ANIMATED HEADER - MOVED TO FRONT LAYER */}
             <AnimatedHeader
                 scrollY={scrollY}
                 title="Skill Tracker"
@@ -244,21 +268,6 @@ const SkillTrackerScreen = ({ navigation }) => {
                     })}
                 </ScrollView>
             </AnimatedHeader>
-
-            <Animated.FlatList
-                data={filteredSkills}
-                renderItem={renderSkillCard}
-                keyExtractor={(item, index) => {
-                    if (item._id && typeof item._id === 'string') return item._id;
-                    if (item._id && item._id.$oid) return item._id.$oid; // Handle MongoDB ObjectId format
-                    if (item.id) return item.id;
-                    return `skill_${index}_${Date.now()}`; // Last resort fallback
-                }}
-                contentContainerStyle={styles.list}
-                onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top - 0 }} />}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
-            />
 
             {/* FAB */}
             <TouchableOpacity
