@@ -195,7 +195,7 @@ const DashboardScreen = ({ navigation }) => {
 
             {/* FULL SCREEN FLUID GRADIENT BACKGROUND */}
             <LinearGradient
-                colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]}
+                colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']}
                 style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -268,7 +268,7 @@ const DashboardScreen = ({ navigation }) => {
                 {/* STATS ROW */}
                 <Animated.View style={[styles.statsRow, statsStyle]}>
                     <LinearGradient
-                        colors={[c.glassBgStart, c.glassBgEnd]}
+                        colors={[c.glassBgStart || '#FFF', c.glassBgEnd || '#F0F0F0']}
                         style={styles.statCard}
                     >
                         <Book size={20} color={c.text} opacity={0.8} />
@@ -288,7 +288,7 @@ const DashboardScreen = ({ navigation }) => {
                         activeOpacity={0.7}
                     >
                         <LinearGradient
-                            colors={isDark ? ['#1C1C1E', '#2C2C2E'] : [c.accent + '10', c.accent + '18']}
+                            colors={isDark ? ['#1C1C1E', '#2C2C2E'] : [c.accent ? (c.accent + '10') : '#E0E0E0', c.accent ? (c.accent + '18') : '#EEEEEE']}
                             style={styles.addCourseBtn}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
