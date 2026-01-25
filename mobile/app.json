@@ -6,24 +6,28 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kuberbassi.acadhub",
+      "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FF00FF"
+        "backgroundColor": "#0A84FF"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.kuberbassi.acadhubmobilekuber",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,12 +36,23 @@
     "plugins": [
       "expo-secure-store",
       "expo-web-browser",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#0A84FF"
+        }
+      ]
     ],
     "extra": {
       "eas": {
         "projectId": "3196a41e-3b21-470e-979c-c6c7b797c723"
       }
+    },
+    "jsEngine": "hermes",
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
