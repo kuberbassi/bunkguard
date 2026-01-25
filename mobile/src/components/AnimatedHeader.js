@@ -99,7 +99,7 @@ const AnimatedHeader = ({
                     </Animated.Text>
                     {subtitle && (
                         <Animated.View style={{ height: subHeight, opacity: subOpacity, marginTop: 2 }}>
-                            <Text style={[styles.headerSubtitle, { color: colors.subtext }]}>
+                            <Text style={[styles.headerSubtitle, { color: colors.subtext }]} numberOfLines={1}>
                                 {subtitle}
                             </Text>
                         </Animated.View>
@@ -144,7 +144,7 @@ const getStyles = (colors, insets) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 40, // Tighter content area
+        height: 65, // Increased from 40 to accommodate title + subtitle
     },
     headerTitle: {
         fontWeight: '900',
@@ -156,7 +156,6 @@ const getStyles = (colors, insets) => StyleSheet.create({
         fontWeight: '800',
         textTransform: 'uppercase',
         letterSpacing: 1,
-        overflow: 'hidden',
     },
     backBtn: {
         marginRight: 10,

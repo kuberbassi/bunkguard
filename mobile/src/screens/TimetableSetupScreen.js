@@ -378,7 +378,7 @@ const TimetableSetupScreen = ({ navigation }) => {
             <AnimatedHeader
                 scrollY={scrollY}
                 title="Timetable"
-                subtitle={`MANAGE SCHEDULE (SEM ${selectedSemester})`}
+                subtitle={`MANAGE SCHEDULE • SEM ${selectedSemester}`}
                 isDark={isDark}
                 colors={c}
                 onBack={() => navigation.goBack()}
