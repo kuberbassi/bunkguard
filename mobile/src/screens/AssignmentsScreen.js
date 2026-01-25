@@ -243,8 +243,43 @@ const AssignmentsScreen = ({ navigation }) => {
                 onBack={() => navigation.goBack()}
             />
 
+            {/* Filter Tabs */}
+            <View style={{
+                position: 'absolute',
+                top: 90 + insets.top,
+                left: 20,
+                right: 20,
+                zIndex: 10,
+                flexDirection: 'row',
+                gap: 8,
+                backgroundColor: 'transparent'
+            }}>
+                {['All', 'Assignment', 'Practical'].map(tab => (
+                    <TouchableOpacity
+                        key={tab}
+                        onPress={() => setFilter(tab)}
+                        style={{
+                            paddingVertical: 8,
+                            paddingHorizontal: 16,
+                            borderRadius: 20,
+                            backgroundColor: filter === tab ? c.primary : c.card,
+                            borderWidth: 1,
+                            borderColor: filter === tab ? c.primary : c.border,
+                        }}
+                    >
+                        <Text style={{
+                            color: filter === tab ? '#FFF' : c.text,
+                            fontSize: 13,
+                            fontWeight: '700'
+                        }}>
+                            {tab}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
             <Animated.FlatList
-                contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 100 + insets.top }}
+                contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 140 + insets.top }}
                 data={filteredSubjects}
                 renderItem={renderItem}
                 keyExtractor={item => item._id}
