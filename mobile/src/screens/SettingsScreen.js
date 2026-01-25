@@ -428,7 +428,7 @@ const SettingsScreen = ({ navigation }) => {
 
                     {/* Removed Notification Toggle as requested */}
 
-                    <View style={styles.row}>
+                    <View style={[styles.row, { marginTop: 16 }]}>
                         <View style={{ flex: 1, marginRight: 10 }}>
                             <Text style={styles.label}>Min Attendance %</Text>
                             <TextInput
@@ -448,6 +448,12 @@ const SettingsScreen = ({ navigation }) => {
                             />
                         </View>
                     </View>
+
+                    <Button
+                        title="Update Preferences"
+                        onPress={handleSaveProfile}
+                        style={{ marginTop: 16 }}
+                    />
                 </LinearGradient >
 
                 {/* SYSTEM & LOGS */}

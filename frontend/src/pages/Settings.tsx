@@ -235,10 +235,10 @@ const Settings: React.FC = () => {
             clearTimeout(saveTimeoutRef.current);
         }
 
-        // Set new timeout to save after 800ms
+        // Set new timeout to save after 1000ms
         saveTimeoutRef.current = setTimeout(() => {
             savePreferencesToAPI(updated);
-        }, 400);
+        }, 1000);
     }, [preferences, savePreferencesToAPI]);
 
     // For instant saves (like accent color buttons)
