@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, Platform, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, Platform, Dimensions, Alert } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
 import { X, Check, X as XIcon, MoreHorizontal, Calendar as CalendarIcon, Trash2, Edit2, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSemester } from '../contexts/SemesterContext';
+import api from '../services/api';
 
 
 const { height } = Dimensions.get('window');
 
-const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading }) => {
+const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading, allSubjects = [] }) => {
     const { isDark } = useTheme();
+    const { selectedSemester } = useSemester();
 
     // AMOLED Theme
     const c = {
@@ -29,6 +32,48 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
     const [advancedClass, setAdvancedClass] = useState(null);
     const [note, setNote] = useState('');
     const [selectedStatus, setSelectedStatus] = useState(null);
+    const [attendanceLogs, setAttendanceLogs] = useState([]);
+    const [subjects, setSubjects] = useState([]);
+
+    useEffect(() => {
+        if (visible && date) {
+            fetchAttendanceLogs();
+            fetchSubjects();
+        }
+    }, [visible, date]);
+
+    const fetchSubjects = async () => {
+        try {
+            const response = await api.get(`/api/subjects?semester=${selectedSemester}`);
+            setSubjects(response.data || []);
+        } catch (error) {
+            console.error('Failed to fetch subjects:', error);
+        }
+    };
+
+    const fetchAttendanceLogs = async () => {
+        try {
+            const response = await api.get(`/api/get_attendance_logs?date=${date}&semester=${selectedSemester}`);
+            setAttendanceLogs(response.data || []);
+        } catch (error) {
+            console.error('Failed to fetch logs:', error);
+        }
+    };
+
+    const deleteLog = async (logId) => {
+        try {
+            // Handle ObjectId format
+            const cleanId = typeof logId === 'object' ? (logId.$oid || String(logId)) : String(logId);
+            await api.delete(`/api/delete_attendance/${cleanId}`);
+            fetchAttendanceLogs();
+            // Trigger parent refresh if provided
+            if (onMark) {
+                // Just a dummy call to trigger refresh, actual re-fetch happens in parent
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Failed to delete log');
+        }
+    };
 
     const openAdvanced = (cls) => {
         setAdvancedClass(cls);
@@ -42,14 +87,21 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
         setSelectedStatus(null);
     };
 
+    const getSafeId = (val) => {
+        if (!val) return '';
+        if (typeof val === 'object') return val.$oid || val.toString();
+        return String(val);
+    };
+
     const handleConfirmAdvanced = () => {
         if (advancedClass) {
             if (advancedClass.isMerged) {
-                advancedClass.originalClasses.forEach(cls => {
-                    onMark(cls._id, selectedStatus, note, cls.log_id);
+                advancedClass.originalClasses.forEach((cls, idx) => {
+                    const isLast = idx === advancedClass.originalClasses.length - 1;
+                    onMark(getSafeId(cls._id || cls.id), selectedStatus, note, cls.log_id, !isLast);
                 });
             } else {
-                onMark(advancedClass._id, selectedStatus, note, advancedClass.log_id);
+                onMark(getSafeId(advancedClass._id || advancedClass.id), selectedStatus, note, advancedClass.log_id, false);
             }
             closeAdvanced();
         }
@@ -58,11 +110,12 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
     const handleClearMark = () => {
         if (advancedClass) {
             if (advancedClass.isMerged) {
-                advancedClass.originalClasses.forEach(cls => {
-                    onMark(cls._id, 'pending', '', cls.log_id);
+                advancedClass.originalClasses.forEach((cls, idx) => {
+                    const isLast = idx === advancedClass.originalClasses.length - 1;
+                    onMark(getSafeId(cls._id || cls.id), 'pending', '', cls.log_id, !isLast);
                 });
             } else {
-                onMark(advancedClass._id, 'pending', '', advancedClass.log_id);
+                onMark(getSafeId(advancedClass._id || advancedClass.id), 'pending', '', advancedClass.log_id, false);
             }
             closeAdvanced();
         }
@@ -138,10 +191,24 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
         let currentGroup = null;
 
         classesList.forEach((slot) => {
-            const subjectId = typeof slot.subject_id === 'object' ? (slot.subject_id.$oid || slot.subject_id.toString()) : (slot.subject_id || slot.subjectId);
-            const groupSubId = currentGroup ? (typeof currentGroup.subject_id === 'object' ? (currentGroup.subject_id.$oid || currentGroup.subject_id.toString()) : (currentGroup.subject_id || currentGroup.subjectId)) : null;
+            const getSafeId = (val) => {
+                if (!val) return '';
+                if (typeof val === 'object') return val.$oid || val.toString();
+                return String(val);
+            };
 
-            if (currentGroup && groupSubId === subjectId && slot.type === currentGroup.type) {
+            const slotId = getSafeId(slot._id || slot.id);
+            const subjectId = getSafeId(slot.subject_id || slot.subjectId);
+            const currentGroupSubId = currentGroup ? getSafeId(currentGroup.subject_id || currentGroup.subjectId) : null;
+
+            // Merge Condition:
+            // 1. Same Subject ID (if present)
+            // 2. OR Same Name (Fallback)
+            // 3. MUST be same Type
+            const isSameSubject = (subjectId && currentGroupSubId && subjectId === currentGroupSubId) ||
+                (slot.name === currentGroup?.name);
+
+            if (currentGroup && isSameSubject && slot.type === currentGroup.type) {
                 // Merge
                 currentGroup.originalClasses.push(slot);
                 // Update End Time
@@ -150,7 +217,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
                     const end = parts[1] || parts[0];
                     currentGroup.time = `${currentGroup.startTime} - ${end}`;
                 }
-                // Status Priority: If any present, show present? No, show first.
+                // Status Priority: Show first
                 currentGroup.marked_status = currentGroup.originalClasses[0].marked_status;
             } else {
                 // New Group
@@ -158,6 +225,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
                 const startTime = timeParts[0] || '10:00 AM';
                 currentGroup = {
                     ...slot,
+                    _id: slotId,
                     isMerged: true,
                     originalClasses: [slot],
                     startTime
@@ -211,12 +279,20 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
 
                                     // Helper for bulk mark
                                     const handleBulkMark = (status) => {
+                                        const getSafeId = (val) => {
+                                            if (!val) return '';
+                                            if (typeof val === 'object') return val.$oid || val.toString();
+                                            return String(val);
+                                        };
+
                                         if (cls.isMerged) {
-                                            cls.originalClasses.forEach(original => {
-                                                onMark(original._id, status, '', original.log_id);
+                                            cls.originalClasses.forEach((original, idx) => {
+                                                const isLast = idx === cls.originalClasses.length - 1;
+                                                // Skip refresh for all except the last one to prevent Fetch Race Conditions
+                                                onMark(getSafeId(original._id || original.id), status, '', original.log_id, !isLast);
                                             });
                                         } else {
-                                            onMark(cls._id, status, '', cls.log_id);
+                                            onMark(getSafeId(cls._id || cls.id), status, '', cls.log_id, false);
                                         }
                                     };
 
@@ -261,6 +337,73 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading 
                                     );
                                 })
                             )}
+
+                            {/* All Attendance Logs Section */}
+                            {attendanceLogs.length > 0 && (
+                                <View style={{ marginTop: 24 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '800', color: c.subtext, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+                                        All Marked ({attendanceLogs.length})
+                                    </Text>
+                                    {attendanceLogs.map((log, idx) => {
+                                        // Handle MongoDB ObjectId format
+                                        const logSubjectId = typeof log.subject_id === 'object'
+                                            ? (log.subject_id.$oid || String(log.subject_id))
+                                            : String(log.subject_id);
+
+                                        const logSubject = subjects.find(s => {
+                                            const subjectId = typeof s._id === 'object'
+                                                ? (s._id.$oid || String(s._id))
+                                                : String(s._id);
+                                            return subjectId === logSubjectId || s.id === logSubjectId;
+                                        });
+                                        const statusColors = {
+                                            'present': c.success,
+                                            'absent': c.danger,
+                                            'late': '#FDBA74',
+                                            'medical': c.primary,
+                                            'cancelled': c.subtext
+                                        };
+                                        const statusColor = statusColors[log.status] || c.subtext;
+
+                                        return (
+                                            <View key={idx} style={[styles.classItem, { marginBottom: 8 }]}>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.className}>{logSubject?.name || 'Unknown'}</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                                        <View style={{ backgroundColor: statusColor + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                                            <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor }}>{log.status.toUpperCase()}</Text>
+                                                        </View>
+                                                        {log.notes && (
+                                                            <Text style={{ fontSize: 11, color: c.subtext }} numberOfLines={1}>• {log.notes}</Text>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                                <TouchableOpacity
+                                                    style={{ padding: 8, backgroundColor: c.danger + '15', borderRadius: 12 }}
+                                                    onPress={() => {
+                                                        // Handle ObjectId format
+                                                        const logId = typeof log._id === 'object'
+                                                            ? (log._id.$oid || String(log._id))
+                                                            : String(log._id);
+
+                                                        Alert.alert(
+                                                            'Delete Log',
+                                                            `Remove ${log.status} entry for ${logSubject?.name || 'this class'}?`,
+                                                            [
+                                                                { text: 'Cancel', style: 'cancel' },
+                                                                { text: 'Delete', style: 'destructive', onPress: () => deleteLog(logId) }
+                                                            ]
+                                                        );
+                                                    }}
+                                                >
+                                                    <Trash2 size={18} color={c.danger} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            )}
+
                             <View style={{ height: 40 }} />
                         </ScrollView>
                     </LinearGradient>

@@ -23,6 +23,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
     const [loading, setLoading] = useState(false);
     const [scheduledClasses, setScheduledClasses] = useState<any[]>([]);
     const [allSubjects, setAllSubjects] = useState<any[]>([]);
+    const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
 
     // Detailed marking state
     const [expandedSubjectId, setExpandedSubjectId] = useState<string | null>(null);
@@ -34,6 +35,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         if (isOpen) {
             setSelectedDate(defaultDate || new Date());
             loadClassesForDate(defaultDate || new Date());
+            fetchAttendanceLogs(defaultDate || new Date());
         }
     }, [isOpen, defaultDate]);
 
@@ -65,6 +67,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         if (!isNaN(newDate.getTime())) {
             setSelectedDate(newDate);
             loadClassesForDate(newDate);
+            fetchAttendanceLogs(newDate);
         }
     };
 
@@ -73,6 +76,33 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    };
+
+    const fetchAttendanceLogs = async (date: Date) => {
+        try {
+            const dateStr = getDateStr(date);
+            const response = await fetch(`/api/get_attendance_logs?date=${dateStr}&semester=${currentSemester}`, {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const logs = await response.json();
+                setAttendanceLogs(logs);
+            }
+        } catch (error) {
+            console.error('Failed to fetch attendance logs:', error);
+        }
+    };
+
+    const deleteLog = async (logId: string) => {
+        try {
+            await attendanceService.deleteAttendance(logId);
+            showToast('success', 'Log deleted');
+            fetchAttendanceLogs(selectedDate);
+            loadClassesForDate(selectedDate, true);
+            if (onSuccess) onSuccess();
+        } catch (error) {
+            showToast('error', 'Failed to delete log');
+        }
     };
 
     const markSimple = async (subjectId: string, status: 'present' | 'absent') => {
@@ -266,6 +296,87 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                             )}
                         </div>
 
+                        {/* Divider */}
+                        <div className="my-6 border-t border-stroke"></div>
+
+                        {/* All Attendance Logs Section */}
+                        <div>
+                            <h3 className="text-sm font-bold text-on-surface-variant mb-3 uppercase tracking-wider flex items-center gap-2">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                All Marked Records ({attendanceLogs.length})
+                            </h3>
+                            {attendanceLogs.length > 0 ? (
+                                <div className="space-y-2">
+                                    {attendanceLogs.map((log: any, idx: number) => {
+                                        // Handle MongoDB ObjectId format
+                                        const logSubjectId = typeof log.subject_id === 'object'
+                                            ? (log.subject_id.$oid || String(log.subject_id))
+                                            : String(log.subject_id);
+
+                                        const logSubject = allSubjects.find((s: any) => {
+                                            const subjectId = typeof s._id === 'object'
+                                                ? (s._id.$oid || String(s._id))
+                                                : String(s._id);
+                                            return subjectId === logSubjectId || s.id === logSubjectId;
+                                        });
+                                        const statusColors: any = {
+                                            'present': 'text-green-600 bg-green-50',
+                                            'absent': 'text-red-600 bg-red-50',
+                                            'late': 'text-orange-600 bg-orange-50',
+                                            'medical': 'text-blue-600 bg-blue-50',
+                                            'cancelled': 'text-gray-600 bg-gray-50',
+                                            'substituted': 'text-purple-600 bg-purple-50'
+                                        };
+                                        const statusColor = statusColors[log.status] || 'text-gray-600 bg-gray-50';
+
+                                        return (
+                                            <div
+                                                key={idx}
+                                                className="flex items-center justify-between p-3 rounded-lg bg-surface-variant/30 border border-stroke"
+                                            >
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-sm">{logSubject?.name || 'Unknown Subject'}</div>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
+                                                            {log.status.toUpperCase()}
+                                                        </span>
+                                                        {log.notes && (
+                                                            <span className="text-xs text-on-surface-variant">• {log.notes}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        // Handle MongoDB ObjectId format  
+                                                        const logId = typeof log._id === 'object'
+                                                            ? (log._id.$oid || String(log._id))
+                                                            : String(log._id);
+
+                                                        if (confirm(`Delete this ${log.status} entry for ${logSubject?.name || 'this subject'}?`)) {
+                                                            deleteLog(logId);
+                                                        }
+                                                    }}
+                                                    className="p-2 hover:bg-error/10 rounded-lg transition-colors"
+                                                    title="Delete this log entry"
+                                                >
+                                                    <Trash2 size={18} className="text-error" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <div className="text-4xl mb-2">📋</div>
+                                    <p className="text-sm text-on-surface-variant/70 italic">No attendance marked for this date</p>
+                                </div>
+                            )}
+                        </div>
 
                     </div>
                 )}

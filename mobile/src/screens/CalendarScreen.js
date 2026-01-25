@@ -129,7 +129,7 @@ const CalendarScreen = ({ navigation }) => {
         } catch (error) { console.error(error); } finally { setLoadingClasses(false); }
     };
 
-    const handleMarkAttendance = async (subjectId, status, note = '', logId = null) => {
+    const handleMarkAttendance = async (subjectId, status, note = '', logId = null, skipRefresh = false) => {
         try {
             // 1. Optimistic Update (List)
             setDayClasses(prev => prev.map(c => c._id === subjectId ? { ...c, marked_status: status } : c));
@@ -172,11 +172,24 @@ const CalendarScreen = ({ navigation }) => {
             }
 
             // 4. Background Refresh (Correctness)
-            const d = new Date(selectedDate);
-            fetchMonthData(d.getFullYear(), d.getMonth() + 1);
+            // Verify Logic: Only fetch if NOT skipping refresh (i.e. last item of bulk)
+            if (!skipRefresh) {
+                const d = new Date(selectedDate);
+                fetchMonthData(d.getFullYear(), d.getMonth() + 1);
+
+                // 5. Verify Persistence (Refresh List)
+                await fetchClassesForDate(selectedDate);
+            }
 
         } catch (error) {
+            console.error("Mark error", error);
             Alert.alert("Error", "Failed to mark attendance.");
+            // Revert on error: Refresh BOTH list and dots to remove ghosts
+            if (!skipRefresh) {
+                fetchClassesForDate(selectedDate);
+                const d = new Date(selectedDate);
+                fetchMonthData(d.getFullYear(), d.getMonth() + 1);
+            }
         }
     };
 
@@ -352,6 +365,7 @@ const CalendarScreen = ({ navigation }) => {
                 classes={dayClasses}
                 loading={loadingClasses}
                 onMark={handleMarkAttendance}
+                allSubjects={[]} // Will fetch from API inside modal
             />
         </View>
     );

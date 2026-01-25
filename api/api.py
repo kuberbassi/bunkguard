@@ -627,6 +627,25 @@ def get_attendance_logs():
         traceback.print_exc()
         return jsonify({"error": "Failed to fetch logs."}), 500
 
+@api_bp.route('/get_attendance_logs')
+def get_attendance_logs_by_date():
+    """Simple endpoint to get attendance logs for a specific date"""
+    if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
+    
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({"error": "Date parameter required"}), 400
+    
+    user_email = session['user']['email']
+    query = {'owner_email': user_email, 'date': date_str}
+    
+    semester = request.args.get('semester')
+    if semester:
+        query['semester'] = int(semester)
+    
+    logs = list(attendance_log_collection.find(query).sort('timestamp', 1))
+    return Response(json_util.dumps(logs), mimetype='application/json')
+
 @api_bp.route('/mark_attendance', methods=['POST'])
 def mark_attendance():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
