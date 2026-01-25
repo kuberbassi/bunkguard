@@ -64,7 +64,7 @@ const DashboardScreen = ({ navigation }) => {
             setDashboardData(data);
 
             if (data?.subjects) {
-                NotificationService.checkAndNotify(data.subjects);
+                NotificationService.checkAndNotify(data.subjects, selectedSemester);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
