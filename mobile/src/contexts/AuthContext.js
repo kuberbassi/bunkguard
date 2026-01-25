@@ -74,6 +74,22 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const storeUserSecurely = async (userData) => {
+        try {
+            // CRITICAL SECURITY FIX: Do NOT store the full Base64 picture in SecureStore
+            // SecureStore has a 2048 byte limit. Base64 images are 2MB+.
+            // We strip the picture before saving.
+            const userToStore = { ...userData };
+            if (userToStore.picture && userToStore.picture.length > 500) {
+                delete userToStore.picture;
+            }
+
+            await setStorageItem('user_data', JSON.stringify(userToStore));
+        } catch (error) {
+            console.error("Error storing user", error);
+        }
+    };
+
     const login = async (userData, authToken) => {
         try {
             setUser(userData);
@@ -92,7 +108,8 @@ export const AuthProvider = ({ children }) => {
         try {
             const newUser = { ...user, ...updatedData };
             setUser(newUser);
-            await setStorageItem('user_data', JSON.stringify(newUser));
+            // Use the safe storage method that strips large images
+            await storeUserSecurely(newUser);
         } catch (error) {
             console.error("Failed to update user context:", error);
         }
