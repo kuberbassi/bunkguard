@@ -11,11 +11,11 @@ const PROD_URL = 'https://acadhub.kuberbassi.com';
 const LOCAL_IP = 'http://127.0.0.1:5000'; // For USB Debugging with adb reverse
 const WEB_URL = 'http://localhost:5000';
 
-const API_URL = Platform.select({
+export const API_URL = Platform.select({
     web: (process.env.NODE_ENV === 'production') ? PROD_URL : WEB_URL,
     // REPLACE '192.168.1.X' with your PC's IP address (run `ipconfig` to find it)
     android: 'http://192.168.0.159:5000',
-    ios: 'http://192.168.0.159:5000',
+    ios: 'http://192.168.0.159:5000', // Update this too if testing on real iOS device
     default: LOCAL_IP
 });
 

@@ -242,6 +242,9 @@ const SettingsScreen = ({ navigation }) => {
             setLoading(true);
             const file = result.assets[0];
 
+            // Debug Log
+            console.log("Selected file:", file.uri, file.mimeType, file.size);
+
             // Create form data matching backend expectations
             const formData = new FormData();
             formData.append('file', {
@@ -250,15 +253,41 @@ const SettingsScreen = ({ navigation }) => {
                 type: file.mimeType || 'image/jpeg'
             });
 
-            const response = await attendanceService.uploadPfp(formData);
-            if (response?.url) {
-                setProfilePic(response.url);
-                await updateUser({ ...user, picture: response.url });
+            // Use direct Axios call with explicit multipart header
+            // Sometimes React Native needs this explicit header to trigger multipart handling correctly
+            const api = require('../services/api').default;
+            const { API_URL } = require('../services/api');
+
+            console.log("Uploading to:", `${API_URL}/api/upload_pfp`);
+
+            const response = await api.post('/api/upload_pfp', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+                // Add transformRequest to prevent axios from stringifying FormData
+                transformRequest: (data, headers) => {
+                    return formData;
+                }
+            });
+
+            console.log("Upload response:", response.data);
+
+            if (response?.data?.url) {
+                setProfilePic(response.data.url);
+                await updateUser({ ...user, picture: response.data.url });
                 Alert.alert("Success", "Profile picture updated.");
             }
         } catch (error) {
-            console.error(error);
-            Alert.alert("Error", "Failed to upload image.");
+            console.error("Upload Error:", error);
+            if (error.response) {
+                console.error("Server Response:", error.response.status, error.response.data);
+                Alert.alert("Upload Failed", `Server error: ${error.response.status}`);
+            } else if (error.request) {
+                console.error("No Response:", error.request);
+                Alert.alert("Network Error", "Could not reach server. Check IP in services/api.js");
+            } else {
+                Alert.alert("Error", error.message);
+            }
         } finally {
             setLoading(false);
         }

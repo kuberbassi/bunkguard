@@ -225,8 +225,10 @@ skills_collection = db.get_collection('skills')
 
 @api_bp.route('/upload_pfp', methods=['POST'])
 def upload_pfp():
+    print("🔍 DEBUG: upload_pfp called")
     try:
         if db is None:
+             print("❌ Upload Error: Database connection is None")
              print("❌ Upload Error: Database connection is None")
              return jsonify({"error": "Database not connected"}), 500
 
