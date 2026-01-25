@@ -98,7 +98,7 @@ const LoginScreen = () => {
 
     return (
         <View style={styles.container}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* AMBIENT GLOW */}
             <LinearGradient colors={[isDark ? 'rgba(10, 132, 255, 0.25)' : 'rgba(10, 132, 255, 0.15)', 'transparent']} style={styles.glowOrb} />
@@ -106,7 +106,7 @@ const LoginScreen = () => {
             <View style={styles.contentContainer}>
                 {/* LOGO AREA */}
                 <View style={styles.logoSection}>
-                    <LinearGradient colors={[c.primary, c.secondary]} style={styles.iconCircle}>
+                    <LinearGradient colors={[c.primary || '#0A84FF', c.secondary || '#FF3B30']} style={styles.iconCircle}>
                         <GraduationCap size={48} color="#FFF" />
                     </LinearGradient>
                     <Text style={styles.title}>AcadHub</Text>
@@ -114,7 +114,7 @@ const LoginScreen = () => {
                 </View>
 
                 {/* LOGIN CARD */}
-                <LinearGradient colors={[c.glassBg, isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.4)']} style={styles.glassCard} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+                <LinearGradient colors={[c.glassBg || 'rgba(255,255,255,0.85)', isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.4)']} style={styles.glassCard} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
                     <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>Welcome Back</Text>
                         <Text style={styles.cardSub}>Sign in to continue learning</Text>
