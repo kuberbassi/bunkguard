@@ -506,10 +506,10 @@ const SettingsScreen = ({ navigation }) => {
                     >
                         <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 16 }}>Update Preferences</Text>
                     </TouchableOpacity>
-                </LinearGradient >
+                </LinearGradient>
 
                 {/* SYSTEM & LOGS */}
-                < LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card} >
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
                     <Text style={styles.sectionTitle}>System</Text>
                     <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('ActivityLog')}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -520,10 +520,10 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                         <ChevronRight size={20} color={c.subtext} />
                     </TouchableOpacity>
-                </LinearGradient >
+                </LinearGradient>
 
                 {/* DATA ACTIONS */}
-                < LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card} >
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
                     <Text style={styles.sectionTitle}>Data & Sync</Text>
 
                     <TouchableOpacity style={styles.actionRow} onPress={handleExportData}>
@@ -547,10 +547,10 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                         <ChevronRight size={20} color={c.subtext} />
                     </TouchableOpacity>
-                </LinearGradient >
+                </LinearGradient>
 
                 {/* DANGER ZONE */}
-                < LinearGradient colors={[c.danger + '10', c.danger + '05']} style={[styles.card, { borderColor: c.danger + '40' }]} >
+                <LinearGradient colors={[c.danger + '10', c.danger + '05']} style={[styles.card, { borderColor: c.danger + '40' }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                         <AlertTriangle size={18} color={c.danger} />
                         <Text style={[styles.sectionTitle, { color: c.danger, marginBottom: 0 }]}>Danger Zone</Text>
@@ -565,10 +565,10 @@ const SettingsScreen = ({ navigation }) => {
                         <Trash2 size={18} color={c.danger} />
                         <Text style={styles.dangerText}>Reset All Data</Text>
                     </TouchableOpacity>
-                </LinearGradient >
+                </LinearGradient>
 
                 <View style={{ height: 100 }} />
-            </Animated.ScrollView >
+            </Animated.ScrollView>
 
             {
                 loading && (
