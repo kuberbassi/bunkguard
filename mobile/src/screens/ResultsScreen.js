@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
-import api from '../services/api';
+import { attendanceService } from '../services';
 import { useTheme } from '../contexts/ThemeContext';
 import {
     ChevronDown, ChevronUp, Info, Edit3, Save, X, Trash2, Plus,
@@ -75,8 +75,7 @@ const ResultsScreen = ({ navigation }) => {
 
     const fetchResults = async () => {
         try {
-            const response = await api.get('/api/semester_results');
-            const data = response.data || [];
+            const data = await attendanceService.getSemesterResults();
             const sems = [1, 2, 3, 4, 5, 6, 7, 8];
             setResults(data);
             setAvailableSems(sems);
@@ -208,7 +207,7 @@ const ResultsScreen = ({ navigation }) => {
             setIsEditing(false);
             setEditData(null);
 
-            await api.post('/api/semester_results', payload);
+            await attendanceService.saveSemesterResult(payload);
             fetchResults(); // Background Sync
         } catch (e) {
             console.error(e);
@@ -233,7 +232,7 @@ const ResultsScreen = ({ navigation }) => {
                     setEditData(null);
 
                     try {
-                        await api.delete(`/api/semester_results/${selectedSemester}`);
+                        await attendanceService.deleteSemesterResult(selectedSemester);
                     } catch (e) {
                         setResults(prevResults); // Revert
                         Alert.alert("Error", "Failed to delete.");
