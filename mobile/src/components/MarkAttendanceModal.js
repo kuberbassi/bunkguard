@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, Platform, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, Platform, Dimensions, Alert, Animated } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
 import { X, Check, X as XIcon, MoreHorizontal, Calendar as CalendarIcon, Trash2, Edit2, AlertCircle } from 'lucide-react-native';
@@ -238,8 +238,25 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 
     const groupedClasses = groupConsecutiveClasses(classes);
 
+    // Animation State
+    const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
+    const opacityAnim = React.useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            scaleAnim.setValue(0.9);
+            opacityAnim.setValue(0);
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true })
+            ]).start();
+        }
+    }, [visible]);
+
+    const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
+
     return (
-        <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
+        <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
             {/* Backdrop */}
             <View style={styles.backdrop}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -248,7 +265,13 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                         {renderAdvancedContent()}
                     </View>
                 ) : (
-                    <LinearGradient colors={c.glassBg || ['#1a1a1a', '#1a1a1a']} style={styles.modalContent}>
+                    <AnimatedGradient
+                        colors={c.glassBg || ['#1a1a1a', '#1a1a1a']}
+                        style={[
+                            styles.modalContent,
+                            { transform: [{ scale: scaleAnim }], opacity: opacityAnim }
+                        ]}
+                    >
                         {/* Drag Handle */}
                         <View style={styles.dragHandle} />
 
@@ -405,7 +428,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 
                             <View style={{ height: 40 }} />
                         </ScrollView>
-                    </LinearGradient>
+                    </AnimatedGradient>
                 )}
             </View>
         </Modal>

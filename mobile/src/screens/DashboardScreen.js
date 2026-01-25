@@ -168,6 +168,27 @@ const DashboardScreen = ({ navigation }) => {
 
     const hasUnread = dashboardData?.subjects?.some(s => s.status_message?.includes('Attend')) || false;
 
+    // Animations
+    const heroAnim = useRef(new Animated.Value(0)).current; // Opacity & TranslateY
+    const statsAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.stagger(150, [
+            Animated.spring(heroAnim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+            Animated.spring(statsAnim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true })
+        ]).start();
+    }, []);
+
+    const heroStyle = {
+        opacity: heroAnim,
+        transform: [{ translateY: heroAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }]
+    };
+
+    const statsStyle = {
+        opacity: statsAnim,
+        transform: [{ translateY: statsAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }]
+    };
+
     return (
         <View style={{ flex: 1 }}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
@@ -203,43 +224,40 @@ const DashboardScreen = ({ navigation }) => {
                 <View style={{ height: Layout.header.maxHeight + insets.top - 50 }} />
 
                 {/* LIQUID HERO CARD */}
-                <LinearGradient
-                    colors={isAtRisk
-                        ? [c.glassBgStart || '#1a1a1a', c.glassBgStart || '#1a1a1a']
-                        : [c.glassBgStart || '#fff', c.glassBgStart || '#fff']}
-                    style={styles.heroCard}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                >
-                    <View style={styles.heroInner}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.heroLabel}>AVERAGE ATTENDANCE</Text>
-                            <View style={styles.heroValueRow}>
-                                <Text style={styles.heroValue}>{overallAttendance.toFixed(1)}</Text>
-                                <Text style={styles.heroSymbol}>%</Text>
+                <Animated.View style={heroStyle}>
+                    <LinearGradient
+                        colors={isAtRisk
+                            ? [c.glassBgStart || '#1a1a1a', c.glassBgStart || '#1a1a1a']
+                            : [c.glassBgStart || '#fff', c.glassBgStart || '#fff']}
+                        style={styles.heroCard}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    >
+                        <View style={styles.heroInner}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.heroLabel}>AVERAGE ATTENDANCE</Text>
+                                <View style={styles.heroValueRow}>
+                                    <Text style={styles.heroValue}>{overallAttendance.toFixed(1)}</Text>
+                                    <Text style={styles.heroSymbol}>%</Text>
+                                </View>
+
+                                {/* Progress Bar */}
+                                <View style={styles.progressBg}>
+                                    <View style={[styles.progressFill, { width: `${overallAttendance}%`, backgroundColor: isAtRisk ? c.danger : c.success }]} />
+                                </View>
                             </View>
 
-                            <View style={[styles.statusPill, {
-                                borderColor: isAtRisk ? c.danger : c.success,
-                                backgroundColor: isAtRisk ? c.danger + '10' : c.success + '10'
-                            }]}>
-                                <Text style={[styles.statusText, { color: isAtRisk ? c.danger : c.success }]}>
-                                    {isAtRisk ? 'Action Needed' : 'Fluid & Smooth'}
+                            <View style={[styles.statusPill, { borderColor: isAtRisk ? c.danger : c.success }]}>
+                                <Text style={{ color: isAtRisk ? c.danger : c.success, fontWeight: '700' }}>
+                                    {isAtRisk ? 'Action Needed' : 'On Track'}
                                 </Text>
                             </View>
                         </View>
-
-                        {/* Decorative Graphic */}
-                        <View style={styles.ringContainer}>
-                            <LinearGradient
-                                colors={isAtRisk ? [c.danger, '#ffffff00'] : [c.success, '#ffffff00']}
-                                style={styles.ring}
-                            />
-                        </View>
-                    </View>
-                </LinearGradient>
+                        {/* Clean ring design - Removed border/gradient ring for simplicity */}
+                    </LinearGradient>
+                </Animated.View>
 
                 {/* STATS ROW */}
-                <View style={styles.statsRow}>
+                <Animated.View style={[styles.statsRow, statsStyle]}>
                     <LinearGradient
                         colors={[c.glassBgStart, c.glassBgEnd]}
                         style={styles.statCard}
@@ -275,7 +293,7 @@ const DashboardScreen = ({ navigation }) => {
                             </View>
                         </LinearGradient>
                     </TouchableOpacity>
-                </View>
+                </Animated.View>
 
 
                 {/* SECTION TITLE & FILTER */}
