@@ -14,7 +14,7 @@ import { attendanceService } from '@/services/attendance.service';
 import { useSemester } from '@/contexts/SemesterContext';
 import type { SemesterResult, SubjectResult } from '@/types';
 
-// IPU Grade calculation helper (for local preview)
+// IPU Grading System
 const getIPUGrade = (percentage: number): { grade: string; gradePoint: number } => {
     if (percentage >= 90) return { grade: 'O', gradePoint: 10 };
     if (percentage >= 75) return { grade: 'A+', gradePoint: 9 };
@@ -26,20 +26,26 @@ const getIPUGrade = (percentage: number): { grade: string; gradePoint: number } 
     return { grade: 'F', gradePoint: 0 };
 };
 
-// Local calculation for real-time preview
+// Calculate result for a single subject (client-side preview)
 const calculateLocalResult = (subject: SubjectResult) => {
     const type = subject.type || 'theory';
     let totalMarks = 0;
     let maxMarks = 0;
 
+    // Convert all inputs to numbers to prevent string concatenation
+    const intTheory = Number(subject.internal_theory) || 0;
+    const extTheory = Number(subject.external_theory) || 0;
+    const intPractical = Number(subject.internal_practical) || 0;
+    const extPractical = Number(subject.external_practical) || 0;
+
     if (type === 'nues') {
-        totalMarks = (subject.internal_theory || 0);
+        totalMarks = intTheory;
         maxMarks = 100;
     } else if (type === 'theory') {
-        totalMarks = (subject.internal_theory || 0) + (subject.external_theory || 0);
+        totalMarks = intTheory + extTheory;
         maxMarks = 100;
     } else if (type === 'practical') {
-        totalMarks = (subject.internal_practical || 0) + (subject.external_practical || 0);
+        totalMarks = intPractical + extPractical;
         maxMarks = 100;
     }
 
