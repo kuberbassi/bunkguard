@@ -11,7 +11,7 @@ import {
     Download, Upload, Trash2, FileText, AlertTriangle, Camera
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import api from '../services/api';
+import { attendanceService } from '../services';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
@@ -169,8 +169,8 @@ const SettingsScreen = ({ navigation }) => {
     const handleExportData = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/api/export_data');
-            const dataToSave = JSON.stringify(response.data, null, 2);
+            const data = await attendanceService.exportData();
+            const dataToSave = JSON.stringify(data, null, 2);
             const fileUri = FileSystem.documentDirectory + 'acadhub_backup.json';
             await FileSystem.writeAsStringAsync(fileUri, dataToSave);
             if (await Sharing.isAvailableAsync()) {
@@ -192,7 +192,7 @@ const SettingsScreen = ({ navigation }) => {
             setLoading(true);
             const fileUri = result.assets[0].uri;
             const fileContent = await FileSystem.readAsStringAsync(fileUri);
-            await api.post('/api/import_data', JSON.parse(fileContent));
+            await attendanceService.importData(JSON.parse(fileContent));
             Alert.alert("Success", "Data imported. Please refresh.");
         } catch (error) {
             Alert.alert("Error", "Import failed.");
@@ -208,7 +208,7 @@ const SettingsScreen = ({ navigation }) => {
                 text: "Delete Forever", style: "destructive", onPress: async () => {
                     try {
                         setLoading(true);
-                        await api.delete('/api/delete_all_data'); // Ensure this endpoint exists or use correct one
+                        await attendanceService.deleteAllData();
                         Alert.alert("Deleted", "All data wiped.");
                     } catch (e) { Alert.alert("Error", "Failed to delete."); }
                     finally { setLoading(false); }
