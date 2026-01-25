@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, Alert, Animated, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, Alert, Animated, RefreshControl, ScrollView } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSemester } from '../contexts/SemesterContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -242,35 +242,40 @@ const AssignmentsScreen = ({ navigation }) => {
                 colors={c}
                 onBack={() => navigation.goBack()}
             >
-                {/* Filter Tabs - Inside Header Like ResultsScreen */}
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                {/* Filter Tabs - Styled like Skills Page */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 12, gap: 10, marginTop: 8 }}
+                >
                     {['All', 'Assignment', 'Practical'].map(tab => (
                         <TouchableOpacity
                             key={tab}
                             onPress={() => setFilter(tab)}
                             style={{
-                                paddingVertical: 6,
-                                paddingHorizontal: 14,
-                                borderRadius: 16,
-                                backgroundColor: filter === tab ? c.primary : c.card,
+                                paddingVertical: 8,
+                                paddingHorizontal: 16,
+                                borderRadius: 20,
+                                backgroundColor: filter === tab ? c.primary : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
                                 borderWidth: 1,
-                                borderColor: filter === tab ? c.primary : c.border,
+                                borderColor: filter === tab ? c.primary : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
                             }}
                         >
                             <Text style={{
-                                color: filter === tab ? '#FFF' : c.text,
-                                fontSize: 12,
-                                fontWeight: '700'
+                                color: filter === tab ? '#FFF' : c.subtext,
+                                fontSize: 13,
+                                fontWeight: '700',
+                                letterSpacing: 0.5
                             }}>
                                 {tab}
                             </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
             </AnimatedHeader>
 
             <Animated.FlatList
-                contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 100 + insets.top }}
+                contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 140 + insets.top }} // Adjusted padding for new header
                 data={filteredSubjects}
                 renderItem={renderItem}
                 keyExtractor={item => item._id}

@@ -178,7 +178,7 @@ const SubjectDetailScreen = ({ route, navigation }) => {
         );
     };
 
-    const headerHeight = scrollY.interpolate({ inputRange: [0, 100], outputRange: [120, 90], extrapolate: 'clamp' });
+    const headerHeight = scrollY.interpolate({ inputRange: [0, 100], outputRange: [130, 70], extrapolate: 'clamp' });
     const titleScale = scrollY.interpolate({ inputRange: [0, 100], outputRange: [1, 0.9], extrapolate: 'clamp' });
 
     return (
@@ -213,7 +213,7 @@ const SubjectDetailScreen = ({ route, navigation }) => {
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 onRefresh={() => { setRefreshing(true); fetchLogs(); }}
                 refreshing={refreshing}
-                ListHeaderComponent={<View style={{ height: 130 }} />}
+                ListHeaderComponent={<View style={{ height: 140 }} />}
                 ListEmptyComponent={<Text style={styles.empty}>No attendance history found.</Text>}
             />
 
@@ -337,8 +337,11 @@ const getStyles = (c, isDark) => StyleSheet.create({
     statusText: { fontSize: 11, fontWeight: '800', marginTop: 2 },
     notesText: { fontSize: 11, color: c.subtext, marginTop: 4, fontStyle: 'italic' },
     empty: { textAlign: 'center', marginTop: 40, color: c.subtext },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    modalContent: { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 40, maxHeight: '85%' },
+
+    // Centered Modal Style
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+    modalContent: { borderRadius: 30, padding: 24, paddingBottom: 24, maxHeight: '85%', width: '100%' },
+
     dragBar: { width: 40, height: 4, backgroundColor: c.subtext, borderRadius: 10, opacity: 0.3, marginBottom: 20, alignSelf: 'center' },
     modalTitle: { fontSize: 22, fontWeight: '800', color: c.text, marginBottom: 4 },
     modalSub: { color: c.subtext, marginBottom: 20 },

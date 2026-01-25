@@ -200,7 +200,7 @@ const DashboardScreen = ({ navigation }) => {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={{ height: Layout.header.maxHeight + insets.top + 25 }} />
+                <View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />
 
                 {/* LIQUID HERO CARD */}
                 <LinearGradient
