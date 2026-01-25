@@ -60,7 +60,7 @@ const CalendarScreen = ({ navigation }) => {
 
     // --- STATE ---
     const [currentMonth, setCurrentMonth] = useState(new Date().toISOString().split('T')[0]);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(null);
     const [calendarData, setCalendarData] = useState({}); // { "YYYY-MM": { "YYYY-MM-DD": [logs] } }
 
     const [modalVisible, setModalVisible] = useState(false);
@@ -376,7 +376,7 @@ const CalendarScreen = ({ navigation }) => {
 };
 
 const getStyles = (c, isDark) => StyleSheet.create({
-    scrollContent: { padding: 16, paddingTop: Layout.header.maxHeight + 25, paddingBottom: 40 },
+    scrollContent: { padding: 16, paddingTop: Layout.header.maxHeight - 10, paddingBottom: 40 },
     manageBtn: { backgroundColor: c.glassBgEnd, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: c.glassBorder },
     manageText: { color: c.primary, fontWeight: '700', fontSize: 12 },
     calendarCard: {
