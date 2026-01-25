@@ -261,8 +261,15 @@ def upload_pfp():
                 {'$set': {'picture': data_url}}
             )
             
-            # Update Session
-            session['user']['picture'] = data_url
+            # CRITICAL FIX: Do NOT store Base64 image in session cookie (too large, causes 500 error)
+            # We keep it in DB only. Endpoints like current_user should fetch from DB if needed.
+            # We can optionally store a flag or 'true' here if needed by frontend logic, 
+            # but usually frontend re-fetches user or uses the returned URL.
+            # session['user']['picture'] = data_url # REMOVED
+            if 'picture' in session['user']:
+                # Clear it from session if it was there to fix existing bloated cookies
+                session['user']['picture'] = None 
+                
             session.modified = True
             
             return jsonify({"url": data_url})
@@ -461,9 +468,20 @@ def get_current_user():
         print(f"🔍 User email: {session['user'].get('email', 'NO EMAIL')}")
     if 'user' not in session: 
         print("❌ No user in session, returning None")
-        return jsonify(None), 200 # Return null if not logged in instead of 401 for this check
-    print(f"✅ Returning user: {session['user'].get('email', 'NO EMAIL')}")
-    return jsonify(session['user'])
+        return jsonify(None), 200 
+    
+    # Fetch fresh picture from DB to avoid keeping it in session (Cookie Bloat Fix)
+    user_data = session['user'].copy()
+    try:
+        if 'email' in user_data:
+            db_user = users_collection.find_one({'email': user_data['email']}, {'picture': 1})
+            if db_user and 'picture' in db_user and db_user['picture']:
+                user_data['picture'] = db_user['picture']
+    except Exception as e:
+        print(f"⚠️ Error fetching picture for current_user: {e}")
+        
+    print(f"✅ Returning user: {user_data.get('email', 'NO EMAIL')}")
+    return jsonify(user_data)
 
 @api_bp.route('/dashboard_data')
 @api_bp.route('/dashboard/data')  # Alias for frontend compatibility
