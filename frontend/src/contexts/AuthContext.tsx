@@ -33,6 +33,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         console.warn('Session invalid, clearing user');
                         setUser(null);
                         authService.logout();
+                    } else {
+                        // CRITICAL FIX: Update state AND storage with fresh data (e.g. new PFP)
+                        setUser(verifiedUser);
+                        authService.storeUser(verifiedUser);
                     }
                 } catch (error) {
                     // 401 will be caught here or by interceptor
@@ -57,6 +61,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     if (freshUser) {
                         // Only update if something changed (optional optimization, but React handles diffing)
                         setUser(freshUser);
+                        // Keep LocalStorage fresh so next reload is correct
+                        authService.storeUser(freshUser);
                     }
                 } catch (e) {
                     // Ignore errors (don't logout on background fetch failure)
