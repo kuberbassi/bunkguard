@@ -94,6 +94,18 @@ def update_preferences():
     # Merge new with existing
     current_prefs.update(new_prefs)
     
+    # CRITICAL FIX: Sync min_attendance and warning_threshold
+    # If one is updated, update the other to match
+    val_warning = None
+    if 'warning_threshold' in new_prefs:
+        val_warning = int(new_prefs['warning_threshold'])
+    elif 'min_attendance' in new_prefs:
+        val_warning = int(new_prefs['min_attendance'])
+        
+    if val_warning is not None:
+        current_prefs['warning_threshold'] = val_warning
+        current_prefs['min_attendance'] = val_warning
+    
     preferences_collection.update_one(
         {'owner_email': user_email},
         {'$set': {
