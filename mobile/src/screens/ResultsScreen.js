@@ -457,7 +457,7 @@ const ResultsScreen = ({ navigation }) => {
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 scrollEventThrottle={16}
             >
-                <View style={{ height: Layout.header.maxHeight + insets.top - 20 }} />
+                <View style={{ height: Layout.header.maxHeight + insets.top - 50 }} />
 
                 {/* STATS ROW */}
                 <View style={styles.statsRow}>

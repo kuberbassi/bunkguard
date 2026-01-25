@@ -386,7 +386,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                     renderItem={renderSlotItem}
                     keyExtractor={(item, idx) => item.id || item._id || idx.toString()}
                     contentContainerStyle={styles.listContent}
-                    ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 25 }} />}
+                    ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top - 50 }} />}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyText}>No classes for {selectedDay}</Text>

@@ -333,7 +333,7 @@ const SettingsScreen = ({ navigation }) => {
         <View style={{ flex: 1 }}>
             {/* BACKGROUND */}
             <LinearGradient
-                colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]}
+                colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']}
                 style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}

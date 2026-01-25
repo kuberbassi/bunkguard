@@ -221,7 +221,7 @@ const SkillTrackerScreen = ({ navigation }) => {
                 }}
                 contentContainerStyle={styles.list}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />}
+                ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top - 10 }} />}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
