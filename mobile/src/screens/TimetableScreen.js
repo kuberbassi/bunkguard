@@ -6,7 +6,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
-import api from '../services/api';
+import { attendanceService } from '../services';
 import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, CheckCircle2, XCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
@@ -139,7 +139,7 @@ const TimetableScreen = ({ navigation }) => {
                 time: `${newSlot.startTime} - ${newSlot.endTime}`
             };
 
-            await api.post('/api/timetable/slot', slotData);
+            await attendanceService.addTimetableSlot(slotData);
 
             await fetchData();
             setModalVisible(false);
@@ -156,14 +156,16 @@ const TimetableScreen = ({ navigation }) => {
 
     const handleMarkAttendance = async (subjectId, status) => {
         try {
-            await api.post('/api/mark_attendance', {
-                subject_id: subjectId,
-                status: status,
-                date: new Date().toISOString().split('T')[0]
-            });
+            const todayStr = new Date().toISOString().split('T')[0];
+            await attendanceService.markAttendance(
+                subjectId,
+                status,
+                todayStr
+            );
             fetchData(); // Refresh to show updated status/stats
         } catch (error) {
             console.error("Mark failed", error);
+            Alert.alert('Error', 'Failed to mark attendance');
         }
     };
 
@@ -202,14 +204,14 @@ const TimetableScreen = ({ navigation }) => {
     const fetchData = async () => {
         try {
             const todayStr = new Date().toISOString().split('T')[0];
-            const [ttResponse, subResponse, markedRes] = await Promise.all([
-                api.get(`/api/timetable?semester=${selectedSemester}`),
-                api.get(`/api/subjects?semester=${selectedSemester}`),
-                api.get(`/api/classes_for_date?date=${todayStr}&semester=${selectedSemester}`)
+            const [timetableRes, subjectsRes, markedRes] = await Promise.all([
+                attendanceService.getTimetable(selectedSemester),
+                attendanceService.getSubjects(selectedSemester),
+                attendanceService.getClassesForDate(todayStr, selectedSemester)
             ]);
 
-            const schedule = ttResponse.data.schedule || {};
-            const markedClasses = markedRes.data || [];
+            const schedule = timetableRes.schedule || {};
+            const markedClasses = markedRes || [];
 
             // Enrich timetable with marked status for today
             // Note: This logic could be more robust to handle any selected date, 
@@ -223,8 +225,8 @@ const TimetableScreen = ({ navigation }) => {
             }
 
             setTimetable(schedule);
-            setPeriods(ttResponse.data.periods || []);
-            setSubjects(subResponse.data || []);
+            setPeriods(timetableRes.periods || []);
+            setSubjects(subjectsRes || []);
         } catch (error) {
             console.error("Failed to load timetable data", error);
         } finally {

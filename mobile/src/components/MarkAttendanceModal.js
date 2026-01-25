@@ -44,8 +44,8 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 
     const fetchSubjects = async () => {
         try {
-            const response = await api.get(`/api/subjects?semester=${selectedSemester}`);
-            setSubjects(response.data || []);
+            const data = await attendanceService.getSubjects(selectedSemester);
+            setSubjects(data || []);
         } catch (error) {
             console.error('Failed to fetch subjects:', error);
         }
@@ -53,8 +53,8 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 
     const fetchAttendanceLogs = async () => {
         try {
-            const response = await api.get(`/api/get_attendance_logs?date=${date}&semester=${selectedSemester}`);
-            setAttendanceLogs(response.data || []);
+            const data = await attendanceService.getLogsForDate(date);
+            setAttendanceLogs(data || []);
         } catch (error) {
             console.error('Failed to fetch logs:', error);
         }
@@ -62,9 +62,8 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 
     const deleteLog = async (logId) => {
         try {
-            // Handle ObjectId format
             const cleanId = typeof logId === 'object' ? (logId.$oid || String(logId)) : String(logId);
-            await api.delete(`/api/delete_attendance/${cleanId}`);
+            await attendanceService.deleteAttendance(cleanId);
             fetchAttendanceLogs();
             // Trigger parent refresh if provided
             if (onMark) {

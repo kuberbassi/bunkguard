@@ -144,7 +144,7 @@ const SkillTrackerScreen = ({ navigation }) => {
                     }));
 
                     try {
-                        await api.delete(`/api/skills/${id}`);
+                        await skillsService.deleteSkill(id);
                     } catch (error) {
                         console.error(error);
                         setSkills(previousSkills); // Revert
