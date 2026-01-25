@@ -200,11 +200,13 @@ const DashboardScreen = ({ navigation }) => {
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={{ height: Layout.header.maxHeight + insets.top - 50}} />
+                <View style={{ height: Layout.header.maxHeight + insets.top - 50 }} />
 
                 {/* LIQUID HERO CARD */}
                 <LinearGradient
-                    colors={isAtRisk ? [c.glassBgStart, c.glassBgStart] : [c.glassBgStart, c.glassBgStart]}
+                    colors={isAtRisk
+                        ? [c.glassBgStart || '#1a1a1a', c.glassBgStart || '#1a1a1a']
+                        : [c.glassBgStart || '#fff', c.glassBgStart || '#fff']}
                     style={styles.heroCard}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 >

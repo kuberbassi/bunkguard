@@ -248,7 +248,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                         {renderAdvancedContent()}
                     </View>
                 ) : (
-                    <LinearGradient colors={c.glassBg} style={styles.modalContent}>
+                    <LinearGradient colors={c.glassBg || ['#1a1a1a', '#1a1a1a']} style={styles.modalContent}>
                         {/* Drag Handle */}
                         <View style={styles.dragHandle} />
 
