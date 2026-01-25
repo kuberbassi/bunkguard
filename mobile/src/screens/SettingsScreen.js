@@ -200,7 +200,7 @@ const SettingsScreen = ({ navigation }) => {
             setLoading(true);
             const data = await attendanceService.exportData();
             const dataToSave = JSON.stringify(data, null, 2);
-            const fileUri = FileSystem.documentDirectory + 'acadhub_backup.json';
+            const fileUri = FileSystem.cacheDirectory + 'acadhub_backup.json';
             await FileSystem.writeAsStringAsync(fileUri, dataToSave);
             if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(fileUri);
