@@ -138,7 +138,9 @@ def get_profile():
         # Preferences
         "semester": prefs.get('semester', 1),
         "attendance_threshold": prefs.get('attendance_threshold', 75), # Minimum Attendance
-        "min_attendance": prefs.get('min_attendance', 76)              # Warning Threshold
+        "warning_threshold": prefs.get('warning_threshold', 76),       # Mobile uses this
+        "min_attendance": prefs.get('warning_threshold', 76),          # Web uses this (mapped to same value)
+        "notifications_enabled": prefs.get('notifications_enabled', False),
     })
 
 
@@ -1227,10 +1229,22 @@ def update_profile_post():
     
     if 'semester' in data:
         pref_updates['preferences.semester'] = int(data['semester'])
+    
+    # Handle Attendance Threshold
     if 'attendance_threshold' in data:
         pref_updates['preferences.attendance_threshold'] = int(data['attendance_threshold'])
+        
+    # Handle Warning Threshold (Sync min_attendance and warning_threshold)
+    # Allows both Web (min_attendance) and Mobile (warning_threshold) to work
+    val_warning = None
     if 'warning_threshold' in data:
-        pref_updates['preferences.warning_threshold'] = int(data['warning_threshold'])
+        val_warning = int(data['warning_threshold'])
+    elif 'min_attendance' in data:
+        val_warning = int(data['min_attendance'])
+        
+    if val_warning is not None:
+        pref_updates['preferences.warning_threshold'] = val_warning
+        pref_updates['preferences.min_attendance'] = val_warning # Save both for compatibility
         
     if pref_updates:
         preferences_collection.update_one(
