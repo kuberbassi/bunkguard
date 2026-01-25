@@ -111,8 +111,12 @@ const SettingsScreen = ({ navigation }) => {
                 if (profileResponse.data.warning_threshold) {
                     setWarningThreshold(String(profileResponse.data.warning_threshold));
                 }
-                if (profileResponse.data.profile_pic_url) {
-                    setProfilePic(profileResponse.data.profile_pic_url);
+
+                // CRITICAL FIX: Update global context with fetched picture so Avatar refreshes
+                // Backend sends 'picture', not 'profile_pic_url'
+                if (profileResponse.data.picture) {
+                    // Update global user context (which updates the header image)
+                    updateUser({ ...user, picture: profileResponse.data.picture });
                 }
             }
         } catch (e) {
