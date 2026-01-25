@@ -449,11 +449,18 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                     </View>
 
-                    <Button
-                        title="Update Preferences"
+                    <TouchableOpacity
                         onPress={handleSaveProfile}
-                        style={{ marginTop: 16 }}
-                    />
+                        style={{
+                            marginTop: 16,
+                            backgroundColor: c.primary,
+                            paddingVertical: 12,
+                            borderRadius: 12,
+                            alignItems: 'center'
+                        }}
+                    >
+                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 16 }}>Update Preferences</Text>
+                    </TouchableOpacity>
                 </LinearGradient >
 
                 {/* SYSTEM & LOGS */}
