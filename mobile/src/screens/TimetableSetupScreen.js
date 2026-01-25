@@ -276,6 +276,12 @@ const TimetableSetupScreen = ({ navigation }) => {
                 const parts = displayTime.split('-');
                 if (parts.length === 2) [start, end] = parts.map(s => s.trim());
             }
+
+            // Normalize type for button highlights
+            let normalizedType = (item.type || 'Lecture').charAt(0).toUpperCase() + (item.type || 'Lecture').slice(1).toLowerCase();
+            if (normalizedType === 'Class') normalizedType = 'Lecture';
+            if (normalizedType === 'Free_slot') normalizedType = 'Free';
+
             setNewSlot({
                 subject_id: item.subject_id,
                 name: displaySubject === 'Break' || displaySubject === 'Free/Empty' ? '' : displaySubject,
@@ -283,7 +289,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                 startTime: start,
                 endTime: end,
                 classroom: item.classroom || '',
-                type: item.type || 'Lecture'
+                type: normalizedType
             });
             setEditingSlot(item);
             setModalVisible(true);
@@ -545,7 +551,15 @@ const TimetableSetupScreen = ({ navigation }) => {
                                             <TouchableOpacity
                                                 key={index}
                                                 style={[styles.timeChip, isSelected && styles.timeChipSelected]}
-                                                onPress={() => setNewSlot({ ...newSlot, startTime: p.startTime, endTime: p.endTime })}
+                                                onPress={() => {
+                                                    const isBreakPeriod = p.type && p.type.toLowerCase() === 'break';
+                                                    setNewSlot({
+                                                        ...newSlot,
+                                                        startTime: p.startTime,
+                                                        endTime: p.endTime,
+                                                        type: isBreakPeriod ? 'Break' : 'Lecture'
+                                                    });
+                                                }}
                                             >
                                                 <Text style={[styles.timeChipNum, isSelected && styles.timeChipTextSelected]}>{p.type === 'break' || p.type === 'Break' ? 'Break' : (index + 1)}</Text>
                                                 <Text style={[styles.timeChipText, isSelected && styles.timeChipTextSelected]}>{p.startTime}</Text>
@@ -559,21 +573,29 @@ const TimetableSetupScreen = ({ navigation }) => {
                             <Text style={styles.label}>Select Slot Type</Text>
                             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
                                 <TouchableOpacity
-                                    style={[styles.quickActionBtn, { backgroundColor: c.surface, borderColor: '#FF9500', borderWidth: 1 }]}
+                                    style={[styles.quickActionBtn, {
+                                        backgroundColor: (newSlot.type || '').toLowerCase() === 'break' ? '#FF950020' : c.surface,
+                                        borderColor: '#FF9500',
+                                        borderWidth: 1
+                                    }]}
                                     onPress={() => handleAddSlot({ type: 'Break', subject_id: null, name: 'Break' })}
                                 >
                                     <Coffee size={20} color="#FF9500" />
                                     <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Break</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.quickActionBtn, { backgroundColor: c.surface, borderColor: '#34C759', borderWidth: 1 }]}
+                                    style={[styles.quickActionBtn, {
+                                        backgroundColor: (newSlot.type || '').toLowerCase() === 'free' ? '#34C75920' : c.surface,
+                                        borderColor: '#34C759',
+                                        borderWidth: 1
+                                    }]}
                                     onPress={() => handleAddSlot({ type: 'Free', subject_id: null, name: 'Free' })}
                                 >
                                     <LayoutDashboard size={20} color="#34C759" />
                                     <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Free</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.quickActionBtn, { backgroundColor: newSlot.type === 'Custom' ? c.primary + '20' : c.surface, borderColor: c.primary, borderWidth: 1 }]}
+                                    style={[styles.quickActionBtn, { backgroundColor: (newSlot.type || '').toLowerCase() === 'custom' ? c.primary + '20' : c.surface, borderColor: c.primary, borderWidth: 1 }]}
                                     onPress={() => setNewSlot({ ...newSlot, type: 'Custom', subject_id: null })}
                                 >
                                     <Edit2 size={20} color={c.primary} />
@@ -611,7 +633,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                                             <TouchableOpacity
                                                 key={sub._id}
                                                 style={[styles.subCard, newSlot.subject_id === sub._id && styles.subCardSelected]}
-                                                onPress={() => setNewSlot({ ...newSlot, subject_id: sub._id, name: sub.name })}
+                                                onPress={() => setNewSlot({ ...newSlot, subject_id: sub._id, name: sub.name, type: 'Lecture' })}
                                             >
                                                 <Text style={styles.subName} numberOfLines={2}>{sub.name}</Text>
                                                 <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
@@ -670,7 +692,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                     </LinearGradient>
                 </TouchableOpacity>
             </Modal>
-        </View>
+        </View >
     );
 };
 
