@@ -127,7 +127,14 @@ def get_profile():
     user_prefs = preferences_collection.find_one({'owner_email': user_email})
     prefs = user_prefs.get('preferences', {}) if user_prefs else {}
     
-    return jsonify({
+    print(f"🔍 DEBUG: get_profile for {user_email}")
+    print(f"🔍 DEBUG: Raw prefs from DB: {prefs}")
+    
+    # Logic to get the effective value
+    warn_val = prefs.get('warning_threshold') or prefs.get('min_attendance') or 76
+    min_att_val = prefs.get('min_attendance') or prefs.get('warning_threshold') or 76
+    
+    response_data = {
         "email": user_email,
         "name": user_data.get('name', session['user'].get('name', 'User')),
         "picture": user_data.get('picture'),
@@ -138,10 +145,13 @@ def get_profile():
         # Preferences
         "semester": prefs.get('semester', 1),
         "attendance_threshold": prefs.get('attendance_threshold', 75), # Minimum Attendance
-        "warning_threshold": prefs.get('warning_threshold', 76),       # Mobile uses this
-        "min_attendance": prefs.get('warning_threshold', 76),          # Web uses this (mapped to same value)
+        "warning_threshold": warn_val,       # Mobile uses this
+        "min_attendance": warn_val,          # Web uses this (mapped to same value)
         "notifications_enabled": prefs.get('notifications_enabled', False),
-    })
+    }
+    
+    print(f"🔍 DEBUG: Sending response: warning_threshold={warn_val}, min_attendance={warn_val}")
+    return jsonify(response_data)
 
 
 @api_bp.route('/update_profile', methods=['PUT'])
