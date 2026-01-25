@@ -39,6 +39,21 @@ const SubjectDetailScreen = ({ route, navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
+    // Animations
+    const modalScale = useRef(new Animated.Value(0.9)).current;
+    const modalOpacity = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (logModalVisible) {
+            modalScale.setValue(0.9);
+            modalOpacity.setValue(0);
+            Animated.parallel([
+                Animated.spring(modalScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                Animated.timing(modalOpacity, { toValue: 1, duration: 200, useNativeDriver: true })
+            ]).start();
+        }
+    }, [logModalVisible]);
+
     // Modals
     const [editSubjectVisible, setEditSubjectVisible] = useState(false);
     const [logModalVisible, setLogModalVisible] = useState(false);
@@ -218,51 +233,56 @@ const SubjectDetailScreen = ({ route, navigation }) => {
             />
 
             {/* --- LOG EDIT MODAL --- */}
-            <Modal animationType="slide" transparent={true} visible={logModalVisible} onRequestClose={() => setLogModalVisible(false)}>
+            <Modal animationType="fade" transparent={true} visible={logModalVisible} onRequestClose={() => setLogModalVisible(false)}>
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
-                    <LinearGradient colors={[isDark ? '#1a1a1a' : '#fff', isDark ? '#101010' : '#f0f0f0']} style={styles.modalContent}>
-                        <View style={styles.dragBar} />
-                        <Text style={styles.modalTitle}>Edit Attendance</Text>
-                        <Text style={styles.modalSub}>{selectedLog?.date}</Text>
+                    <Animated.View style={{ transform: [{ scale: modalScale }], opacity: modalOpacity, flex: 1, justifyContent: 'center' }}>
+                        <LinearGradient
+                            colors={[isDark ? '#1a1a1a' : '#ffffff', isDark ? '#101010' : '#f0f0f0']}
+                            style={styles.modalContent}
+                        >
+                            <View style={styles.dragBar} />
+                            <Text style={styles.modalTitle}>Edit Attendance</Text>
+                            <Text style={styles.modalSub}>{selectedLog?.date}</Text>
 
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusRow}>
-                            {[
-                                { id: 'present', label: 'Present', color: c.success },
-                                { id: 'absent', label: 'Absent', color: c.danger },
-                                { id: 'late', label: 'Late', color: c.warning },
-                                { id: 'approved_medical', label: 'Medical (Appr)', color: c.success },
-                                { id: 'medical', label: 'Medical (Exc)', color: c.subtext },
-                                { id: 'cancelled', label: 'Cancelled', color: c.subtext },
-                                { id: 'substituted', label: 'Substituted', color: c.purple },
-                            ].map((opt) => (
-                                <TouchableOpacity
-                                    key={opt.id}
-                                    style={[styles.statusChip, { borderColor: opt.color, backgroundColor: opt.color + '15' }]}
-                                    onPress={() => handleLogAction(opt.id)}
-                                >
-                                    <Text style={[styles.chipText, { color: opt.color }]}>{opt.label}</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusRow}>
+                                {[
+                                    { id: 'present', label: 'Present', color: c.success },
+                                    { id: 'absent', label: 'Absent', color: c.danger },
+                                    { id: 'late', label: 'Late', color: c.warning },
+                                    { id: 'approved_medical', label: 'Medical (Appr)', color: c.success },
+                                    { id: 'medical', label: 'Medical (Exc)', color: c.subtext },
+                                    { id: 'cancelled', label: 'Cancelled', color: c.subtext },
+                                    { id: 'substituted', label: 'Substituted', color: c.purple },
+                                ].map((opt) => (
+                                    <TouchableOpacity
+                                        key={opt.id}
+                                        style={[styles.statusChip, { borderColor: opt.color, backgroundColor: opt.color + '15' }]}
+                                        onPress={() => handleLogAction(opt.id)}
+                                    >
+                                        <Text style={[styles.chipText, { color: opt.color }]}>{opt.label}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Add a note..."
+                                placeholderTextColor={c.subtext}
+                                value={statusNote}
+                                onChangeText={setStatusNote}
+                            />
+
+                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                                <TouchableOpacity style={[styles.fullBtn, { backgroundColor: c.danger + '20' }]} onPress={deleteLog}>
+                                    <Trash2 size={20} color={c.danger} />
+                                    <Text style={{ color: c.danger, fontWeight: '700' }}>Delete Log</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Add a note..."
-                            placeholderTextColor={c.subtext}
-                            value={statusNote}
-                            onChangeText={setStatusNote}
-                        />
-
-                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
-                            <TouchableOpacity style={[styles.fullBtn, { backgroundColor: c.danger + '20' }]} onPress={deleteLog}>
-                                <Trash2 size={20} color={c.danger} />
-                                <Text style={{ color: c.danger, fontWeight: '700' }}>Delete Log</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.fullBtn, { backgroundColor: c.inputBg }]} onPress={() => setLogModalVisible(false)}>
-                                <Text style={{ color: c.text, fontWeight: '600' }}>Cancel</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </LinearGradient>
+                                <TouchableOpacity style={[styles.fullBtn, { backgroundColor: c.inputBg }]} onPress={() => setLogModalVisible(false)}>
+                                    <Text style={{ color: c.text, fontWeight: '600' }}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </LinearGradient>
+                    </Animated.View>
                 </KeyboardAvoidingView>
             </Modal>
 
@@ -339,8 +359,9 @@ const getStyles = (c, isDark) => StyleSheet.create({
     empty: { textAlign: 'center', marginTop: 40, color: c.subtext },
 
     // Modals
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-    modalContent: { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 40, maxHeight: '85%' },
+    // Centered Modal Style
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
+    modalContent: { borderRadius: 32, padding: 24, paddingBottom: 24, maxHeight: '85%', width: '100%', borderWidth: 1, borderColor: c.glassBorder },
 
     dragBar: { width: 40, height: 4, backgroundColor: c.subtext, borderRadius: 10, opacity: 0.3, marginBottom: 20, alignSelf: 'center' },
     modalTitle: { fontSize: 22, fontWeight: '800', color: c.text, marginBottom: 4 },

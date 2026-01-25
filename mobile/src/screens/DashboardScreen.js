@@ -252,7 +252,16 @@ const DashboardScreen = ({ navigation }) => {
                                 </Text>
                             </View>
                         </View>
-                        {/* Clean ring design - Removed border/gradient ring for simplicity */}
+
+                        {/* Decorative Graphic */}
+                        <View style={styles.ringContainer}>
+                            <LinearGradient
+                                colors={isAtRisk
+                                    ? [c.danger || '#FF3B30', '#ffffff00']
+                                    : [c.success || '#34C759', '#ffffff00']}
+                                style={styles.ring}
+                            />
+                        </View>
                     </LinearGradient>
                 </Animated.View>
 

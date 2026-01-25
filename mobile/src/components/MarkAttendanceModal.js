@@ -123,7 +123,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
     // --- Renderers ---
 
     const renderAdvancedContent = () => (
-        <LinearGradient colors={c.glassBg} style={styles.advancedCard}>
+        <LinearGradient colors={c.glassBg || ['#1a1a1a', '#1a1a1a']} style={styles.advancedCard}>
             <View style={styles.advHeader}>
                 <View>
                     <Text style={styles.advTitle}>{advancedClass.name || advancedClass.code}</Text>
