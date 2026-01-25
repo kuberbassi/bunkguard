@@ -416,17 +416,14 @@ const ValidMoreIcon = MoreHorizontal;
 
 const getStyles = (c, isDark) => StyleSheet.create({
     backdrop: {
-        flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end'
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 20
     },
     modalContent: {
-        borderTopLeftRadius: 32, borderTopRightRadius: 32,
-        padding: 24, height: height * 0.80,
+        borderRadius: 32,
+        padding: 24, maxHeight: height * 0.85,
         borderWidth: 1, borderColor: c.glassBorder,
-        borderBottomWidth: 0,
-        // Flush Bottom Change
-        paddingBottom: 24 + 34, // Safe Area estimate or use insets from hook
-        borderBottomLeftRadius: 0,
-        borderBottomRightRadius: 0
+        width: '100%',
+        paddingBottom: 24
     },
     dragHandle: {
         width: 40, height: 4, backgroundColor: c.glassBorder, borderRadius: 2,

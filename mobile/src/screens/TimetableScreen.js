@@ -420,7 +420,7 @@ const TimetableScreen = ({ navigation }) => {
                     renderItem={renderSlotItem}
                     keyExtractor={(item, idx) => item.id || item._id || idx.toString()}
                     contentContainerStyle={styles.listContent}
-                    ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 25 }} />}
+                    ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 20 }} />}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyText}>No classes for {selectedDay}</Text>
@@ -573,7 +573,7 @@ const TimetableScreen = ({ navigation }) => {
 
 const getStyles = (c, isDark) => StyleSheet.create({
     container: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 12, marginTop: 8 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 12, paddingTop: 6 },
     backBtn: { padding: 8, backgroundColor: c.glassBgEnd, borderRadius: 12 },
     title: { fontSize: 20, fontWeight: '800', color: c.text },
     addBtn: { padding: 8, backgroundColor: c.glassBgEnd, borderRadius: 12 },
