@@ -87,23 +87,32 @@ const SettingsScreen = ({ navigation }) => {
     // Fetch profile and preferences separately (matching web)
     const loadPrefs = async () => {
         try {
-            // 1. Load user profile (name, email, etc)
-            const profileResponse = await fetch(`${attendanceService.getPreferences.toString().match(/\/api\/[^'"]+/)?.[0] || ''}`).catch(() => null);
+            // We need to import api temporarily for profile endpoint
+            const api = require('../services/api').default;
 
-            // 2. Load preferences (attendance thresholds, etc)
-            const prefs = await attendanceService.getPreferences();
+            // 1. Load user profile (name, email, course, batch, college, etc)
+            const profileResponse = await api.get('/api/profile');
+            if (profileResponse.data) {
+                setProfileData(prev => ({
+                    ...prev,
+                    name: profileResponse.data.name || prev.name,
+                    email: profileResponse.data.email || prev.email,
+                    course: profileResponse.data.course || prev.course,
+                    batch: profileResponse.data.batch || prev.batch,
+                    college: profileResponse.data.college || prev.college,
+                    semester: profileResponse.data.semester ? String(profileResponse.data.semester) : prev.semester,
+                }));
 
-            if (prefs) {
                 // Set attendance thresholds
-                if (prefs.attendance_threshold) {
-                    setAttendanceThreshold(String(prefs.attendance_threshold));
-                    setMinAttendance(String(prefs.attendance_threshold));
+                if (profileResponse.data.attendance_threshold) {
+                    setAttendanceThreshold(String(profileResponse.data.attendance_threshold));
+                    setMinAttendance(String(profileResponse.data.attendance_threshold));
                 }
-                if (prefs.warning_threshold) {
-                    setWarningThreshold(String(prefs.warning_threshold));
+                if (profileResponse.data.warning_threshold) {
+                    setWarningThreshold(String(profileResponse.data.warning_threshold));
                 }
-                if (prefs.notifications_enabled !== undefined) {
-                    setNotificationsEnabled(prefs.notifications_enabled);
+                if (profileResponse.data.profile_pic_url) {
+                    setProfilePic(profileResponse.data.profile_pic_url);
                 }
             }
         } catch (e) {
@@ -230,10 +239,13 @@ const SettingsScreen = ({ navigation }) => {
             setLoading(true);
             const file = result.assets[0];
 
-            // Create form data
+            // Create form data matching backend expectations
             const formData = new FormData();
-            const blob = await (await fetch(file.uri)).blob(); // Convert file URI to blob
-            formData.append('profile_pic', blob);
+            formData.append('file', {
+                uri: file.uri,
+                name: file.name || 'profile.jpg',
+                type: file.mimeType || 'image/jpeg'
+            });
 
             const response = await attendanceService.uploadPfp(formData);
             if (response?.url) {
