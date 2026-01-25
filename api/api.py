@@ -461,31 +461,39 @@ def calculate_streak(user_email):
 
 @api_bp.route('/current_user')
 def get_current_user():
-    print(f"🔍 /current_user called")
-    print(f"🔍 Session keys: {list(session.keys())}")
-    print(f"🔍 'user' in session: {'user' in session}")
-    if 'user' in session:
-        print(f"🔍 User email: {session['user'].get('email', 'NO EMAIL')}")
+    # print(f"🔍 /current_user called") # Reduce noise
     if 'user' not in session: 
-        print("❌ No user in session, returning None")
+        # print("❌ No user in session, returning None")
         return jsonify(None), 200 
     
-    # Fetch fresh picture from DB to avoid keeping it in session (Cookie Bloat Fix)
-    user_data = session['user'].copy()
+    # CRITICAL SYNC FIX: Fetch EVERYTHING from DB
+    # Session data is stale if another device (Mobile) updated the profile.
+    # We only trust the session for the 'email' (Identity).
+    user_email = session['user'].get('email')
+    if not user_email:
+        return jsonify(None), 200
+
     try:
-        if 'email' in user_data:
-            print(f"🔍 Checking DB for picture of {user_data['email']}")
-            db_user = users_collection.find_one({'email': user_data['email']}, {'picture': 1})
-            if db_user and 'picture' in db_user and db_user['picture']:
-                print(f"✅ Picture found in DB (Length: {len(db_user['picture'])})")
-                user_data['picture'] = db_user['picture']
-            else:
-                print("⚠️ No picture found in DB")
+        # Fetch latest user data from DB
+        db_user = users_collection.find_one({'email': user_email})
+        if db_user:
+            # Convert ObjectId to string if needed (json_util handles it usually, but jsonify might not)
+            if '_id' in db_user:
+                db_user['_id'] = str(db_user['_id'])
+            
+            # Ensure email is set (it is, but for safety)
+            db_user['email'] = user_email
+            
+            # Use this fresh DB data
+            # print(f"✅ Returning fresh DB user: {user_email}")
+            return jsonify(db_user)
+            
     except Exception as e:
-        print(f"⚠️ Error fetching picture for current_user: {e}")
+        print(f"⚠️ Error fetching current_user from DB: {e}")
         
-    print(f"✅ Returning user: {user_data.get('email', 'NO EMAIL')}")
-    return jsonify(user_data)
+    # Fallback to session if DB fails (shouldn't happen)
+    print(f"⚠️ Fallback to session for: {user_email}")
+    return jsonify(session['user'])
 
 @api_bp.route('/dashboard_data')
 @api_bp.route('/dashboard/data')  # Alias for frontend compatibility
