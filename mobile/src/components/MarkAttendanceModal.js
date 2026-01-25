@@ -242,7 +242,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
         <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
             {/* Backdrop */}
             <View style={styles.backdrop}>
-                <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
+                <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
                 {advancedClass ? (
                     <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
                         {renderAdvancedContent()}
