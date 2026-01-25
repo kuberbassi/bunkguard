@@ -338,9 +338,9 @@ const getStyles = (c, isDark) => StyleSheet.create({
     notesText: { fontSize: 11, color: c.subtext, marginTop: 4, fontStyle: 'italic' },
     empty: { textAlign: 'center', marginTop: 40, color: c.subtext },
 
-    // Centered Modal Style
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-    modalContent: { borderRadius: 30, padding: 24, paddingBottom: 24, maxHeight: '85%', width: '100%' },
+    // Modals
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalContent: { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, paddingBottom: 40, maxHeight: '85%' },
 
     dragBar: { width: 40, height: 4, backgroundColor: c.subtext, borderRadius: 10, opacity: 0.3, marginBottom: 20, alignSelf: 'center' },
     modalTitle: { fontSize: 22, fontWeight: '800', color: c.text, marginBottom: 4 },
