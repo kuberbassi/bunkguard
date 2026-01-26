@@ -199,7 +199,7 @@ const TimetableSetupScreen = ({ navigation }) => {
             if (editingSlot && (editingSlot.id || editingSlot._id)) {
                 try {
                     await api.delete(`/api/timetable/slot/${editingSlot.id || editingSlot._id}`);
-                } catch (e) { console.log("Error deleting old slot during edit", e); }
+                } catch (e) { /* console.log("Error deleting old slot during edit", e); */ }
             }
 
             await api.post('/api/timetable/slot', {

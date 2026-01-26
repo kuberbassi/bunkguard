@@ -133,7 +133,7 @@ const SettingsScreen = ({ navigation }) => {
                 updateUser(updatedUser);
             }
         } catch (e) {
-            console.log("Error loading profile", e);
+            // console.log("Error loading profile", e);
         }
     };
 
