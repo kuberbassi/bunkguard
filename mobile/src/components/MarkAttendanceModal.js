@@ -389,27 +389,9 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                             ? (log.subject_id.$oid || String(log.subject_id))
                                             : String(log.subject_id);
 
-                                        console.log(`[Log ${idx}] Looking for subject_id:`, logSubjectId);
-                                        console.log(`[Log ${idx}] Available subjects count:`, subjects.length);
-                                        if (subjects.length > 0) {
-                                            console.log(`[Log ${idx}] First subject sample:`, {
-                                                _id: subjects[0]._id,
-                                                id: subjects[0].id,
-                                                name: subjects[0].name
-                                            });
-                                        }
-
                                         const logSubject = subjects.find(s => {
-                                            const match = getSafeId(s._id || s.id) === getSafeId(log.subject_id);
-                                            if (match) {
-                                                console.log(`[Log ${idx}] MATCHED:`, s.name);
-                                            }
-                                            return match;
+                                            return getSafeId(s._id || s.id) === getSafeId(log.subject_id);
                                         });
-
-                                        if (!logSubject) {
-                                            console.log(`[Log ${idx}] NO MATCH FOUND for subject_id:`, logSubjectId);
-                                        }
 
                                         const statusColors = {
                                             'present': c.success,
