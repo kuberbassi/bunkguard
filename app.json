@@ -1,3 +1,12 @@
 {
-  "expo": {}
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "47d662b5-ab29-4091-9ce0-636220b73154"
+      }
+    },
+    "android": {
+      "package": "com.kuberbassi.acadhub"
+    }
+  }
 }
