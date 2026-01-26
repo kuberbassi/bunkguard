@@ -37,6 +37,7 @@ const SettingsScreen = ({ navigation }) => {
         subtext: isDark ? '#9CA3AF' : '#6B7280',
 
         primary: '#0A84FF',
+        accent: isDark ? '#0A84FF' : '#007AFF', // Added missing accent property
         danger: '#FF3B30',
 
         inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
@@ -368,7 +369,7 @@ const SettingsScreen = ({ navigation }) => {
                             {user?.picture ? (
                                 <Image source={{ uri: user.picture }} style={{ width: '100%', height: '100%' }} />
                             ) : (
-                                <LinearGradient colors={[c.primary, c.accent]} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                <LinearGradient colors={[c.primary, c.accent || c.primary]} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                                     <User size={40} color="#FFF" />
                                 </LinearGradient>
                             )}
