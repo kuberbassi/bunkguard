@@ -104,7 +104,7 @@ const CalendarScreen = ({ navigation }) => {
         try {
             await Promise.all(months.map(mon => fetchMonthData(mon.y, mon.m)));
         } catch (e) {
-            console.log("Error buffering calendar", e);
+            // Buffer error
         }
     }, [fetchMonthData]);
 
@@ -212,7 +212,7 @@ const CalendarScreen = ({ navigation }) => {
                 selectedDate ? fetchClassesForDate(selectedDate) : Promise.resolve()
             ]);
         } catch (e) {
-            console.log("Refresh error", e);
+            // Refresh error
         } finally {
             setRefreshing(false);
         }

@@ -259,9 +259,6 @@ const SettingsScreen = ({ navigation }) => {
             setLoading(true);
             const file = result.assets[0];
 
-            // Debug Log
-            console.log("Selected file:", file.uri, file.mimeType, file.size);
-
             // Create form data matching backend expectations
             const formData = new FormData();
             formData.append('file', {
@@ -275,7 +272,7 @@ const SettingsScreen = ({ navigation }) => {
             const api = require('../services/api').default;
             const { API_URL } = require('../services/api');
 
-            console.log("Uploading to:", `${API_URL}/api/upload_pfp`);
+
 
             const response = await api.post('/api/upload_pfp', formData, {
                 headers: {
@@ -287,7 +284,7 @@ const SettingsScreen = ({ navigation }) => {
                 }
             });
 
-            console.log("Upload response:", response.data);
+
 
             if (response?.data?.url) {
                 // setProfilePic is not defined, relying on updateUser context
