@@ -133,7 +133,19 @@ const TimetableSetupScreen = ({ navigation }) => {
             ]);
             setTimetable(ttResponse.data.schedule || {});
             setPeriods(ttResponse.data.periods || []);
-            setSubjects(subResponse.data || []);
+            const fetchedSubjects = subResponse.data || [];
+            console.log("📚 TimetableSetup: Fetched subjects count:", fetchedSubjects.length);
+            if (fetchedSubjects.length > 0) {
+                console.log("📚 TimetableSetup: First subject:", {
+                    rawObject: fetchedSubjects[0],
+                    _id: fetchedSubjects[0]._id,
+                    id: fetchedSubjects[0].id,
+                    name: fetchedSubjects[0].name,
+                    _id_type: typeof fetchedSubjects[0]._id,
+                    id_type: typeof fetchedSubjects[0].id
+                });
+            }
+            setSubjects(fetchedSubjects);
         } catch (error) {
             console.error("Failed to load timetable data", error);
         } finally {
@@ -192,7 +204,13 @@ const TimetableSetupScreen = ({ navigation }) => {
     const handleAddSlot = async (quickData = null) => {
         const slotData = quickData || newSlot;
 
+        console.log("💾 handleAddSlot called:");
+        console.log("   slotData.subject_id:", slotData.subject_id);
+        console.log("   slotData.type:", slotData.type);
+        console.log("   slotData.name:", slotData.name);
+
         if (!slotData.subject_id && !['Break', 'Free', 'Custom'].includes(slotData.type)) {
+            console.log("❌ Validation FAILED - subject_id is empty!");
             return Alert.alert("Missing Fields", "Please select a subject.");
         }
 
@@ -640,14 +658,28 @@ const TimetableSetupScreen = ({ navigation }) => {
                                 <Text style={styles.label}>Assign Subject</Text>
                                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                                     <View style={styles.subGrid}>
-                                        {subjects.map(sub => {
+                                        {subjects.map((sub, mapIdx) => {
                                             const subId = safeId(sub._id || sub.id);
                                             const isSelected = safeId(newSlot.subject_id) === subId;
+
+                                            if (mapIdx === 0) {
+                                                console.log("🎯 First Subject Card Render:");
+                                                console.log("   sub._id:", sub._id, "type:", typeof sub._id);
+                                                console.log("   sub.id:", sub.id, "type:", typeof sub.id);
+                                                console.log("   subId (derived):", subId);
+                                                console.log("   newSlot.subject_id:", newSlot.subject_id);
+                                                console.log("   isSelected:", isSelected);
+                                            }
+
                                             return (
                                                 <TouchableOpacity
-                                                    key={subId}
+                                                    key={subId || `sub-${mapIdx}`}
                                                     style={[styles.subCard, isSelected && styles.subCardSelected]}
-                                                    onPress={() => setNewSlot({ ...newSlot, subject_id: subId, name: sub.name, type: 'Lecture' })}
+                                                    onPress={() => {
+                                                        console.log("🔵 Subject Selected:", sub.name);
+                                                        console.log("   Setting subject_id to:", subId);
+                                                        setNewSlot({ ...newSlot, subject_id: subId, name: sub.name, type: 'Lecture' });
+                                                    }}
                                                 >
                                                     <Text style={styles.subName} numberOfLines={2}>{sub.name}</Text>
                                                     <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
