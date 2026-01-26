@@ -485,9 +485,9 @@ const TimetableScreen = ({ navigation }) => {
                                 const isSelected = safeId(newSlot.subject_id) === safeId(sub._id || sub.id);
                                 return (
                                     <TouchableOpacity
-                                        key={sub._id}
+                                        key={sub._id || sub.id}
                                         style={[styles.subjectOption, isSelected && styles.selectedOption]}
-                                        onPress={() => setNewSlot({ ...newSlot, subject_id: safeId(sub._id), name: sub.name })}
+                                        onPress={() => setNewSlot({ ...newSlot, subject_id: safeId(sub._id || sub.id), name: sub.name })}
                                     >
                                         <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>{sub.name}</Text>
                                     </TouchableOpacity>

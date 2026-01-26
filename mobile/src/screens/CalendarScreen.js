@@ -327,6 +327,7 @@ const CalendarScreen = ({ navigation }) => {
                             textDayHeaderFontWeight: '700',
                             arrowColor: 'transparent', // We hide default arrows
                         }}
+                        firstDay={1}
                         enableSwipeMonths={true}
                         hideArrows={true}
                         hideExtraDays={false}

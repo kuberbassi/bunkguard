@@ -62,16 +62,29 @@ const AnalyticsScreen = () => {
     const getWeeklyData = () => {
         if (!reportData?.weekly_breakdown) return [];
         const breakdown = reportData.weekly_breakdown;
-        return Object.keys(breakdown).sort().map(dateStr => {
+
+        // Convert to array and Sort Mon-Sun
+        const dayOrder = { 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7 };
+
+        return Object.keys(breakdown).map(dateStr => {
             const dayStats = breakdown[dateStr];
             const dateObj = new Date(dateStr);
-            const pct = dayStats.total > 0 ? (dayStats.attended / dayStats.total) * 100 : 0;
+            const dayLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+
             return {
-                day: dateObj.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0),
-                count: pct,
-                total: dayStats.total
+                day: dayLabel.charAt(0), // 'M', 'T', 'W'...
+                fullDay: dayLabel,       // 'Mon', 'Tue'...
+                count: dayStats.total > 0 ? (dayStats.attended / dayStats.total) * 100 : 0,
+                total: dayStats.total,
+                sortKey: dayOrder[dayLabel] || 8
             };
-        });
+        })
+            .filter(item => {
+                // Hide Sat (6) and Sun (7) unless they have data
+                if (item.sortKey >= 6) return item.total > 0;
+                return true;
+            })
+            .sort((a, b) => a.sortKey - b.sortKey);
     };
 
     const getFocusSubjects = () => {

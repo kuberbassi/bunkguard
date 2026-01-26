@@ -373,10 +373,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                             : String(log.subject_id);
 
                                         const logSubject = subjects.find(s => {
-                                            const subjectId = typeof s._id === 'object'
-                                                ? (s._id.$oid || String(s._id))
-                                                : String(s._id);
-                                            return subjectId === logSubjectId || s.id === logSubjectId;
+                                            return getSafeId(s._id || s.id) === getSafeId(log.subject_id);
                                         });
                                         const statusColors = {
                                             'present': c.success,

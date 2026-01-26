@@ -1,5 +1,20 @@
 import api from './api';
 
+// Simple In-Memory Cache
+const CACHE = {};
+const CACHE_TTL = 30000; // 30 seconds
+
+// Helper to get/set cache
+const getCached = (key) => {
+    const item = CACHE[key];
+    if (item && Date.now() < item.expiry) return item.data;
+    return null;
+};
+
+const setCached = (key, data) => {
+    CACHE[key] = { data, expiry: Date.now() + CACHE_TTL };
+};
+
 export const attendanceService = {
     // ==================== Preferences & Profile ====================
     uploadPfp: async (formData) => {
@@ -17,8 +32,15 @@ export const attendanceService = {
     },
 
     // ==================== Dashboard ====================
-    getDashboardData: async (semester = 1) => {
+    getDashboardData: async (semester = 1, force = false) => {
+        const key = `dash_${semester}`;
+        if (!force) {
+            const cached = getCached(key);
+            if (cached) return cached;
+        }
+
         const response = await api.get(`/api/dashboard_data?semester=${semester}`);
+        setCached(key, response.data);
         return response.data;
     },
 
@@ -28,8 +50,14 @@ export const attendanceService = {
     },
 
     // ==================== Reports ====================
-    getReportsData: async (semester = 1) => {
+    getReportsData: async (semester = 1, force = false) => {
+        const key = `reports_${semester}`;
+        if (!force) {
+            const cached = getCached(key);
+            if (cached) return cached;
+        }
         const response = await api.get(`/api/reports_data?semester=${semester}`);
+        setCached(key, response.data);
         return response.data;
     },
 
@@ -53,6 +81,8 @@ export const attendanceService = {
             notes,
             substituted_by_id: substitutedById,
         });
+        // Invalidate Dashboard Cache
+        delete CACHE[`dash_1`]; delete CACHE[`dash_2`];
     },
 
     markAllAttendance: async (subjectIds, status, date) => {
@@ -77,10 +107,17 @@ export const attendanceService = {
 
     // ==================== Calendar ====================
     getCalendarData: async (year, month, semester) => {
+        const key = `cal_${year}_${month}_${semester}`;
+        const cached = getCached(key);
+        // Calendar data for past months usually doesn't change often, keep it longer? 
+        // For now use standard TTL.
+        if (cached) return cached;
+
         const url = semester
             ? `/api/calendar_data?year=${year}&month=${month}&semester=${semester}`
             : `/api/calendar_data?year=${year}&month=${month}`;
         const response = await api.get(url);
+        setCached(key, response.data);
         return response.data;
     },
 
