@@ -97,16 +97,16 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
         setNote(cls.note || '');
     };
 
-    const closeAdvanced = () => {
-        setAdvancedClass(null);
-        setNote('');
-        setSelectedStatus(null);
-    };
-
     const getSafeId = (val) => {
         if (!val) return '';
         if (typeof val === 'object') return val.$oid || val.toString();
         return String(val);
+    };
+
+    const closeAdvanced = () => {
+        setAdvancedClass(null);
+        setNote('');
+        setSelectedStatus(null);
     };
 
     const handleConfirmAdvanced = () => {
@@ -114,10 +114,10 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
             if (advancedClass.isMerged) {
                 advancedClass.originalClasses.forEach((cls, idx) => {
                     const isLast = idx === advancedClass.originalClasses.length - 1;
-                    onMark(getSafeId(cls._id || cls.id), selectedStatus, note, cls.log_id, !isLast);
+                    onMark(getSafeId(cls._id || cls.id), selectedStatus, note, cls.log_id, !isLast, cls.type);
                 });
             } else {
-                onMark(getSafeId(advancedClass._id || advancedClass.id), selectedStatus, note, advancedClass.log_id, false);
+                onMark(getSafeId(advancedClass._id || advancedClass.id), selectedStatus, note, advancedClass.log_id, false, advancedClass.type);
             }
             closeAdvanced();
         }
@@ -128,10 +128,10 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
             if (advancedClass.isMerged) {
                 advancedClass.originalClasses.forEach((cls, idx) => {
                     const isLast = idx === advancedClass.originalClasses.length - 1;
-                    onMark(getSafeId(cls._id || cls.id), 'pending', '', cls.log_id, !isLast);
+                    onMark(getSafeId(cls._id || cls.id), 'pending', '', cls.log_id, !isLast, cls.type);
                 });
             } else {
-                onMark(getSafeId(advancedClass._id || advancedClass.id), 'pending', '', advancedClass.log_id, false);
+                onMark(getSafeId(advancedClass._id || advancedClass.id), 'pending', '', advancedClass.log_id, false, advancedClass.type);
             }
             closeAdvanced();
         }
@@ -207,12 +207,6 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
         let currentGroup = null;
 
         classesList.forEach((slot) => {
-            const getSafeId = (val) => {
-                if (!val) return '';
-                if (typeof val === 'object') return val.$oid || val.toString();
-                return String(val);
-            };
-
             const slotId = getSafeId(slot._id || slot.id);
             const subjectId = getSafeId(slot.subject_id || slot.subjectId);
             const currentGroupSubId = currentGroup ? getSafeId(currentGroup.subject_id || currentGroup.subjectId) : null;
@@ -318,20 +312,14 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 
                                     // Helper for bulk mark
                                     const handleBulkMark = (status) => {
-                                        const getSafeId = (val) => {
-                                            if (!val) return '';
-                                            if (typeof val === 'object') return val.$oid || val.toString();
-                                            return String(val);
-                                        };
-
                                         if (cls.isMerged) {
                                             cls.originalClasses.forEach((original, idx) => {
                                                 const isLast = idx === cls.originalClasses.length - 1;
                                                 // Skip refresh for all except the last one to prevent Fetch Race Conditions
-                                                onMark(getSafeId(original._id || original.id), status, '', original.log_id, !isLast);
+                                                onMark(getSafeId(original._id || original.id), status, '', original.log_id, !isLast, original.type);
                                             });
                                         } else {
-                                            onMark(getSafeId(cls._id || cls.id), status, '', cls.log_id, false);
+                                            onMark(getSafeId(cls._id || cls.id), status, '', cls.log_id, false, cls.type);
                                         }
                                     };
 
@@ -384,14 +372,12 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                         All Marked ({attendanceLogs.length})
                                     </Text>
                                     {attendanceLogs.map((log, idx) => {
-                                        // Handle MongoDB ObjectId format
-                                        const logSubjectId = typeof log.subject_id === 'object'
-                                            ? (log.subject_id.$oid || String(log.subject_id))
-                                            : String(log.subject_id);
-
-                                        const logSubject = subjects.find(s => {
-                                            return getSafeId(s._id || s.id) === getSafeId(log.subject_id);
-                                        });
+                                        const logId = getSafeId(log._id || log.id);
+                                        const sId = getSafeId(log.subject_id);
+                                        const matchedSlot = classes.find(c => getSafeId(c.log_id) === logId);
+                                        const logSubject = subjects.find(s => getSafeId(s._id || s.id) === sId);
+                                        const subjectName = matchedSlot ? matchedSlot.name : (log.subject_name || logSubject?.name || 'Unknown Subject');
+                                        const sessionType = matchedSlot?.type || log.type;
 
                                         const statusColors = {
                                             'present': c.success,
@@ -405,7 +391,14 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                         return (
                                             <View key={idx} style={[styles.classItem, { marginBottom: 8 }]}>
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={styles.className}>{logSubject?.name || 'Unknown'}</Text>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                        <Text style={styles.className}>{subjectName}</Text>
+                                                        {sessionType && (
+                                                            <View style={{ backgroundColor: c.subtext + '15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                                                <Text style={{ fontSize: 10, color: c.subtext, fontWeight: '700' }}>{sessionType}</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                                                         <View style={{ backgroundColor: statusColor + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
                                                             <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor }}>{log.status.toUpperCase()}</Text>
@@ -425,7 +418,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 
                                                         Alert.alert(
                                                             'Delete Log',
-                                                            `Remove ${log.status} entry for ${logSubject?.name || 'this class'}?`,
+                                                            `Remove ${log.status} entry for ${subjectName}?`,
                                                             [
                                                                 { text: 'Cancel', style: 'cancel' },
                                                                 { text: 'Delete', style: 'destructive', onPress: () => deleteLog(logId) }

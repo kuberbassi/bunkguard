@@ -735,6 +735,8 @@ def mark_attendance():
     # 1. Handle Primary Log
     log_entry = {
         "subject_id": subject_id,
+        "subject_name": subject.get('name'),
+        "type": data.get('type', 'Lecture'), # Mobile can pass type
         "owner_email": session['user']['email'],
         "date": date_str,
         "status": status,
@@ -2549,14 +2551,28 @@ def get_logs_for_date():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     date_str = request.args.get('date')
     if not date_str: return jsonify({"error": "Date parameter is required"}), 400
+    
     pipeline = [
         {'$match': {'owner_email': session['user']['email'], 'date': date_str}},
         {'$lookup': {'from': 'subjects', 'localField': 'subject_id', 'foreignField': '_id', 'as': 'subject_info'}},
-        {'$unwind': '$subject_info'},
-        {'$project': {'_id': 1, 'subject_name': '$subject_info.name', 'status': '$status', 'notes': 1}}
+        {'$unwind': {'path': '$subject_info', 'preserveNullAndEmptyArrays': True}},
+        {'$project': {
+            '_id': 1, 
+            'subject_id': 1,
+            'subject_name': {'$ifNull': ['$subject_name', '$subject_info.name']}, 
+            'type': 1,
+            'status': 1, 
+            'notes': 1,
+            'timestamp': 1
+        }}
     ]
     logs = list(attendance_log_collection.aggregate(pipeline))
-    return Response(json_util.dumps(logs), mimetype='application/json')
+    # Convert ObjectIds to strings for JSON
+    for log in logs:
+        log['_id'] = str(log['_id'])
+        if log.get('subject_id'): log['subject_id'] = str(log['subject_id'])
+        
+    return jsonify(logs)
 
 # --- MANUAL COURSES ---
 

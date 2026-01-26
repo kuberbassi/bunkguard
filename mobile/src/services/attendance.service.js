@@ -73,13 +73,14 @@ export const attendanceService = {
     },
 
     // ==================== Mark Attendance ====================
-    markAttendance: async (subjectId, status, date, notes, substitutedById) => {
+    markAttendance: async (subjectId, status, date, notes, substitutedById, type) => {
         await api.post('/api/mark_attendance', {
             subject_id: subjectId,
             status,
             date,
             notes,
             substituted_by_id: substitutedById,
+            type: type
         });
         // Invalidate Dashboard Cache
         delete CACHE[`dash_1`]; delete CACHE[`dash_2`];

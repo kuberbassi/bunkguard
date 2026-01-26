@@ -137,7 +137,7 @@ const CalendarScreen = ({ navigation }) => {
         }
     };
 
-    const handleMarkAttendance = async (subjectId, status, note = '', logId = null, skipRefresh = false) => {
+    const handleMarkAttendance = async (subjectId, status, note = '', logId = null, skipRefresh = false, type = 'Lecture') => {
         try {
             // 1. Optimistic Update (List)
             setDayClasses(prev => prev.map(c => c._id === subjectId ? { ...c, marked_status: status } : c));
@@ -175,7 +175,9 @@ const CalendarScreen = ({ navigation }) => {
                     subjectId,
                     status,
                     selectedDate,
-                    note
+                    note,
+                    null, // substituted_by_id
+                    type
                 );
             }
 
