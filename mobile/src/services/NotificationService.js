@@ -43,7 +43,7 @@ export const NotificationService = {
             // We use a try-catch and check environment to avoid crashing in Expo Go.
             try {
                 if (Constants.appOwnership === 'expo') {
-                    console.log('Skipping remote push token registration (Expo Go environment)');
+                    // console.log('Skipping remote push token registration (Expo Go environment)');
                     return null;
                 }
                 const token = (await Notifications.getExpoPushTokenAsync({

@@ -28,7 +28,7 @@ if (!isExpoGo) {
         console.warn("Google Sign-In module not found, using mock.");
     }
 } else {
-    console.log("Running in Expo Go: Google Sign-In mocked.");
+    // console.log("Running in Expo Go: Google Sign-In mocked.");
 }
 
 export { GoogleSignin, statusCodes };

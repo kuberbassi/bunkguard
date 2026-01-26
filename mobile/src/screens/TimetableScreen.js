@@ -105,9 +105,7 @@ const TimetableScreen = ({ navigation }) => {
     };
 
     const handleSaveSlot = async () => {
-        console.log("Saving Slot State:", newSlot);
         if (!newSlot.subject_id && !['Break', 'Free'].includes(newSlot.type)) {
-            console.log("Validation Failed: No subject_id");
             return Alert.alert("Missing Fields", "Please select a subject.");
         }
 
@@ -298,16 +296,9 @@ const TimetableScreen = ({ navigation }) => {
             // or if name is missing
             if (item.subject_id) {
                 const normalizedItemId = safeId(item.subject_id);
-                // DEBUG: Print what we are looking for
-                // const allSubjectIds = subjects.map(s => safeId(s._id || s.id));
-                // console.log(`Looking for subId: ${normalizedItemId} in ${allSubjectIds.length} subjects`);
-
                 const foundSub = subjects.find(s => safeId(s._id || s.id) === normalizedItemId);
-
                 if (foundSub) {
                     subjectName = foundSub.name;
-                } else {
-                    console.log(`❌ Subject ID mismatch! Slot has: ${normalizedItemId}, available:`, subjects.map(s => `${s.name}:${safeId(s._id || s.id)}`));
                 }
             }
             if (subjectName) displaySubject = subjectName;
@@ -490,9 +481,7 @@ const TimetableScreen = ({ navigation }) => {
                                         key={sub._id || sub.id}
                                         style={[styles.subjectOption, isSelected && styles.selectedOption]}
                                         onPress={() => {
-                                            console.log("Selected Subject:", sub);
                                             const sId = safeId(sub._id || sub.id);
-                                            console.log("Derived ID:", sId);
                                             setNewSlot({ ...newSlot, subject_id: sId, name: sub.name });
                                         }}
                                     >

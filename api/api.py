@@ -139,9 +139,6 @@ def get_profile():
     user_prefs = preferences_collection.find_one({'owner_email': user_email})
     prefs = user_prefs.get('preferences', {}) if user_prefs else {}
     
-    print(f"🔍 DEBUG: get_profile for {user_email}")
-    print(f"🔍 DEBUG: Raw prefs from DB: {prefs}")
-    
     # Logic to get the effective value
     warn_val = prefs.get('warning_threshold') or prefs.get('min_attendance') or 76
     min_att_val = prefs.get('min_attendance') or prefs.get('warning_threshold') or 76
@@ -162,7 +159,6 @@ def get_profile():
         "notifications_enabled": prefs.get('notifications_enabled', False),
     }
     
-    print(f"🔍 DEBUG: Sending response: warning_threshold={warn_val}, min_attendance={warn_val}")
     return jsonify(response_data)
 
 
@@ -226,12 +222,9 @@ deadlines_collection = db.get_collection('deadlines')
 
 @api_bp.route('/upload_pfp', methods=['POST'])
 def upload_pfp():
-    print("🔍 DEBUG: upload_pfp called")
     try:
         if db is None:
-             print("❌ Upload Error: Database connection is None")
-             print("❌ Upload Error: Database connection is None")
-             return jsonify({"error": "Database not connected"}), 500
+            return jsonify({"error": "Database not connected"}), 500
 
         if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
         if 'file' not in request.files: return jsonify({"error": "No file part"}), 400
@@ -510,19 +503,7 @@ def get_dashboard_data():
         current_semester = int(request.args.get('semester', 1)) 
         # Filter by semester when provided
         query = {"owner_email": user_email, "semester": current_semester}
-        print(f"🔍 DEBUG: Querying subjects with: {query}")
-        print(f"🔍 DEBUG: User email from session: {user_email}")
         subjects = list(subjects_collection.find(query))
-        print(f"🔍 DEBUG: Found {len(subjects)} subjects")
-        if subjects:
-            print(f"🔍 DEBUG: First subject sample: {subjects[0]}")
-        else:
-            print(f"🔍 DEBUG: NO SUBJECTS FOUND! Checking if ANY subjects exist...")
-            all_subjects_count = subjects_collection.count_documents({})
-            print(f"🔍 DEBUG: Total subjects in database: {all_subjects_count}")
-            if all_subjects_count > 0:
-                sample = subjects_collection.find_one({})
-                print(f"🔍 DEBUG: Sample subject from DB: {sample}")
         
         total_attended = sum(s.get('attended', 0) for s in subjects)
         total_classes = sum(s.get('total', 0) for s in subjects)

@@ -391,14 +391,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                         return (
                                             <View key={idx} style={[styles.classItem, { marginBottom: 8 }]}>
                                                 <View style={{ flex: 1 }}>
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                        <Text style={styles.className}>{subjectName}</Text>
-                                                        {sessionType && (
-                                                            <View style={{ backgroundColor: c.subtext + '15', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                                                                <Text style={{ fontSize: 10, color: c.subtext, fontWeight: '700' }}>{sessionType}</Text>
-                                                            </View>
-                                                        )}
-                                                    </View>
+                                                    <Text style={styles.className}>{subjectName}</Text>
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                                                         <View style={{ backgroundColor: statusColor + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
                                                             <Text style={{ fontSize: 10, fontWeight: '800', color: statusColor }}>{log.status.toUpperCase()}</Text>

@@ -187,19 +187,9 @@ const TimetableSetupScreen = ({ navigation }) => {
 
 
     const handleAddSlot = async (quickData = null) => {
-        console.log("💾 handleAddSlot called:");
-        console.log("   quickData:", quickData);
-        console.log("   newSlot (state):", newSlot);
-
         const slotData = quickData || newSlot;
 
-        console.log("   slotData (result):", slotData);
-        console.log("   slotData.subject_id:", slotData.subject_id);
-        console.log("   slotData.type:", slotData.type);
-        console.log("   slotData.name:", slotData.name);
-
         if (!slotData.subject_id && !['Break', 'Free', 'Custom'].includes(slotData.type)) {
-            console.log("❌ Validation FAILED - subject_id is empty!");
             return Alert.alert("Missing Fields", "Please select a subject.");
         }
 
