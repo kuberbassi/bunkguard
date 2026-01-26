@@ -11,13 +11,16 @@ const PROD_URL = 'https://acadhub.kuberbassi.com';
 const LOCAL_IP = 'http://127.0.0.1:5000'; // For USB Debugging with adb reverse
 const WEB_URL = 'http://localhost:5000';
 
-export const API_URL = Platform.select({
-    web: (process.env.NODE_ENV === 'production') ? PROD_URL : WEB_URL,
-    // REPLACE '192.168.1.X' with your PC's IP address (run `ipconfig` to find it)
-    android: 'http://192.168.0.159:5000',
-    ios: 'http://192.168.0.159:5000', // Update this too if testing on real iOS device
+// Development URLs (Change IP as needed)
+const DEV_URLS = Platform.select({
+    web: WEB_URL,
+    android: 'http://192.168.0.159:5000', 
+    ios: 'http://192.168.0.159:5000',
     default: LOCAL_IP
 });
+
+// Automatically select Production URL for Release builds, and Dev URL for local workflow
+export const API_URL = __DEV__ ? DEV_URLS : PROD_URL;
 
 const api = axios.create({
     baseURL: API_URL,
