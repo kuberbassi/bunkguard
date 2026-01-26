@@ -39,6 +39,12 @@ const TimetableSetupScreen = ({ navigation }) => {
 
     const styles = getStyles(c, isDark);
 
+    // Helper to normalize IDs
+    const safeId = (id) => {
+        if (!id) return '';
+        return typeof id === 'object' ? (id.$oid || id.toString()) : String(id);
+    };
+
     const [selectedDay, setSelectedDay] = useState('Monday');
     const [timetable, setTimetable] = useState({});
     const [loading, setLoading] = useState(true);
@@ -283,7 +289,7 @@ const TimetableSetupScreen = ({ navigation }) => {
             if (normalizedType === 'Free_slot') normalizedType = 'Free';
 
             setNewSlot({
-                subject_id: item.subject_id,
+                subject_id: safeId(item.subject_id) || '',
                 name: displaySubject === 'Break' || displaySubject === 'Free/Empty' ? '' : displaySubject,
                 label: item.label || item.name || '',
                 startTime: start,
@@ -634,16 +640,20 @@ const TimetableSetupScreen = ({ navigation }) => {
                                 <Text style={styles.label}>Assign Subject</Text>
                                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                                     <View style={styles.subGrid}>
-                                        {subjects.map(sub => (
-                                            <TouchableOpacity
-                                                key={sub._id}
-                                                style={[styles.subCard, newSlot.subject_id === sub._id && styles.subCardSelected]}
-                                                onPress={() => setNewSlot({ ...newSlot, subject_id: sub._id, name: sub.name, type: 'Lecture' })}
-                                            >
-                                                <Text style={styles.subName} numberOfLines={2}>{sub.name}</Text>
-                                                <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
-                                            </TouchableOpacity>
-                                        ))}
+                                        {subjects.map(sub => {
+                                            const subId = safeId(sub._id || sub.id);
+                                            const isSelected = safeId(newSlot.subject_id) === subId;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={subId}
+                                                    style={[styles.subCard, isSelected && styles.subCardSelected]}
+                                                    onPress={() => setNewSlot({ ...newSlot, subject_id: subId, name: sub.name, type: 'Lecture' })}
+                                                >
+                                                    <Text style={styles.subName} numberOfLines={2}>{sub.name}</Text>
+                                                    <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </View>
                                 </ScrollView>
                             </View>

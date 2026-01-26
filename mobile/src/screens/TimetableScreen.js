@@ -105,7 +105,9 @@ const TimetableScreen = ({ navigation }) => {
     };
 
     const handleSaveSlot = async () => {
+        console.log("Saving Slot State:", newSlot);
         if (!newSlot.subject_id && !['Break', 'Free'].includes(newSlot.type)) {
+            console.log("Validation Failed: No subject_id");
             return Alert.alert("Missing Fields", "Please select a subject.");
         }
 
@@ -487,7 +489,12 @@ const TimetableScreen = ({ navigation }) => {
                                     <TouchableOpacity
                                         key={sub._id || sub.id}
                                         style={[styles.subjectOption, isSelected && styles.selectedOption]}
-                                        onPress={() => setNewSlot({ ...newSlot, subject_id: safeId(sub._id || sub.id), name: sub.name })}
+                                        onPress={() => {
+                                            console.log("Selected Subject:", sub);
+                                            const sId = safeId(sub._id || sub.id);
+                                            console.log("Derived ID:", sId);
+                                            setNewSlot({ ...newSlot, subject_id: sId, name: sub.name });
+                                        }}
                                     >
                                         <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>{sub.name}</Text>
                                     </TouchableOpacity>

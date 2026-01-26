@@ -14,6 +14,23 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
     const { isDark } = useTheme();
     const { selectedSemester } = useSemester();
 
+    // Helper to parse "HH:mm AM/PM" to minutes
+    const getMinutes = (timeStr) => {
+        if (!timeStr) return 0;
+        const [time, period] = timeStr.split(' ');
+        let [h, m] = time.split(':').map(Number);
+        if (period === 'PM' && h !== 12) h += 12;
+        if (period === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+    };
+
+    // Sort classes by time
+    const sortedClasses = [...(classes || [])].sort((a, b) => {
+        const timeA = a.startTime || (a.time ? a.time.split(' - ')[0] : '00:00 AM');
+        const timeB = b.startTime || (b.time ? b.time.split(' - ')[0] : '00:00 AM');
+        return getMinutes(timeA) - getMinutes(timeB);
+    });
+
     // AMOLED Theme
     const c = {
         glassBg: isDark ? ['rgba(10, 10, 10, 0.98)', 'rgba(20, 20, 20, 0.98)'] : ['rgba(255, 255, 255, 0.98)', 'rgba(248, 249, 250, 0.98)'],
@@ -236,7 +253,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
         return grouped.map(g => ({ ...g, isMerged: g.originalClasses.length > 1 }));
     };
 
-    const groupedClasses = groupConsecutiveClasses(classes);
+    const groupedClasses = groupConsecutiveClasses(sortedClasses);
 
     // Animation State
     const scaleAnim = React.useRef(new Animated.Value(0.9)).current;

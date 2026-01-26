@@ -99,10 +99,16 @@ export const attendanceService = {
             notes,
             date
         });
+        // Invalidate caches
+        delete CACHE[`dash_1`]; delete CACHE[`dash_2`];
+        delete CACHE[`reports_1`]; delete CACHE[`reports_2`];
     },
 
     deleteAttendance: async (logId) => {
         await api.delete(`/api/delete_attendance/${logId}`);
+        // Invalidate caches
+        delete CACHE[`dash_1`]; delete CACHE[`dash_2`];
+        delete CACHE[`reports_1`]; delete CACHE[`reports_2`];
     },
 
     // ==================== Calendar ====================
