@@ -202,7 +202,9 @@ const CalendarScreen = ({ navigation }) => {
         setRefreshing(true);
         setCalendarData({}); // Clear cache
         await updateCalendarBuffer(currentMonth);
-        await fetchClassesForDate(selectedDate);
+        if (selectedDate) {
+            await fetchClassesForDate(selectedDate);
+        }
         setRefreshing(false);
     };
 
