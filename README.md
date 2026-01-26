@@ -6,7 +6,6 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Made with AI](https://img.shields.io/badge/built%20with-agentic%20AI-orange)](https://github.com/google/agentic)
 
-![AcadHub Banner](https://via.placeholder.com/1200x400/0A84FF/FFFFFF?text=AcadHub+-+Smart+Academic+Companion)
 
 ---
 
