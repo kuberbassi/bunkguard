@@ -86,23 +86,26 @@ const CalendarScreen = ({ navigation }) => {
     }, [selectedSemester]);
 
     // Fetch surrounding months for smooth swiping
-    const updateCalendarBuffer = useCallback((dateStr) => {
+    const updateCalendarBuffer = useCallback(async (dateStr) => {
+        if (!dateStr) return;
         const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return;
+
         const y = d.getFullYear();
         const m = d.getMonth() + 1;
 
-        // Current
-        fetchMonthData(y, m);
+        // Fetch surrounding months in parallel for snappiness
+        const months = [
+            { y, m }, // Current
+            { y: m === 1 ? y - 1 : y, m: m === 1 ? 12 : m - 1 }, // Previous
+            { y: m === 12 ? y + 1 : y, m: m === 12 ? 1 : m + 1 } // Next
+        ];
 
-        // Previous
-        const prevM = m === 1 ? 12 : m - 1;
-        const prevY = m === 1 ? y - 1 : y;
-        fetchMonthData(prevY, prevM);
-
-        // Next
-        const nextM = m === 12 ? 1 : m + 1;
-        const nextY = m === 12 ? y + 1 : y;
-        fetchMonthData(nextY, nextM);
+        try {
+            await Promise.all(months.map(mon => fetchMonthData(mon.y, mon.m)));
+        } catch (e) {
+            console.log("Error buffering calendar", e);
+        }
     }, [fetchMonthData]);
 
     // Initial Load & On Month Change
@@ -200,12 +203,17 @@ const CalendarScreen = ({ navigation }) => {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        setCalendarData({}); // Clear cache
-        await updateCalendarBuffer(currentMonth);
-        if (selectedDate) {
-            await fetchClassesForDate(selectedDate);
+        try {
+            // Don't clear data immediately to avoid flickering
+            await Promise.all([
+                updateCalendarBuffer(currentMonth),
+                selectedDate ? fetchClassesForDate(selectedDate) : Promise.resolve()
+            ]);
+        } catch (e) {
+            console.log("Refresh error", e);
+        } finally {
+            setRefreshing(false);
         }
-        setRefreshing(false);
     };
 
     // --- COMPONENTS ---
