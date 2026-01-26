@@ -13,9 +13,6 @@ import AnimatedHeader from '../components/AnimatedHeader';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const TimetableSetupScreen = ({ navigation }) => {
-    // Debug Log to confirm reload
-    console.log("TimetableSetupScreen - Structure Editor Loaded");
-
     const { isDark } = useTheme();
     const { selectedSemester } = useSemester();
     const insets = useSafeAreaInsets();
@@ -654,24 +651,11 @@ const TimetableSetupScreen = ({ navigation }) => {
                                             const subId = safeId(sub._id || sub.id);
                                             const isSelected = safeId(newSlot.subject_id) === subId;
 
-                                            if (mapIdx === 0) {
-                                                console.log("🎯 First Subject Card Render:");
-                                                console.log("   sub._id:", sub._id, "type:", typeof sub._id);
-                                                console.log("   sub.id:", sub.id, "type:", typeof sub.id);
-                                                console.log("   subId (derived):", subId);
-                                                console.log("   newSlot.subject_id:", newSlot.subject_id);
-                                                console.log("   isSelected:", isSelected);
-                                            }
-
                                             return (
                                                 <TouchableOpacity
                                                     key={subId || `sub-${mapIdx}`}
                                                     style={[styles.subCard, isSelected && styles.subCardSelected]}
-                                                    onPress={() => {
-                                                        console.log("🔵 Subject Selected:", sub.name);
-                                                        console.log("   Setting subject_id to:", subId);
-                                                        setNewSlot({ ...newSlot, subject_id: subId, name: sub.name, type: 'Lecture' });
-                                                    }}
+                                                    onPress={() => setNewSlot({ ...newSlot, subject_id: subId, name: sub.name, type: 'Lecture' })}
                                                 >
                                                     <Text style={styles.subName} numberOfLines={2}>{sub.name}</Text>
                                                     <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
