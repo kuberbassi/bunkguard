@@ -133,19 +133,7 @@ const TimetableSetupScreen = ({ navigation }) => {
             ]);
             setTimetable(ttResponse.data.schedule || {});
             setPeriods(ttResponse.data.periods || []);
-            const fetchedSubjects = subResponse.data || [];
-            console.log("📚 TimetableSetup: Fetched subjects count:", fetchedSubjects.length);
-            if (fetchedSubjects.length > 0) {
-                console.log("📚 TimetableSetup: First subject:", {
-                    rawObject: fetchedSubjects[0],
-                    _id: fetchedSubjects[0]._id,
-                    id: fetchedSubjects[0].id,
-                    name: fetchedSubjects[0].name,
-                    _id_type: typeof fetchedSubjects[0]._id,
-                    id_type: typeof fetchedSubjects[0].id
-                });
-            }
-            setSubjects(fetchedSubjects);
+            setSubjects(subResponse.data || []);
         } catch (error) {
             console.error("Failed to load timetable data", error);
         } finally {
