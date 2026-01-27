@@ -112,10 +112,10 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
     const handleConfirmAdvanced = () => {
         if (advancedClass) {
             if (advancedClass.isMerged) {
-                advancedClass.originalClasses.forEach((cls, idx) => {
-                    const isLast = idx === advancedClass.originalClasses.length - 1;
-                    onMark(getSafeId(cls._id || cls.id), selectedStatus, note, cls.log_id, !isLast, cls.type);
-                });
+                // To fix duplication, we only mark ONCE for the entire merged block.
+                // The backend and get_classes_for_date logic will handle spreading this status.
+                const primary = advancedClass.originalClasses[0];
+                onMark(getSafeId(primary._id || primary.id), selectedStatus, note, primary.log_id, false, primary.type);
             } else {
                 onMark(getSafeId(advancedClass._id || advancedClass.id), selectedStatus, note, advancedClass.log_id, false, advancedClass.type);
             }
@@ -126,9 +126,12 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
     const handleClearMark = () => {
         if (advancedClass) {
             if (advancedClass.isMerged) {
+                // Clear all associated logs if they exist (for robustness against legacy duplicates)
                 advancedClass.originalClasses.forEach((cls, idx) => {
-                    const isLast = idx === advancedClass.originalClasses.length - 1;
-                    onMark(getSafeId(cls._id || cls.id), 'pending', '', cls.log_id, !isLast, cls.type);
+                    if (cls.log_id) {
+                        const isLast = idx === advancedClass.originalClasses.length - 1;
+                        onMark(getSafeId(cls._id || cls.id), 'pending', '', cls.log_id, !isLast, cls.type);
+                    }
                 });
             } else {
                 onMark(getSafeId(advancedClass._id || advancedClass.id), 'pending', '', advancedClass.log_id, false, advancedClass.type);
@@ -313,11 +316,9 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                     // Helper for bulk mark
                                     const handleBulkMark = (status) => {
                                         if (cls.isMerged) {
-                                            cls.originalClasses.forEach((original, idx) => {
-                                                const isLast = idx === cls.originalClasses.length - 1;
-                                                // Skip refresh for all except the last one to prevent Fetch Race Conditions
-                                                onMark(getSafeId(original._id || original.id), status, '', original.log_id, !isLast, original.type);
-                                            });
+                                            // Only mark once for the block
+                                            const primary = cls.originalClasses[0];
+                                            onMark(getSafeId(primary._id || primary.id), status, '', primary.log_id, false, primary.type);
                                         } else {
                                             onMark(getSafeId(cls._id || cls.id), status, '', cls.log_id, false, cls.type);
                                         }

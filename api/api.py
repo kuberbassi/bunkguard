@@ -958,17 +958,37 @@ def get_classes_for_date():
         return Response(json_util.dumps([]), mimetype='application/json')
     
     processed_log_ids = set()
-    # Simple matching by ID and order
+    # Improved matching: Share logs across consecutive same-type slots if only one log exists (e.g. Labs / Double Periods)
     for sid in set([s['id'] for s in slots_to_return]):
-        subj_slots = [s for s in slots_to_return if s['id'] == sid]
+        # Sort slots by time to ensure consecutiveness check works
+        subj_slots = sorted([s for s in slots_to_return if s['id'] == sid], key=lambda x: x.get('time', ''))
         # Sort logs by timestamp to match sequence
         subj_logs = sorted([l for l in logs if str(l.get('subject_id')) == sid], key=lambda x: x.get('timestamp', datetime.min))
         
+        current_log_idx = -1
         for i, slot in enumerate(subj_slots):
-            if i < len(subj_logs):
-                slot['marked_status'] = subj_logs[i]['status']
-                slot['log_id'] = str(subj_logs[i]['_id'])
-                processed_log_ids.add(subj_logs[i]['_id'])
+            is_new_block = True
+            if i > 0:
+                prev = subj_slots[i-1]
+                # If same type, we consider it part of the same "session block" (matches frontend grouping)
+                if slot.get('type') == prev.get('type'):
+                    is_new_block = False
+            
+            if current_log_idx == -1:
+                if len(subj_logs) > 0: current_log_idx = 0
+            else:
+                # If it's a new block (not consecutive), we MUST try to move to the next log
+                if is_new_block:
+                    current_log_idx += 1
+                # If it's the SAME block, we only move if we have more logs available 
+                # (This preserves accurate display for legacy duplicates or manual multi-marks)
+                elif current_log_idx + 1 < len(subj_logs):
+                    current_log_idx += 1
+            
+            if current_log_idx >= 0 and current_log_idx < len(subj_logs):
+                slot['marked_status'] = subj_logs[current_log_idx]['status']
+                slot['log_id'] = str(subj_logs[current_log_idx]['_id'])
+                processed_log_ids.add(subj_logs[current_log_idx]['_id'])
     
     return Response(json_util.dumps(slots_to_return), mimetype='application/json')
 

@@ -233,15 +233,19 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 // Wrapper for bulk mark
                                                 onSimpleMark={(id: string, status: string) => {
                                                     if (subject.isMerged) {
-                                                        // Bulk mark all underlying slots
-                                                        subject.originalClasses.forEach((cls: any) => markSimple(cls._id || cls.id, status as any));
+                                                        // Mark only the first slot; backend/get_classes_for_date handles the rest
+                                                        const primary = subject.originalClasses[0];
+                                                        markSimple(primary._id || primary.id, status as any);
                                                     } else {
                                                         markSimple(id, status as any);
                                                     }
                                                 }}
                                                 onDelete={(subj: any) => {
                                                     if (subj.isMerged) {
-                                                        subj.originalClasses.forEach((cls: any) => handleDelete(cls));
+                                                        // Clear all associated logs for robustness
+                                                        subj.originalClasses.forEach((cls: any) => {
+                                                            if (cls.log_id) handleDelete(cls);
+                                                        });
                                                     } else {
                                                         handleDelete(subj);
                                                     }
@@ -259,30 +263,22 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 allSubjects={allSubjects}
                                                 onSubmitDetail={(id: string) => {
                                                     if (subject.isMerged) {
-                                                        // For detailed submit, we loop manually
-                                                        // But submitDetailedMark uses state (detailStatus etc) which is global to modal
-                                                        // So we just call the API for each ID.
-                                                        // Wait, submitDetailedMark calls loadClassesForDate which resets state.
-                                                        // We should maybe promise.all
-                                                        const promises = subject.originalClasses.map((cls: any) => {
-                                                            const dateStr = getDateStr(selectedDate);
-                                                            return attendanceService.markAttendance(
-                                                                cls._id || cls.id,
-                                                                detailStatus,
-                                                                dateStr,
-                                                                detailNotes,
-                                                                detailStatus === 'substituted' ? detailSubstitutedBy : undefined
-                                                            );
-                                                        });
+                                                        const primary = subject.originalClasses[0];
+                                                        const dateStr = getDateStr(selectedDate);
 
-                                                        Promise.all(promises).then(() => {
-                                                            showToast('success', 'Attendance marked for all slots');
+                                                        attendanceService.markAttendance(
+                                                            primary._id || primary.id,
+                                                            detailStatus,
+                                                            dateStr,
+                                                            detailNotes,
+                                                            detailStatus === 'substituted' ? detailSubstitutedBy : undefined
+                                                        ).then(() => {
+                                                            showToast('success', 'Attendance marked for session');
                                                             setExpandedSubjectId(null);
                                                             resetDetailForm();
                                                             loadClassesForDate(selectedDate, true);
                                                             if (onSuccess) onSuccess();
-                                                        }).catch(() => showToast('error', 'Failed to mark some slots'));
-
+                                                        }).catch(() => showToast('error', 'Failed to mark attendance'));
                                                     } else {
                                                         submitDetailedMark(id);
                                                     }
