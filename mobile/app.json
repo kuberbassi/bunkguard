@@ -21,7 +21,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png",
         "backgroundColor": "#0A84FF"
       },
       "edgeToEdgeEnabled": true,
@@ -47,12 +48,13 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "a414d836-b36a-43b5-86e5-3beb61e7f748"
+        "projectId": "ee6664bb-801c-4947-83e6-9cfb0a9d2eec"
       }
     },
     "jsEngine": "hermes",
     "runtimeVersion": {
       "policy": "appVersion"
-    }
+    },
+    "owner": "not.kuberb"
   }
 }
