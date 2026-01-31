@@ -15,6 +15,7 @@ from api import create_app
 
 # Create the app instance
 app = create_app()
+from api import socketio
 
 # Run the development server
 if __name__ == '__main__':
@@ -25,9 +26,11 @@ if __name__ == '__main__':
     # Start Background Worker (Notification Polling)
     # Background worker removed as Classroom integration is disabled
 
-    app.run(
+    socketio.run(
+        app,
         debug=True,
         host='0.0.0.0',
         port=5000,
-        use_reloader=True
+        use_reloader=True,
+        log_output=True
     )

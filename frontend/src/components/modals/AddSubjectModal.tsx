@@ -92,7 +92,7 @@ const AddSubjectModal: React.FC<AddSubjectModalProps> = ({ isOpen, onClose, onSu
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Categories</label>
                                         <div className="flex flex-wrap gap-2">
-                                            {['Theory', 'Practical', 'Assignment', 'Project'].map((cat) => (
+                                            {['Theory', 'Practical', 'Assignment'].map((cat) => (
                                                 <button
                                                     key={cat}
                                                     type="button"

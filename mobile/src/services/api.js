@@ -14,13 +14,15 @@ const WEB_URL = 'http://localhost:5000';
 // Development URLs (Change IP as needed)
 const DEV_URLS = Platform.select({
     web: WEB_URL,
-    android: 'http://192.168.0.159:5000', 
+    android: 'http://192.168.0.159:5000',
     ios: 'http://192.168.0.159:5000',
     default: LOCAL_IP
 });
 
 // Automatically select Production URL for Release builds, and Dev URL for local workflow
-export const API_URL = __DEV__ ? DEV_URLS : PROD_URL;
+// For v2.0.0 Production APK, ensuring it uses the correct deployed backend
+const isProdBuild = !__DEV__;
+export const API_URL = isProdBuild ? PROD_URL : DEV_URLS;
 
 const api = axios.create({
     baseURL: API_URL,

@@ -433,8 +433,12 @@ const SubjectRow = ({
                                 onChange={(e) => setDetailSubstitutedBy(e.target.value)}
                             >
                                 <option value="">Select Subject...</option>
-                                {allSubjects.filter((s: any) => s.id !== subject._id && s.id !== subject.id).map((s: any) => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                {allSubjects.filter((s: any) => {
+                                    const sId = s._id || s.id;
+                                    const currentId = subject._id || subject.id;
+                                    return sId !== currentId;
+                                }).map((s: any) => (
+                                    <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>
                                 ))}
                             </select>
                         </div>

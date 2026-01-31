@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, Switch, KeyboardAvoidingView, Platform, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView, Switch, KeyboardAvoidingView, Platform, Alert, Dimensions, Animated } from 'react-native';
+import PressableScale from './PressableScale';
 import { theme } from '../theme';
 import { X, Save, BookOpen, User, MapPin, AlertTriangle, Target, Briefcase, Trash2, FileText } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,14 +14,14 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
 
     // AMOLED Theme
     const c = {
-        glassBg: isDark ? ['rgba(10, 10, 10, 1.0)', 'rgba(20, 20, 20, 1.0)'] : ['rgba(255, 255, 255, 1.0)', 'rgba(248, 249, 250, 1.0)'],
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-        text: isDark ? '#FFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
-        primary: '#0A84FF',
-        surface: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+        glassBg: isDark ? ['#000000', '#000000'] : ['rgba(255, 255, 255, 0.98)', 'rgba(240, 240, 240, 0.98)'],
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+        text: isDark ? '#FFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
+        primary: theme.palette.purple,
+        surface: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
         inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-        danger: '#FF3B30',
+        danger: theme.palette.red,
     };
 
     const styles = getStyles(c, isDark);
@@ -40,8 +41,19 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
     const [practicalTotal, setPracticalTotal] = useState('');
     const [assignmentTotal, setAssignmentTotal] = useState('');
 
+    // Animation State
+    const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
+    const opacityAnim = React.useRef(new Animated.Value(0)).current;
+
     useEffect(() => {
         if (visible) {
+            scaleAnim.setValue(0.9);
+            opacityAnim.setValue(0);
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true })
+            ]).start();
+
             if (initialData) {
                 setName(initialData.name || '');
                 setCode(initialData.code || '');
@@ -90,9 +102,9 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
 
     return (
         <Modal visible={visible} animationType="slide" transparent>
-            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
-                <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
-                <LinearGradient colors={c.glassBg} style={styles.modalContent}>
+            <View style={styles.backdrop}>
+                <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
+                <Animated.View style={[styles.modalContent, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
 
                     {/* Header */}
                     <View style={styles.header}>
@@ -102,7 +114,7 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                         </View>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             {initialData && (
-                                <TouchableOpacity
+                                <PressableScale
                                     onPress={() => {
                                         Alert.alert(
                                             'Delete Subject',
@@ -116,24 +128,24 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                                     style={[styles.closeBtn, { backgroundColor: c.danger + '20' }]}
                                 >
                                     <Trash2 size={20} color={c.danger} />
-                                </TouchableOpacity>
+                                </PressableScale>
                             )}
-                            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                            <PressableScale onPress={onClose} style={styles.closeBtn}>
                                 <X size={20} color={c.text} />
-                            </TouchableOpacity>
+                            </PressableScale>
                         </View>
                     </View>
 
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                    <View style={{ flexShrink: 1, maxHeight: height * 0.7 }}>
+                        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 40 }]} showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
 
                             {/* Section: Basic Info */}
                             <Text style={styles.sectionLabel}>Basic Info</Text>
 
-                            <View style={styles.inputGroup}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
                                 <View style={styles.inputIcon}><BookOpen size={18} color={c.primary} /></View>
                                 <TextInput
-                                    style={styles.input} placeholder="Subject Name (e.g. Maths)" placeholderTextColor={c.subtext}
+                                    style={styles.input} placeholder="Name" placeholderTextColor={c.subtext}
                                     value={name} onChangeText={setName}
                                 />
                             </View>
@@ -191,14 +203,14 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                             {/* Categories */}
                             <Text style={styles.sectionLabel}>Category</Text>
                             <View style={styles.chipRow}>
-                                {['Theory', 'Practical', 'Assignment', 'Project'].map(cat => {
+                                {['Theory', 'Practical', 'Assignment'].map(cat => {
                                     const isActive = categories.includes(cat);
                                     return (
-                                        <TouchableOpacity key={cat} onPress={() => toggleCategory(cat)}
+                                        <PressableScale key={cat} onPress={() => toggleCategory(cat)}
                                             style={[styles.chip, isActive && { backgroundColor: c.primary, borderColor: c.primary }]}
                                         >
                                             <Text style={[styles.chipText, isActive && { color: '#FFF' }]}>{cat}</Text>
-                                        </TouchableOpacity>
+                                        </PressableScale>
                                     )
                                 })}
                             </View>
@@ -249,29 +261,34 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                                     </View>
                                 </View>
                             </LinearGradient>
-
-                            <View style={{ height: 100 }} />
+                            <View style={{ height: 60 }} />
                         </ScrollView>
-                    </KeyboardAvoidingView>
-
-                    {/* Footer */}
-                    <View style={styles.footer}>
-                        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                            <Text style={styles.saveText}>Save Details</Text>
-                        </TouchableOpacity>
                     </View>
 
-                </LinearGradient>
+                    {/* Footer - Sticky */}
+                    <View style={styles.footer}>
+                        <PressableScale style={styles.saveBtn} onPress={handleSave}>
+                            <Text style={styles.saveText}>Save Details</Text>
+                        </PressableScale>
+                    </View>
+                </Animated.View>
             </View>
-        </Modal >
+        </Modal>
     );
 };
 
 const getStyles = (c, isDark) => StyleSheet.create({
+    backdrop: {
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20
+    },
     modalContent: {
-        height: '95%', borderTopLeftRadius: 32, borderTopRightRadius: 32,
-        paddingTop: 24, paddingHorizontal: 4, borderWidth: 1, borderColor: c.glassBorder,
-        borderBottomLeftRadius: 0, borderBottomRightRadius: 0
+        borderRadius: 32,
+        paddingTop: 24,
+        borderWidth: 1, borderColor: c.glassBorder,
+        maxHeight: height * 0.7, width: '100%',
+        backgroundColor: isDark ? '#000000' : '#FFF',
+        overflow: 'hidden',
+        flexShrink: 1
     },
     header: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -311,7 +328,8 @@ const getStyles = (c, isDark) => StyleSheet.create({
 
     footer: {
         padding: 20, borderTopWidth: 1, borderTopColor: c.glassBorder,
-        position: 'absolute', bottom: 0, left: 0, right: 0
+        backgroundColor: isDark ? '#000000' : '#F9F9F9',
+        width: '100%'
     },
     saveBtn: {
         backgroundColor: c.primary, height: 56, borderRadius: 28,

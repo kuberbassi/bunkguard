@@ -15,6 +15,7 @@ import {
 import AnimatedHeader from '../components/AnimatedHeader';
 import { LinearGradient } from 'expo-linear-gradient';
 import SemesterSelector from '../components/SemesterSelector';
+import PressableScale from '../components/PressableScale';
 
 // Enable LayoutAnimation
 if (Platform.OS === 'android') {
@@ -36,20 +37,21 @@ const ResultsScreen = ({ navigation }) => {
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
 
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
 
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
 
-        primary: '#0A84FF',
-        accent: '#FF3B30',
-        success: isDark ? '#34C759' : '#10B981',
-        warning: isDark ? '#FF9500' : '#F59E0B',
-        danger: '#FF3B30',
+        primary: theme.palette.purple,
+        accent: theme.palette.magenta,
+        success: theme.palette.green,
+        warning: theme.palette.orange,
+        danger: theme.palette.red,
+        surface: isDark ? '#121212' : '#FFFFFF',
 
-        inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+        inputBg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
     };
 
 
@@ -286,9 +288,9 @@ const ResultsScreen = ({ navigation }) => {
                 style={styles.card}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             >
-                <View style={[styles.gradeBadge, { borderColor: gradeColor }]}>
-                    <Text style={[styles.gradeText, { color: gradeColor }]}>{sub.grade || '-'}</Text>
-                </View>
+                <LinearGradient colors={[gradeColor, gradeColor + '80']} style={styles.gradeBadge}>
+                    <Text style={styles.gradeText}>{sub.grade || '-'}</Text>
+                </LinearGradient>
 
                 <View style={{ flex: 1 }}>
                     <View style={styles.subHeader}>
@@ -476,17 +478,17 @@ const ResultsScreen = ({ navigation }) => {
                 </View>
 
                 {/* Grading Ref Toggle */}
-                <TouchableOpacity style={styles.refToggle} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowGradingRef(!showGradingRef); }}>
+                <PressableScale style={styles.refToggle} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowGradingRef(!showGradingRef); }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Info size={16} color={c.primary} />
                         <Text style={{ color: c.primary, fontWeight: '600' }}>Grading Key</Text>
                     </View>
                     {showGradingRef ? <ChevronUp size={16} color={c.subtext} /> : <ChevronDown size={16} color={c.subtext} />}
-                </TouchableOpacity>
+                </PressableScale>
 
                 {showGradingRef && (
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginBottom: 20 }}>
-                        {[
+                        {([
                             { g: 'O', r: '90-100', p: 10 },
                             { g: 'A+', r: '75-89', p: 9 },
                             { g: 'A', r: '65-74', p: 8 },
@@ -495,7 +497,7 @@ const ResultsScreen = ({ navigation }) => {
                             { g: 'C', r: '45-49', p: 5 },
                             { g: 'P', r: '40-44', p: 4 },
                             { g: 'F', r: '<40', p: 0 }
-                        ].map((item, i) => (
+                        ] || []).map((item, i) => (
                             <LinearGradient key={i} colors={[c.glassBgStart, c.glassBgEnd]} style={styles.refChip}>
                                 <Text style={{ fontWeight: 'bold', color: c.text, fontSize: 14 }}>{item.g}</Text>
                                 <Text style={{ fontSize: 10, color: c.subtext }}>{item.r}</Text>
@@ -509,20 +511,20 @@ const ResultsScreen = ({ navigation }) => {
                 <View style={styles.actionRow}>
                     <Text style={styles.sectionTitle}>{isEditing ? `Editing Sem ${selectedSemester}` : 'Subjects'}</Text>
                     {!isEditing ? (
-                        <TouchableOpacity style={styles.iconBtn} onPress={handleEditStart}>
+                        <PressableScale style={styles.iconBtn} onPress={handleEditStart}>
                             <Edit3 size={20} color={c.primary} />
-                        </TouchableOpacity>
+                        </PressableScale>
                     ) : (
                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity onPress={handleDeleteSemester} style={{ marginRight: 8 }}>
+                            <PressableScale onPress={handleDeleteSemester} style={{ marginRight: 8 }}>
                                 <Trash2 size={24} color={c.danger} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => { setIsEditing(false); setEditData(null); }}>
+                            </PressableScale>
+                            <PressableScale onPress={() => { setIsEditing(false); setEditData(null); }}>
                                 <X size={24} color={c.subtext} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleSave}>
+                            </PressableScale>
+                            <PressableScale onPress={handleSave}>
                                 {saving ? <ActivityIndicator color={c.success} /> : <Save size={24} color={c.success} />}
-                            </TouchableOpacity>
+                            </PressableScale>
                         </View>
                     )}
                 </View>
@@ -532,14 +534,14 @@ const ResultsScreen = ({ navigation }) => {
                     {isEditing ? (
                         <>
                             {(editData?.subjects || []).map((sub, i) => renderEditSubject(sub, i))}
-                            <TouchableOpacity style={styles.addBtn} onPress={() => {
+                            <PressableScale style={styles.addBtn} onPress={() => {
                                 const n = { ...editData };
                                 n.subjects.push({ name: '', credits: 4, type: 'theory', internal_theory: 0, external_theory: 0, internal_practical: 0, external_practical: 0 });
                                 setEditData(n);
                             }}>
                                 <Plus size={20} color={c.primary} />
                                 <Text style={{ color: c.primary, fontWeight: '700' }}>Add Subject</Text>
-                            </TouchableOpacity>
+                            </PressableScale>
                         </>
                     ) : (
                         (currentResult?.subjects || []).map(sub => renderSubjectCard(sub))
@@ -548,7 +550,7 @@ const ResultsScreen = ({ navigation }) => {
                     {!currentResult && !isEditing && (
                         <View style={styles.emptyState}>
                             <Text style={{ color: c.subtext }}>No results found.</Text>
-                            <TouchableOpacity onPress={handleEditStart}><Text style={{ color: c.primary, fontWeight: '700', marginTop: 8 }}>Add Now</Text></TouchableOpacity>
+                            <PressableScale onPress={handleEditStart}><Text style={{ color: c.primary, fontWeight: '700', marginTop: 8 }}>Add Now</Text></PressableScale>
                         </View>
                     )}
                 </View>
@@ -572,14 +574,14 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
         fontWeight: '900', color: c.text, letterSpacing: -1
     },
     scrollContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: 16,
         paddingBottom: 100 + insets.bottom
     },
     // SECTION 1: HEADER & CHIPS
     semScroll: {
         gap: 10,
-        paddingHorizontal: 24,
-        paddingBottom: 20 // More bottom room for shadows
+        paddingHorizontal: 16,
+        paddingBottom: 20
     },
     semChip: {
         paddingHorizontal: 20,
@@ -593,13 +595,13 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
         minWidth: 85,
     },
     semChipActive: {
-        backgroundColor: '#4facfe',
-        borderColor: '#00f2fe',
-        shadowColor: '#4facfe',
+        backgroundColor: c.primary,
+        borderColor: c.primary,
+        shadowColor: c.primary,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-        elevation: 10,
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 6,
     },
     semText: {
         fontWeight: '900',
@@ -635,14 +637,13 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     // Cards
     card: {
         borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 16,
-        borderWidth: 1, borderColor: c.glassBorder, marginBottom: 0
+        borderWidth: 1, borderColor: c.glassBorder, marginBottom: 0, backgroundColor: c.surface
     },
     gradeBadge: {
-        width: 50, height: 50, borderRadius: 18, borderWidth: 2,
+        width: 48, height: 48, borderRadius: 14,
         alignItems: 'center', justifyContent: 'center',
-        backgroundColor: c.glassBgEnd
     },
-    gradeText: { fontSize: 20, fontWeight: '900' },
+    gradeText: { fontSize: 18, fontWeight: '900', color: '#FFF' },
     subHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
     subName: { fontSize: 16, fontWeight: '700', color: c.text, flex: 1, marginRight: 8 },
     chip: { paddingHorizontal: 6, paddingVertical: 2, backgroundColor: c.glassBgEnd, borderRadius: 6 },

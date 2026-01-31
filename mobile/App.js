@@ -2,12 +2,13 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, useColorScheme, View, Text, StyleSheet } from 'react-native';
+import { StatusBar, useColorScheme, View, Text, StyleSheet, Platform, Dimensions } from 'react-native';
 import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { LayoutDashboard, Calendar as CalendarIcon, Settings, BarChart2, GraduationCap } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -25,10 +26,15 @@ import TimetableSetupScreen from './src/screens/TimetableSetupScreen';
 import AssignmentsScreen from './src/screens/AssignmentsScreen';
 import CourseManagerScreen from './src/screens/CourseManagerScreen';
 import TimetableScreen from './src/screens/TimetableScreen';
+import useRealTimeSync from './src/hooks/useRealTimeSync';
 
 import { SemesterProvider } from './src/contexts/SemesterContext';
+import { UpdateProvider } from './src/contexts/UpdateContext';
 import NetInfo from '@react-native-community/netinfo';
 import OfflineOverlay from './src/components/OfflineOverlay';
+
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { queryClient, clientPersister } from './src/lib/queryClient';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -36,33 +42,53 @@ const Tab = createBottomTabNavigator();
 const GlassTabBarBackground = () => {
   const { isDark } = useTheme();
   return (
-    <LinearGradient
-      colors={isDark ? ['rgba(0,0,0,0.95)', 'rgba(0,0,0,0.95)'] : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.95)']}
-      style={StyleSheet.absoluteFill}
-      start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-    />
+    <View style={StyleSheet.absoluteFill}>
+      <LinearGradient
+        colors={isDark
+          ? ['rgba(30,31,34,0.92)', 'rgba(30,31,34,0.98)']
+          : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.98)']}
+        style={[StyleSheet.absoluteFill, { borderRadius: 30 }]}
+      />
+      {/* Subtle border for glass depth */}
+      <View style={{
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+      }} />
+    </View>
   );
 };
 
 const MainTabs = () => {
   const { isDark } = useTheme();
-  const primary = '#0A84FF';
+  const primary = theme.palette.purple;
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
+          backgroundColor: 'transparent',
           position: 'absolute',
           borderTopWidth: 0,
-          elevation: 0,
-          height: 70,
-          paddingBottom: 10,
-          backgroundColor: 'transparent',
+          elevation: 10,
+          height: 64,
+          marginHorizontal: 24,
+          alignSelf: 'center',
+          width: Dimensions.get('window').width - 48,
+          bottom: Platform.OS === 'ios' ? 24 : 16,
+          borderRadius: 32,
+          paddingBottom: 0,
+          paddingTop: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: isDark ? 0.3 : 0.1,
+          shadowRadius: 20,
         },
         tabBarBackground: () => <GlassTabBarBackground />,
-        tabBarActiveTintColor: primary,
-        tabBarInactiveTintColor: isDark ? '#6E6E73' : '#9E9E9E',
+        tabBarActiveTintColor: '#AC67FF',
+        tabBarInactiveTintColor: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
         tabBarShowLabel: false,
       }}
     >
@@ -70,71 +96,110 @@ const MainTabs = () => {
         name="DashboardTab"
         component={DashboardScreen}
         options={{
+          tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', top: 5 }}>
-              <LayoutDashboard color={color} size={24} />
-              {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: primary, marginTop: 4 }} />}
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <LinearGradient
+                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
+                  style={{
+                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
+                  }}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                />
+              )}
+              <LayoutDashboard color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
             </View>
-          )
+          ),
         }}
       />
       <Tab.Screen
         name="ScheduleTab"
         component={CalendarScreen}
         options={{
+          tabBarLabel: 'Timeline',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', top: 5 }}>
-              <CalendarIcon color={color} size={24} />
-              {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: primary, marginTop: 4 }} />}
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <LinearGradient
+                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
+                  style={{
+                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
+                  }}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                />
+              )}
+              <CalendarIcon color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
             </View>
-          )
+          ),
         }}
       />
       <Tab.Screen
         name="AcademicTab"
         component={AcademicScreen}
         options={{
+          tabBarLabel: 'Academy',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{
-              top: -20,
-              width: 56, height: 56,
-              borderRadius: 28,
-              backgroundColor: isDark ? '#1E1E2E' : '#FFF',
-              alignItems: 'center', justifyContent: 'center',
-              shadowColor: primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5
-            }}>
-              <LinearGradient
-                colors={[primary, '#00f2fe']}
-                style={{ width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <GraduationCap color="#FFF" size={24} />
-              </LinearGradient>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <LinearGradient
+                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
+                  style={{
+                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
+                  }}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                />
+              )}
+              <GraduationCap color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
             </View>
-          )
+          ),
         }}
       />
       <Tab.Screen
         name="AnalyticsTab"
         component={AnalyticsScreen}
         options={{
+          tabBarLabel: 'Stats',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', top: 5 }}>
-              <BarChart2 color={color} size={24} />
-              {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: primary, marginTop: 4 }} />}
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <LinearGradient
+                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
+                  style={{
+                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
+                  }}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                />
+              )}
+              <BarChart2 color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
             </View>
-          )
+          ),
         }}
       />
       <Tab.Screen
         name="SettingsTab"
         component={SettingsScreen}
         options={{
+          tabBarLabel: 'Config',
           tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', justifyContent: 'center', top: 5 }}>
-              <Settings color={color} size={24} />
-              {focused && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: primary, marginTop: 4 }} />}
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {focused && (
+                <LinearGradient
+                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
+                  style={{
+                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
+                  }}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                />
+              )}
+              <Settings color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
             </View>
-          )
+          ),
         }}
       />
     </Tab.Navigator>
@@ -154,6 +219,9 @@ const AppNavigator = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // Initialize Real-time Sync
+  useRealTimeSync();
 
   if (authLoading) {
     return (
@@ -193,13 +261,19 @@ const AppNavigator = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <SemesterProvider>
-          <AppNavigator />
-        </SemesterProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister: clientPersister }}
+    >
+      <AuthProvider>
+        <ThemeProvider>
+          <SemesterProvider>
+            <UpdateProvider>
+              <AppNavigator />
+            </UpdateProvider>
+          </SemesterProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </PersistQueryClientProvider>
   );
 }
-

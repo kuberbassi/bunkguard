@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform, Image, Dimensions } from 'react-native';
+import PressableScale from '../components/PressableScale';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,17 +14,22 @@ const LoginScreen = () => {
     const { isDark } = useTheme();
     const { login } = useAuth();
 
-    // AMOLED Theme
+    // JetBrains Vibrant Palette
     const c = {
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-        glassBg: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
-        primary: '#0A84FF',
-        secondary: '#FF3B30'
+
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
+
+        primary: theme.palette.purple,
+        accent: theme.palette.magenta,
+        secondary: theme.palette.magenta
     };
 
     const styles = getStyles(c);
@@ -106,7 +112,7 @@ const LoginScreen = () => {
             <View style={styles.contentContainer}>
                 {/* LOGO AREA */}
                 <View style={styles.logoSection}>
-                    <LinearGradient colors={[c.primary || '#0A84FF', c.secondary || '#FF3B30']} style={styles.iconCircle}>
+                    <LinearGradient colors={theme.gradients.primary} style={styles.iconCircle}>
                         <GraduationCap size={48} color="#FFF" />
                     </LinearGradient>
                     <Text style={styles.title}>AcadHub</Text>
@@ -114,7 +120,7 @@ const LoginScreen = () => {
                 </View>
 
                 {/* LOGIN CARD */}
-                <LinearGradient colors={[c.glassBg || 'rgba(255,255,255,0.85)', isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.4)']} style={styles.glassCard} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.glassCard} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
                     <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>Welcome Back</Text>
                         <Text style={styles.cardSub}>Sign in to continue learning</Text>
@@ -123,7 +129,7 @@ const LoginScreen = () => {
                     {Platform.OS === 'web' ? (
                         <Text style={{ color: c.subtext, textAlign: 'center', marginBottom: 20 }}>Use Android/iOS for Google Sign-In</Text>
                     ) : (
-                        <TouchableOpacity
+                        <PressableScale
                             style={styles.googleBtn}
                             onPress={handleGoogleSignIn}
                             disabled={loading}
@@ -137,7 +143,7 @@ const LoginScreen = () => {
                                     <ArrowRight size={20} color="#FFF" style={{ opacity: 0.8 }} />
                                 </>
                             )}
-                        </TouchableOpacity>
+                        </PressableScale>
                     )}
 
                     {/* Developer Login Removed for Production */}
@@ -169,7 +175,11 @@ const getStyles = (c) => StyleSheet.create({
     glassCard: {
         width: '100%', padding: 32, borderRadius: 32,
         borderWidth: 1, borderColor: c.glassBorder,
-        marginBottom: 32
+        marginBottom: 32,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.2,
+        shadowRadius: 24,
     },
     cardHeader: { marginBottom: 32, alignItems: 'center' },
     cardTitle: { fontSize: 24, fontWeight: '800', color: c.text },

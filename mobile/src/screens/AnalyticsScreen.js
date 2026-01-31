@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSemester } from '../contexts/SemesterContext';
+import PressableScale from '../components/PressableScale';
 
 const AnalyticsScreen = () => {
     const { isDark } = useTheme();
@@ -19,20 +20,22 @@ const AnalyticsScreen = () => {
     // AMOLED Theme
     const c = {
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
-        bgGradMid: isDark ? '#000000' : '#F8F9FA',
+        bgGradMid: isDark ? '#000000' : '#F7F8FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
 
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
 
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
 
-        primary: '#0A84FF',
-        success: isDark ? '#34C759' : '#10B981',
-        danger: '#FF3B30',
-        warning: isDark ? '#FF9500' : '#F59E0B'
+        primary: theme.palette.purple,
+        success: theme.palette.green,
+        danger: theme.palette.red,
+        warning: theme.palette.orange,
+        accent: theme.palette.magenta,
+        surface: isDark ? '#121212' : '#FFFFFF',
     };
 
     const styles = getStyles(c, isDark, insets);
@@ -139,11 +142,11 @@ const AnalyticsScreen = () => {
 
                     {weeklyHasData ? (
                         <View style={styles.chartRow}>
-                            {weeklyData.map((item, index) => (
+                            {(weeklyData || []).map((item, index) => (
                                 <View key={index} style={styles.barGroup}>
                                     <View style={styles.barTrack}>
                                         <LinearGradient
-                                            colors={[item.count > 75 ? c.success : item.count > 50 ? c.warning : c.danger, item.count > 75 ? '#4ADE80' : item.count > 50 ? '#FDBA74' : '#F87171']}
+                                            colors={item.count >= 75 ? theme.gradients.success : item.count >= 50 ? theme.gradients.orange : theme.gradients.danger}
                                             style={[styles.barFill, { height: `${Math.max(item.count, 15)}%` }]}
                                             start={{ x: 0, y: 1 }} end={{ x: 0, y: 0 }}
                                         />
@@ -169,7 +172,7 @@ const AnalyticsScreen = () => {
                         <Text style={styles.cardTitle}>Focus Areas</Text>
                     </View>
 
-                    {focusSubjects.map((sub, idx) => {
+                    {(focusSubjects || []).map((sub, idx) => {
                         const pct = sub.percentage || 0;
                         const isSafe = pct >= 75;
                         return (
@@ -180,7 +183,7 @@ const AnalyticsScreen = () => {
                                 </View>
                                 <View style={styles.progTrack}>
                                     <LinearGradient
-                                        colors={[isSafe ? c.success : c.danger, isSafe ? '#4ADE80' : '#F87171']}
+                                        colors={isSafe ? theme.gradients.success : theme.gradients.danger}
                                         style={[styles.progFill, { width: `${pct}%` }]}
                                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                     />
@@ -234,10 +237,10 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     headerTitle: { fontWeight: '900', color: c.text, letterSpacing: -1 },
     headerSub: { color: c.subtext, fontWeight: '600', fontSize: 13, marginTop: 4 },
 
-    scrollContent: { padding: 20, paddingTop: 140, paddingBottom: 100 + insets.bottom },
+    scrollContent: { padding: 16, paddingTop: 140, paddingBottom: 100 + insets.bottom },
     card: {
         borderRadius: 24, padding: 20, marginBottom: 20,
-        borderWidth: 1, borderColor: c.glassBorder
+        borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.surface
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
     iconBox: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

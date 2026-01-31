@@ -10,6 +10,7 @@ import { theme, Layout } from '../theme';
 import { GraduationCap, Zap, BookOpen, ChevronRight, Beaker, LayoutGrid, Clock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
+import PressableScale from '../components/PressableScale';
 
 const { width } = Dimensions.get('window');
 
@@ -18,39 +19,39 @@ const AcademicScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
 
-    // Modern Color Palette
+    // JetBrains Vibrant Palette
     const c = {
-        bgGradStart: isDark ? '#000000' : '#F8F9FA',
-        bgGradMid: isDark ? '#000000' : '#F1F3F5',
+        bgGradStart: isDark ? '#000000' : '#FFFFFF',
+        bgGradMid: isDark ? '#000000' : '#F7F8FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
 
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
 
-        // Card Colors with gradients
+        // Card Colors with gradients (JetBrains Palette)
         cards: {
             results: {
-                bg: isDark ? ['#FF9500', '#FFCC00'] : ['#FFF4E6', '#FFFAEB'],
-                icon: ['#FF9500', '#FFCC00'],
-                text: isDark ? '#FFFFFF' : '#1A1A1A',
+                bg: isDark ? theme.gradients.vibrant : ['#FFF4E6', '#FFFAEB'],
+                icon: theme.gradients.vibrant,
+                text: '#FFFFFF',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#92400E'
             },
             assignments: {
-                bg: isDark ? ['#34C759', '#30D158'] : ['#ECFDF5', '#F0FDF4'],
-                icon: ['#34C759', '#30D158'],
-                text: isDark ? '#FFFFFF' : '#1A1A1A',
+                bg: isDark ? theme.gradients.success : ['#ECFDF5', '#F0FDF4'],
+                icon: theme.gradients.success,
+                text: '#FFFFFF',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#065F46'
             },
             skills: {
-                bg: isDark ? ['#BF5AF2', '#AF52DE'] : ['#FAF5FF', '#F3E8FF'],
-                icon: ['#BF5AF2', '#AF52DE'],
-                text: isDark ? '#FFFFFF' : '#1A1A1A',
+                bg: isDark ? theme.gradients.ocean : ['#FAF5FF', '#F3E8FF'],
+                icon: theme.gradients.ocean,
+                text: '#FFFFFF',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#6B21A8'
             },
             courses: {
-                bg: isDark ? ['#0A84FF', '#64D2FF'] : ['#EFF6FF', '#DBEAFE'],
-                icon: ['#0A84FF', '#64D2FF'],
-                text: isDark ? '#FFFFFF' : '#1A1A1A',
+                bg: isDark ? theme.gradients.primary : ['#EFF6FF', '#DBEAFE'],
+                icon: theme.gradients.primary,
+                text: '#FFFFFF',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#1E40AF'
             }
         }
@@ -115,9 +116,9 @@ const AcademicScreen = ({ navigation }) => {
                 isDark={isDark}
                 colors={{ text: c.text, subtext: c.subtext }}
                 rightComponent={
-                    <TouchableOpacity style={styles.iconBoxSmall}>
+                    <PressableScale style={styles.iconBoxSmall}>
                         <LayoutGrid size={22} color={c.text} />
-                    </TouchableOpacity>
+                    </PressableScale>
                 }
             />
 
@@ -145,10 +146,9 @@ const AcademicScreen = ({ navigation }) => {
 
                 <View style={styles.grid}>
                     {menuItems.map((item) => (
-                        <TouchableOpacity
+                        <PressableScale
                             key={item.id}
                             onPress={() => item.route && navigation.navigate(item.route)}
-                            activeOpacity={0.8}
                             style={styles.cardWrapper}
                         >
                             <LinearGradient
@@ -180,7 +180,7 @@ const AcademicScreen = ({ navigation }) => {
                                     <ChevronRight size={20} color={item.colors.subtext} opacity={0.6} />
                                 </View>
                             </LinearGradient>
-                        </TouchableOpacity>
+                        </PressableScale>
                     ))}
                 </View>
 
@@ -192,7 +192,7 @@ const AcademicScreen = ({ navigation }) => {
                     </Text>
                 </View>
 
-                <View style={{ height: 100 + insets.bottom }} />
+                <View style={{ height: insets.bottom + 20 }} />
             </Animated.ScrollView>
         </View>
     );
@@ -209,6 +209,7 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 20,
+        paddingBottom: 100 + insets.bottom
     },
     grid: {
         flexDirection: 'row',
@@ -221,15 +222,15 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
         marginBottom: 0,
     },
     card: {
-        height: 160,
-        borderRadius: 24,
+        height: 165,
+        borderRadius: 28,
         padding: 18,
         justifyContent: 'space-between',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: isDark ? 0.4 : 0.1,
-        shadowRadius: 12,
-        elevation: 3
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: isDark ? 0.3 : 0.1,
+        shadowRadius: 10,
+        elevation: 4
     },
     iconBox: {
         width: 56,

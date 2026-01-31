@@ -1,18 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, SafeAreaView, Platform, StatusBar,
-    TouchableOpacity, FlatList, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Animated
+    TouchableOpacity, FlatList, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Animated, Dimensions
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
 import { attendanceService } from '../services';
-import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, CheckCircle2, XCircle } from 'lucide-react-native';
+import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, CheckCircle2, XCircle, Settings, Calendar, GripVertical, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSemester } from '../contexts/SemesterContext';
+import PressableScale from '../components/PressableScale';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '../services/api';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const { height } = Dimensions.get('window');
 
 const TimetableScreen = ({ navigation }) => {
     const { isDark } = useTheme();
@@ -24,29 +29,66 @@ const TimetableScreen = ({ navigation }) => {
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
-        primary: '#0A84FF',
-        danger: '#FF3B30',
-        surface: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-        modalBg: isDark ? ['rgba(10, 10, 10, 0.98)', 'rgba(20, 20, 20, 0.98)'] : ['rgba(255, 255, 255, 0.98)', 'rgba(248, 249, 250, 0.98)']
+        glassBgStart: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.85)',
+        glassBgEnd: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.65)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+        text: isDark ? '#FFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
+        primary: theme.palette.purple,
+        danger: theme.palette.red,
+        surface: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+        modalBg: isDark ? ['#000000', '#000000'] : ['rgba(255, 255, 255, 0.98)', 'rgba(248, 249, 250, 0.98)']
     };
 
-    const styles = getStyles(c, isDark);
+    const styles = getStyles(c, isDark, insets);
+    const queryClient = useQueryClient();
 
     const [selectedDay, setSelectedDay] = useState('Monday');
-    const [timetable, setTimetable] = useState({});
-    const [periods, setPeriods] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
     const scrollY = useRef(new Animated.Value(0)).current;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
+
+    // Queries
+    const { data: timetableData, isLoading: timetableLoading, refetch: refetchTimetable } = useQuery({
+        queryKey: ['timetable', selectedSemester],
+        queryFn: () => attendanceService.getTimetable(selectedSemester),
+    });
+
+    const { data: subjects = [] } = useQuery({
+        queryKey: ['subjects', selectedSemester],
+        queryFn: () => attendanceService.getSubjects(selectedSemester),
+    });
+
+    const { data: markedClasses = [] } = useQuery({
+        queryKey: ['attendance_logs', todayStr, selectedSemester],
+        queryFn: () => attendanceService.getClassesForDate(todayStr, selectedSemester),
+    });
+
+    const timetable = timetableData?.schedule || {};
+    const periods = timetableData?.periods || [];
+    const isFetching = !!(timetableLoading || timetableData === undefined);
+    const refreshing = timetableLoading || isFetching;
+    const loading = timetableLoading;
+
+    const fetchData = () => {
+        refetchTimetable();
+        queryClient.invalidateQueries({ queryKey: ['attendance_logs', todayStr, selectedSemester] });
+    };
+
+    // Enrich timetable with marked status for today
+    const effectiveTimetable = { ...timetable };
+    if (selectedDay === todayName && effectiveTimetable[selectedDay]) {
+        effectiveTimetable[selectedDay] = effectiveTimetable[selectedDay].map(slot => {
+            const marked = markedClasses.find(m => m.subject_id === slot.subject_id);
+            return { ...slot, marked_status: marked ? marked.marked_status : 'pending' };
+        });
+    }
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
-    const [subjects, setSubjects] = useState([]);
+    const [structureModalVisible, setStructureModalVisible] = useState(false);
+    const [tempPeriods, setTempPeriods] = useState([]);
     const [newSlot, setNewSlot] = useState({
         subject_id: '', name: '', startTime: '09:00 AM', endTime: '10:00 AM',
         time: '', classroom: '', type: 'Lecture'
@@ -56,6 +98,37 @@ const TimetableScreen = ({ navigation }) => {
     const [timePickerVisible, setTimePickerVisible] = useState(false);
     const [timePickerTarget, setTimePickerTarget] = useState('start');
     const [tempTime, setTempTime] = useState({ hour: 9, minute: 0, period: 'AM' });
+
+    // Animation Refs
+    const modalScale = useRef(new Animated.Value(0.9)).current;
+    const modalOpacity = useRef(new Animated.Value(0)).current;
+    const structureScale = useRef(new Animated.Value(0.9)).current;
+    const structureOpacity = useRef(new Animated.Value(0)).current;
+    const pickerScale = useRef(new Animated.Value(0.9)).current;
+    const pickerOpacity = useRef(new Animated.Value(0)).current;
+
+    const animateModal = (toVisible, animScale, animOpacity) => {
+        if (toVisible) {
+            animScale.setValue(0.9);
+            animOpacity.setValue(0);
+            Animated.parallel([
+                Animated.spring(animScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                Animated.timing(animOpacity, { toValue: 1, duration: 200, useNativeDriver: true })
+            ]).start();
+        }
+    };
+
+    useEffect(() => {
+        if (modalVisible) animateModal(true, modalScale, modalOpacity);
+    }, [modalVisible]);
+
+    useEffect(() => {
+        if (structureModalVisible) animateModal(true, structureScale, structureOpacity);
+    }, [structureModalVisible]);
+
+    useEffect(() => {
+        if (timePickerVisible) animateModal(true, pickerScale, pickerOpacity);
+    }, [timePickerVisible]);
 
     const openTimePicker = (target) => {
         setTimePickerTarget(target);
@@ -104,138 +177,86 @@ const TimetableScreen = ({ navigation }) => {
         setModalVisible(true);
     };
 
+    const handleSaveStructure = async () => {
+        try {
+            await attendanceService.saveTimetableStructure(tempPeriods, selectedSemester);
+            setStructureModalVisible(false);
+            queryClient.invalidateQueries({ queryKey: ['timetable', selectedSemester] });
+        } catch (error) {
+            Alert.alert('Error', 'Failed to save structure');
+        }
+    };
+
+    // ... existing Time Picker logic ...
+
+    const handleMarkAttendance = async (subjectId, status) => {
+        try {
+            await attendanceService.markAttendance(subjectId, status, todayStr);
+            queryClient.invalidateQueries({ queryKey: ['attendance_logs', todayStr, selectedSemester] });
+        } catch (error) {
+            Alert.alert('Error', 'Failed to mark attendance');
+        }
+    };
+
+    const deleteMutation = useMutation({
+        mutationFn: (slotId) => api.delete(`/api/timetable/slot/${slotId}?semester=${selectedSemester}`),
+        onMutate: async (slotId) => {
+            await queryClient.cancelQueries({ queryKey: ['timetable', selectedSemester] });
+            const previousData = queryClient.getQueryData(['timetable', selectedSemester]);
+
+            queryClient.setQueryData(['timetable', selectedSemester], old => {
+                if (!old) return old;
+                const next = { ...old };
+                if (next.schedule && next.schedule[selectedDay]) {
+                    next.schedule[selectedDay] = next.schedule[selectedDay].filter(s => s._id !== slotId && s.id !== slotId);
+                }
+                return next;
+            });
+
+            return { previousData };
+        },
+        onError: (err, slotId, context) => {
+            queryClient.setQueryData(['timetable', selectedSemester], context.previousData);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['timetable', selectedSemester] });
+        }
+    });
+
+    const handleDeleteSlot = (slotId) => {
+        Alert.alert("Delete Class", "Remove this class from the schedule?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Delete", style: "destructive", onPress: () => deleteMutation.mutate(slotId) }
+        ]);
+    };
+
+    const saveMutation = useMutation({
+        mutationFn: (slotData) => attendanceService.addTimetableSlot(slotData),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['timetable', selectedSemester] });
+            setModalVisible(false);
+            setEditingSlot(null);
+            setNewSlot({ subject_id: '', name: '', startTime: '09:00 AM', endTime: '10:00 AM', classroom: '', type: 'Lecture' });
+        },
+        onError: () => Alert.alert("Error", "Failed to save changes.")
+    });
+
     const handleSaveSlot = async () => {
         if (!newSlot.subject_id && !['Break', 'Free'].includes(newSlot.type)) {
             return Alert.alert("Missing Fields", "Please select a subject.");
         }
 
-        setAddingSlot(true);
+        const slotData = {
+            day: selectedDay,
+            semester: selectedSemester,
+            ...newSlot,
+            time: `${newSlot.startTime} - ${newSlot.endTime}`
+        };
 
-        try {
-            const currentDaySlots = timetable[selectedDay] || [];
-            const newStartMin = getMinutes(newSlot.startTime);
-
-            const conflictingSlot = currentDaySlots.find(s => {
-                const sStart = getMinutes(s.startTime || s.start_time || (s.time ? s.time.split('-')[0] : ''));
-                return Math.abs(sStart - newStartMin) < 5;
-            });
-
-            const slotToDelete = (editingSlot && (editingSlot.id || editingSlot._id))
-                ? (editingSlot.id || editingSlot._id)
-                : (conflictingSlot ? (conflictingSlot.id || conflictingSlot._id) : null);
-
-            if (slotToDelete) {
-                try {
-                    await api.delete(`/api/timetable/slot/${slotToDelete}`);
-                } catch (e) {
-                    // ignore if already deleted
-                }
-            }
-
-            const slotData = {
-                day: selectedDay,
-                semester: selectedSemester,
-                ...newSlot,
-                time: `${newSlot.startTime} - ${newSlot.endTime}`
-            };
-
-            await attendanceService.addTimetableSlot(slotData);
-
-            await fetchData();
-            setModalVisible(false);
-            setEditingSlot(null);
-            setNewSlot({ subject_id: '', name: '', startTime: '09:00 AM', endTime: '10:00 AM', classroom: '', type: 'Lecture' });
-
-        } catch (error) {
-            console.error("Save failed", error);
-            Alert.alert("Error", "Failed to save changes.");
-        } finally {
-            setAddingSlot(false);
-        }
+        saveMutation.mutate(slotData);
     };
 
-    const handleMarkAttendance = async (subjectId, status) => {
-        try {
-            const todayStr = new Date().toISOString().split('T')[0];
-            await attendanceService.markAttendance(
-                subjectId,
-                status,
-                todayStr
-            );
-            fetchData(); // Refresh to show updated status/stats
-        } catch (error) {
-            console.error("Mark failed", error);
-            Alert.alert('Error', 'Failed to mark attendance');
-        }
-    };
 
-    const handleDeleteSlot = async (slotId) => {
-        Alert.alert("Delete Class", "Remove this class from the schedule?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete", style: "destructive",
-                onPress: async () => {
-                    // Optimistic Delete
-                    const previousTimetable = { ...timetable };
-                    setTimetable(prev => {
-                        const next = { ...prev };
-                        if (next[selectedDay]) {
-                            next[selectedDay] = next[selectedDay].filter(s => s._id !== slotId && s.id !== slotId);
-                        }
-                        return next;
-                    });
-
-                    try {
-                        if (slotId && !slotId.startsWith('temp-')) {
-                            await api.delete(`/api/timetable/slot/${slotId}?semester=${selectedSemester}`);
-                        }
-                        // No fetch needed if success, but good for sync
-                        // fetchData(); 
-                    } catch (error) {
-                        console.error("Error", error);
-                        setTimetable(previousTimetable); // Revert
-                        Alert.alert("Error", "Could not delete.");
-                    }
-                }
-            }
-        ]);
-    };
-
-    const fetchData = async () => {
-        try {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const [timetableRes, subjectsRes, markedRes] = await Promise.all([
-                attendanceService.getTimetable(selectedSemester),
-                attendanceService.getSubjects(selectedSemester),
-                attendanceService.getClassesForDate(todayStr, selectedSemester)
-            ]);
-
-            const schedule = timetableRes.schedule || {};
-            const markedClasses = markedRes || [];
-
-            // Enrich timetable with marked status for today
-            // Note: This logic could be more robust to handle any selected date, 
-            // but for parity we focus on current day logs.
-            const todayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()];
-            if (schedule[todayName]) {
-                schedule[todayName] = schedule[todayName].map(slot => {
-                    const marked = markedClasses.find(m => m._id === slot.subject_id || m.id === slot.subject_id);
-                    return { ...slot, marked_status: marked ? marked.marked_status : 'pending' };
-                })
-            }
-
-            setTimetable(schedule);
-            setPeriods(timetableRes.periods || []);
-            setSubjects(subjectsRes || []);
-        } catch (error) {
-            console.error("Failed to load timetable data", error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
-
-    useEffect(() => { fetchData(); }, [selectedSemester]);
 
     const renderSlotItem = ({ item, index }) => {
         // Handle legacy string items (rare now, but for safety)
@@ -243,9 +264,18 @@ const TimetableScreen = ({ navigation }) => {
             const typeMap = { 'c': 'Lecture', 'l': 'Lab', 'b': 'Break', 't': 'Tutorial' };
             const time = periods[index] ? `${periods[index].startTime} - ${periods[index].endTime}` : 'No Time';
             return (
-                <View style={[styles.slotCard, { padding: 12, opacity: 0.7 }]}>
-                    <Text style={{ color: c.text }}>{typeMap[item] || 'Class'}</Text>
-                    <Text style={{ color: c.subtext, fontSize: 10 }}>{time}</Text>
+                <View style={[styles.timelineRow, { opacity: 0.7 }]}>
+                    <View style={styles.timelineLeft}>
+                        <Text style={styles.timeStart}>{periods[index] ? periods[index].startTime : '--:--'}</Text>
+                        <Text style={styles.timeEnd}>{periods[index] ? periods[index].endTime : '--:--'}</Text>
+                    </View>
+                    <View style={styles.timelineLineContainer}>
+                        <View style={styles.timelineLine} />
+                        <View style={styles.timelineDot} />
+                    </View>
+                    <View style={styles.timelineContent}>
+                        <Text style={styles.timelineSubject}>{typeMap[item] || 'Class'}</Text>
+                    </View>
                 </View>
             );
         }
@@ -258,9 +288,18 @@ const TimetableScreen = ({ navigation }) => {
             displayTime = `${periods[index].startTime} - ${periods[index].endTime}`;
         }
 
+        let startTime = '09:00';
+        let endTime = '10:00';
+        if (displayTime && displayTime.includes('-')) {
+            [startTime, endTime] = displayTime.split('-').map(s => s.trim());
+        } else if (item.startTime && item.endTime) {
+            startTime = item.startTime;
+            endTime = item.endTime;
+        }
+
         // Break/Free Logic
         let displaySubject = 'Unknown Subject';
-        let infoIcon = <Book size={12} color={c.subtext} />;
+        let infoIcon = <Book size={14} color={c.subtext} />;
 
         const isStructureBreak = (item._structType && item._structType.toLowerCase() === 'break') ||
             (periods[index] && periods[index].type && periods[index].type.toLowerCase() === 'break');
@@ -283,17 +322,15 @@ const TimetableScreen = ({ navigation }) => {
 
         if (isBreak) {
             displaySubject = 'Break';
-            infoIcon = <Coffee size={12} color={c.subtext} />;
+            infoIcon = <Coffee size={14} color={theme.palette.orange} />;
         } else if (isFree) {
-            displaySubject = 'Free/Empty';
-            infoIcon = <LayoutDashboard size={12} color={c.subtext} />;
+            displaySubject = 'Free Slot';
+            infoIcon = <LayoutDashboard size={14} color={c.subtext} />;
         } else if (isCustom) {
             displaySubject = item.label || item.name || 'Custom';
-            infoIcon = <Edit2 size={12} color={c.subtext} />;
+            infoIcon = <Edit2 size={14} color={c.subtext} />;
         } else {
             let subjectName = item.name || item.subject_name;
-            // Always try to look up subject name if we have an ID, to ensure it's up to date
-            // or if name is missing
             if (item.subject_id) {
                 const normalizedItemId = safeId(item.subject_id);
                 const foundSub = subjects.find(s => safeId(s._id || s.id) === normalizedItemId);
@@ -304,40 +341,85 @@ const TimetableScreen = ({ navigation }) => {
             if (subjectName) displaySubject = subjectName;
         }
 
-        return (
-            <View style={styles.slotCardContainer}>
-                <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => item.subject_id && !isStructureBreak && !isFree && handleEditStart(item)}
-                    style={[styles.slotCard, { flex: 1, marginBottom: 0 }]}
-                >
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={[styles.slotSubject, (item.type === 'Break' || isStructureBreak) && { color: c.primary }]} numberOfLines={1}>{displaySubject}</Text>
-                            {status === 'present' && <View style={styles.statusDotPresent} />}
-                            {status === 'absent' && <View style={styles.statusDotAbsent} />}
-                        </View>
-                        <View style={styles.timeRow}>
-                            <Clock size={12} color={c.subtext} style={{ marginRight: 6 }} />
-                            <Text style={styles.slotTime}>{displayTime || '09:00 AM - 10:00 AM'}</Text>
-                        </View>
-                    </View>
-                    {item.subject_id && !isStructureBreak && !isFree && (
-                        <Edit2 size={16} color={c.subtext} opacity={0.5} />
-                    )}
-                </TouchableOpacity>
+        const getSubjectColor = (name) => {
+            const lower = (name || '').toLowerCase();
+            if (lower.includes('lab') || lower.includes('practical')) return theme.palette.green;
+            if (lower.includes('break')) return theme.palette.orange;
+            if (lower.includes('math')) return theme.palette.cyan;
+            return theme.palette.purple;
+        };
 
-                {/* Quick Marking for Today */}
-                {isToday && item.subject_id && !isStructureBreak && !isFree && (
-                    <View style={styles.quickMarkRow}>
-                        <TouchableOpacity style={[styles.miniMarkBtn, status === 'present' && { backgroundColor: '#34C759' }]} onPress={() => handleMarkAttendance(item.subject_id, 'present')}>
-                            <CheckCircle2 size={14} color={status === 'present' ? '#FFF' : '#34C759'} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.miniMarkBtn, status === 'absent' && { backgroundColor: '#FF3B30' }]} onPress={() => handleMarkAttendance(item.subject_id, 'absent')}>
-                            <XCircle size={14} color={status === 'absent' ? '#FFF' : '#FF3B30'} />
-                        </TouchableOpacity>
+        const accentColor = getSubjectColor(displaySubject);
+
+        // Determine if last item to hide connector line
+        const isLast = index === currentSlots.length - 1;
+
+        return (
+            <View style={styles.timelineRow}>
+                {/* Left: Time */}
+                <View style={styles.timelineLeft}>
+                    <Text style={styles.timeStart}>{startTime}</Text>
+                    <Text style={styles.timeEnd}>{endTime}</Text>
+                </View>
+
+                {/* Middle: Line & Dot */}
+                <View style={styles.timelineLineContainer}>
+                    {!isLast && <View style={[styles.timelineLine, { backgroundColor: c.glassBorder }]} />}
+                    <View style={[styles.timelineDot, { borderColor: accentColor, backgroundColor: c.surface }]} >
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accentColor }} />
                     </View>
-                )}
+                </View>
+
+                {/* Right: Content */}
+                <View style={styles.timelineContentWrapper}>
+                    <PressableScale
+                        onPress={() => item.subject_id && !isStructureBreak && !isFree && handleEditStart(item)}
+                        style={[styles.timelineCard, { borderColor: isBreak ? 'transparent' : c.glassBorder }]}
+                    >
+                        <View style={styles.cardHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                {infoIcon}
+                                <Text style={[styles.timelineSubject, isBreak && { color: theme.palette.orange }]} numberOfLines={1}>{displaySubject}</Text>
+                            </View>
+
+                            {/* Status Indicators */}
+                            {!isBreak && !isFree && (
+                                <View style={{ flexDirection: 'row', gap: 6 }}>
+                                    {status === 'present' && <View style={[styles.statusBadge, { backgroundColor: theme.palette.green + '20' }]}><CheckCircle2 size={12} color={theme.palette.green} /></View>}
+                                    {status === 'absent' && <View style={[styles.statusBadge, { backgroundColor: theme.palette.red + '20' }]}><XCircle size={12} color={theme.palette.red} /></View>}
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Location / Details */}
+                        {item.classroom ? (
+                            <View style={styles.cardDetailRow}>
+                                <MapPin size={12} color={c.subtext} />
+                                <Text style={styles.cardDetailText}>{item.classroom}</Text>
+                            </View>
+                        ) : null}
+
+                        {/* Quick Actions (Today Only) */}
+                        {isToday && item.subject_id && !isStructureBreak && !isFree && (
+                            <View style={styles.quickActions}>
+                                <PressableScale style={[styles.actionBtn, status === 'present' && styles.actionBtnActive]} onPress={() => handleMarkAttendance(item.subject_id, 'present')}>
+                                    <Text style={[styles.actionBtnText, status === 'present' && { color: theme.palette.green }]}>P</Text>
+                                </PressableScale>
+                                <View style={styles.actionDivider} />
+                                <PressableScale style={[styles.actionBtn, status === 'absent' && styles.actionBtnActive]} onPress={() => handleMarkAttendance(item.subject_id, 'absent')}>
+                                    <Text style={[styles.actionBtnText, status === 'absent' && { color: theme.palette.red }]}>A</Text>
+                                </PressableScale>
+                            </View>
+                        )}
+                    </PressableScale>
+
+                    {/* Delete Action - Outside card to be distinct */}
+                    {item.subject_id && !isStructureBreak && !isFree && (
+                        <PressableScale onPress={() => handleDeleteSlot(item.id || item._id)} style={styles.deleteSideBtn}>
+                            <Trash2 size={16} color={c.danger} />
+                        </PressableScale>
+                    )}
+                </View>
             </View>
         );
     };
@@ -362,7 +444,7 @@ const TimetableScreen = ({ navigation }) => {
     };
 
     // Merge Structure (Periods) with Schedule (Slots)
-    const rawDailySlots = timetable[selectedDay] || [];
+    const rawDailySlots = effectiveTimetable[selectedDay] || [];
     const dailySlots = [...rawDailySlots].sort((a, b) => {
         const aTime = a.startTime || a.start_time || (a.time ? a.time.split('-')[0] : '');
         const bTime = b.startTime || b.start_time || (b.time ? b.time.split('-')[0] : '');
@@ -438,21 +520,27 @@ const TimetableScreen = ({ navigation }) => {
                 // No onBack for main tab
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 12 }}>
-                        <TouchableOpacity onPress={() => {
+                        <PressableScale onPress={() => {
+                            setTempPeriods(JSON.parse(JSON.stringify(periods)));
+                            setStructureModalVisible(true);
+                        }} style={styles.addBtn}>
+                            <Settings size={22} color={c.text} />
+                        </PressableScale>
+                        <PressableScale onPress={() => {
                             setEditingSlot(null);
                             setNewSlot({ subject_id: '', name: '', startTime: '09:00 AM', endTime: '10:00 AM', classroom: '', type: 'Lecture' });
                             setModalVisible(true);
                         }} style={styles.addBtn}>
                             <Plus size={24} color={c.primary} />
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
                 }
             >
                 {/* Day Tabs */}
                 <View style={styles.daysContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysScroll}>
-                        {DAYS.map(day => (
-                            <TouchableOpacity
+                        {(DAYS || []).map(day => (
+                            <PressableScale
                                 key={day}
                                 style={[styles.dayTab, selectedDay === day && styles.activeDayTab]}
                                 onPress={() => setSelectedDay(day)}
@@ -460,106 +548,209 @@ const TimetableScreen = ({ navigation }) => {
                                 <Text style={[styles.dayText, selectedDay === day && styles.activeDayText]}>
                                     {day.substring(0, 3)}
                                 </Text>
-                            </TouchableOpacity>
+                            </PressableScale>
                         ))}
                     </ScrollView>
                 </View>
             </AnimatedHeader>
 
             {/* ADD SLOT MODAL */}
-            <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
-                    <LinearGradient colors={c.modalBg} style={styles.modalContent}>
+            <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 }}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
+                    <Animated.View style={[styles.modalContent, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                         <Text style={styles.modalTitle}>{editingSlot ? 'Edit Class' : 'Add Class'} ({selectedDay})</Text>
 
-                        <Text style={styles.label}>Subject</Text>
-                        <ScrollView style={styles.subjectList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                            {subjects.map(sub => {
-                                const isSelected = safeId(newSlot.subject_id) === safeId(sub._id || sub.id);
-                                return (
-                                    <TouchableOpacity
-                                        key={sub._id || sub.id}
-                                        style={[styles.subjectOption, isSelected && styles.selectedOption]}
-                                        onPress={() => {
-                                            const sId = safeId(sub._id || sub.id);
-                                            setNewSlot({ ...newSlot, subject_id: sId, name: sub.name });
-                                        }}
-                                    >
-                                        <Text style={[styles.optionText, isSelected && styles.selectedOptionText]}>{sub.name}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-
-                        {/* Hide Manual Time Picker if Periods Exist (Enforce Structure) */}
-                        {periods.length === 0 && (
-                            <>
-                                <Text style={styles.label}>Time Duration</Text>
-                                <View style={styles.timeRangeContainer}>
-                                    <TouchableOpacity style={styles.timeInputBtn} onPress={() => openTimePicker('start')}>
-                                        <Text style={styles.timeLabel}>Start</Text>
-                                        <Text style={styles.timeValue}>{newSlot.startTime}</Text>
-                                    </TouchableOpacity>
-                                    <View style={styles.timeSeparator} />
-                                    <TouchableOpacity style={styles.timeInputBtn} onPress={() => openTimePicker('end')}>
-                                        <Text style={styles.timeLabel}>End</Text>
-                                        <Text style={styles.timeValue}>{newSlot.endTime}</Text>
-                                    </TouchableOpacity>
+                        <View style={{ flexShrink: 1 }}>
+                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, paddingTop: 4 }} style={{ flexGrow: 0 }}>
+                                <Text style={styles.label}>Subject</Text>
+                                <View style={styles.subjectGrid}>
+                                    {(subjects || []).map(sub => {
+                                        const subId = safeId(sub._id || sub.id);
+                                        const isSelected = safeId(newSlot.subject_id) === subId;
+                                        return (
+                                            <PressableScale
+                                                key={subId}
+                                                style={[styles.subjectChip, isSelected && { backgroundColor: c.primary, borderColor: c.primary }]}
+                                                onPress={() => setNewSlot({ ...newSlot, subject_id: subId, name: sub.name })}
+                                            >
+                                                <Text style={[styles.subjectChipText, isSelected && { color: '#FFF' }]}>{sub.name}</Text>
+                                            </PressableScale>
+                                        );
+                                    })}
                                 </View>
-                            </>
-                        )}
-                        <Text style={styles.label}>Classroom</Text>
-                        <TextInput
-                            style={styles.input} placeholder="Room 101" placeholderTextColor={c.subtext}
-                            value={newSlot.classroom} onChangeText={t => setNewSlot({ ...newSlot, classroom: t })}
-                        />
 
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setModalVisible(false); setEditingSlot(null); }}>
-                                <Text style={styles.cancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveSlot} disabled={addingSlot}>
-                                {addingSlot ? <ActivityIndicator color="white" /> : <Text style={styles.saveText}>{editingSlot ? 'Save Changes' : 'Add Class'}</Text>}
-                            </TouchableOpacity>
+                                {periods.length === 0 && (
+                                    <>
+                                        <Text style={styles.label}>Time Duration</Text>
+                                        <View style={styles.timeRangeGrid}>
+                                            <PressableScale style={styles.timeInputBox} onPress={() => openTimePicker('start')}>
+                                                <Text style={styles.timeLabel}>START</Text>
+                                                <Text style={styles.timeVal}>{newSlot.startTime}</Text>
+                                            </PressableScale>
+                                            <View style={styles.timeDash} />
+                                            <PressableScale style={styles.timeInputBox} onPress={() => openTimePicker('end')}>
+                                                <Text style={styles.timeLabel}>END</Text>
+                                                <Text style={styles.timeVal}>{newSlot.endTime}</Text>
+                                            </PressableScale>
+                                        </View>
+                                    </>
+                                )}
+
+                                <Text style={styles.label}>Classroom / Venue</Text>
+                                <TextInput
+                                    style={styles.inputField}
+                                    placeholder="Room 101, Lab A..."
+                                    placeholderTextColor={c.subtext}
+                                    value={newSlot.classroom}
+                                    onChangeText={t => setNewSlot({ ...newSlot, classroom: t })}
+                                />
+                            </ScrollView>
+
+                            <View style={styles.stickyFooter}>
+                                {editingSlot && (
+                                    <PressableScale style={[styles.secondaryBtn, { backgroundColor: c.danger + '15' }]} onPress={() => { setModalVisible(false); handleDeleteSlot(editingSlot.id || editingSlot._id); }}>
+                                        <Trash2 size={20} color={c.danger} />
+                                    </PressableScale>
+                                )}
+                                <PressableScale style={styles.secondaryBtn} onPress={() => setModalVisible(false)}>
+                                    <Text style={{ color: c.text, fontWeight: '700' }}>Cancel</Text>
+                                </PressableScale>
+                                <PressableScale onPress={handleSaveSlot} disabled={addingSlot} style={{ flex: 1, borderRadius: 18, overflow: 'hidden' }}>
+                                    <LinearGradient
+                                        colors={theme.gradients.primary}
+                                        style={styles.primaryBtn}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                    >
+                                        {addingSlot ? <ActivityIndicator color="white" /> : <Text style={styles.primaryBtnText}>{editingSlot ? 'Update' : 'Add Class'}</Text>}
+                                    </LinearGradient>
+                                </PressableScale>
+                            </View>
                         </View>
-                    </LinearGradient>
+                    </Animated.View>
                 </View>
             </Modal>
 
             {/* TIME PICKER MODAL */}
             <Modal transparent visible={timePickerVisible} animationType="fade" onRequestClose={() => setTimePickerVisible(false)}>
                 <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setTimePickerVisible(false)}>
-                    <LinearGradient colors={c.modalBg} style={styles.pickerContainer}>
-                        <Text style={styles.pickerTitle}>Select Time</Text>
-                        <View style={styles.pickerRow}>
-                            <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                                    <TouchableOpacity key={`h_${h}`} style={[styles.pickerItem, tempTime.hour === h && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, hour: h }))}>
-                                        <Text style={[styles.pickerText, tempTime.hour === h && styles.pickerSelectedText]}>{h.toString().padStart(2, '0')}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                            <Text style={styles.colon}>:</Text>
-                            <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                                {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
-                                    <TouchableOpacity key={`m_${m}`} style={[styles.pickerItem, tempTime.minute === m && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, minute: m }))}>
-                                        <Text style={[styles.pickerText, tempTime.minute === m && styles.pickerSelectedText]}>{m.toString().padStart(2, '0')}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                            <View style={styles.ampmColumn}>
-                                {['AM', 'PM'].map(p => (
-                                    <TouchableOpacity key={p} style={[styles.pickerItem, tempTime.period === p && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, period: p }))}>
-                                        <Text style={[styles.pickerText, tempTime.period === p && styles.pickerSelectedText]}>{p}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                    <Animated.View style={[styles.pickerContainer, { transform: [{ scale: pickerScale }], opacity: pickerOpacity }]}>
+                        <LinearGradient colors={isDark ? theme.gradients.cardDark : theme.gradients.cardLight} style={{ padding: 24, borderRadius: 32, borderWidth: 1, borderColor: c.glassBorder }}>
+                            <Text style={styles.pickerTitle}>Select Time</Text>
+                            <View style={styles.pickerRow}>
+                                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                                        <PressableScale key={`h_${h}`} style={[styles.pickerItem, tempTime.hour === h && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, hour: h }))}>
+                                            <Text style={[styles.pickerText, tempTime.hour === h && styles.pickerSelectedText]}>{h.toString().padStart(2, '0')}</Text>
+                                        </PressableScale>
+                                    ))}
+                                </ScrollView>
+                                <Text style={styles.colon}>:</Text>
+                                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
+                                        <PressableScale key={`m_${m}`} style={[styles.pickerItem, tempTime.minute === m && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, minute: m }))}>
+                                            <Text style={[styles.pickerText, tempTime.minute === m && styles.pickerSelectedText]}>{m.toString().padStart(2, '0')}</Text>
+                                        </PressableScale>
+                                    ))}
+                                </ScrollView>
+                                <View style={styles.ampmColumn}>
+                                    {['AM', 'PM'].map(p => (
+                                        <PressableScale key={p} style={[styles.pickerItem, tempTime.period === p && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, period: p }))}>
+                                            <Text style={[styles.pickerText, tempTime.period === p && styles.pickerSelectedText]}>{p}</Text>
+                                        </PressableScale>
+                                    ))}
+                                </View>
                             </View>
-                        </View>
-                        <TouchableOpacity style={styles.confirmBtn} onPress={handleTimeConfirm}>
-                            <Text style={styles.confirmText}>Confirm</Text>
-                        </TouchableOpacity>
-                    </LinearGradient>
+                            <PressableScale style={{ borderRadius: 14, overflow: 'hidden', marginTop: 12 }} onPress={handleTimeConfirm}>
+                                <LinearGradient
+                                    colors={theme.gradients.primary}
+                                    style={styles.confirmBtn}
+                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                >
+                                    <Text style={styles.confirmText}>Confirm</Text>
+                                </LinearGradient>
+                            </PressableScale>
+                        </LinearGradient>
+                    </Animated.View>
                 </TouchableOpacity>
+            </Modal>
+
+            {/* STRUCTURE MODAL */}
+            <Modal animationType="fade" transparent visible={structureModalVisible} onRequestClose={() => setStructureModalVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setStructureModalVisible(false)} activeOpacity={1} />
+                    <Animated.View style={[styles.modalContent, { transform: [{ scale: structureScale }], opacity: structureOpacity }]}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={styles.modalTitle}>Daily Grid</Text>
+                                <Text style={styles.modalSub}>Semester Structure</Text>
+                            </View>
+                            <PressableScale onPress={() => setStructureModalVisible(false)} style={styles.closeBtn}>
+                                <X size={20} color={c.text} />
+                            </PressableScale>
+                        </View>
+
+                        <View style={{ flexShrink: 1 }}>
+                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, paddingTop: 4 }} style={{ flexGrow: 0 }}>
+                                {tempPeriods.map((p, idx) => (
+                                    <View key={idx} style={styles.structureCard}>
+                                        <View style={{ width: 4, height: '60%', backgroundColor: c.primary, borderRadius: 2, marginRight: 8 }} />
+                                        <View style={{ flex: 1, flexDirection: 'row', gap: 10 }}>
+                                            <TextInput
+                                                style={styles.miniInput}
+                                                value={p.startTime}
+                                                onChangeText={t => {
+                                                    const newP = [...tempPeriods];
+                                                    newP[idx].startTime = t;
+                                                    setTempPeriods(newP);
+                                                }}
+                                                placeholder="Start"
+                                                placeholderTextColor={c.subtext}
+                                            />
+                                            <TextInput
+                                                style={styles.miniInput}
+                                                value={p.endTime}
+                                                onChangeText={t => {
+                                                    const newP = [...tempPeriods];
+                                                    newP[idx].endTime = t;
+                                                    setTempPeriods(newP);
+                                                }}
+                                                placeholder="End"
+                                                placeholderTextColor={c.subtext}
+                                            />
+                                        </View>
+                                        <PressableScale onPress={() => setTempPeriods(tempPeriods.filter((_, i) => i !== idx))} style={styles.deleteIconBox}>
+                                            <Trash2 size={16} color={c.danger} />
+                                        </PressableScale>
+                                    </View>
+                                ))}
+
+                                <PressableScale
+                                    style={styles.addPeriodGhostBtn}
+                                    onPress={() => setTempPeriods([...tempPeriods, { startTime: '09:00 AM', endTime: '10:00 AM', type: 'Lecture' }])}
+                                >
+                                    <Plus size={20} color={c.primary} />
+                                    <Text style={{ color: c.primary, fontWeight: '700', fontSize: 14 }}>Add Period</Text>
+                                </PressableScale>
+                            </ScrollView>
+                        </View>
+
+                        <View style={styles.stickyFooter}>
+                            <PressableScale style={styles.cancelActionBtn} onPress={() => setStructureModalVisible(false)}>
+                                <Text style={{ color: c.text, fontWeight: '700' }}>Cancel</Text>
+                            </PressableScale>
+                            <PressableScale style={{ flex: 1, borderRadius: 18, overflow: 'hidden' }} onPress={handleSaveStructure}>
+                                <LinearGradient
+                                    colors={theme.gradients.primary}
+                                    style={styles.saveActionBtn}
+                                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                >
+                                    <Text style={styles.saveActionText}>Save Configuration</Text>
+                                </LinearGradient>
+                            </PressableScale>
+                        </View>
+                    </Animated.View>
+                </View>
             </Modal>
 
 
@@ -567,104 +758,212 @@ const TimetableScreen = ({ navigation }) => {
     );
 };
 
-const getStyles = (c, isDark) => StyleSheet.create({
-    container: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 12, paddingTop: 6 },
-    backBtn: { padding: 8, backgroundColor: c.glassBgEnd, borderRadius: 12 },
-    title: { fontSize: 20, fontWeight: '800', color: c.text },
-    addBtn: { padding: 8, backgroundColor: c.glassBgEnd, borderRadius: 12 },
+const getStyles = (c, isDark, insets) => StyleSheet.create({
+    container: { flex: 1 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    listContent: {
+        padding: 20,
+        paddingBottom: 100 + insets.bottom
+    },
 
-    daysContainer: { marginBottom: 10 },
+    addBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' },
+    daysContainer: { height: 48, marginTop: 12, marginBottom: 8 },
     daysScroll: { paddingHorizontal: 20, gap: 10 },
-    dayTab: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, backgroundColor: c.glassBgEnd, borderWidth: 1, borderColor: c.glassBorder },
+    dayTab: { paddingHorizontal: 18, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderWidth: 1, borderColor: 'transparent' },
     activeDayTab: { backgroundColor: c.primary, borderColor: c.primary },
-    dayText: { color: c.subtext, fontWeight: '700' },
+    dayText: { fontSize: 13, fontWeight: '700', color: c.subtext },
     activeDayText: { color: '#FFF' },
 
-    listContent: { padding: 20 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-    slotCard: {
-        flexDirection: 'row', padding: 18, borderRadius: 24, marginBottom: 16,
-        borderWidth: 1, borderColor: c.glassBorder, alignItems: 'center',
-        backgroundColor: c.glassBgEnd,
-        shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: isDark ? 0.3 : 0.05, shadowRadius: 8, elevation: 2
+    // Timeline Row
+    timelineRow: {
+        flexDirection: 'row',
+        marginBottom: 0,
+        height: 70, // Fixed height for alignment
     },
-    slotSubject: { fontSize: 16, fontWeight: '700', color: c.text, marginBottom: 6 },
-    timeRow: { flexDirection: 'row', alignItems: 'center' },
-    slotTime: { fontWeight: '600', color: c.subtext, fontSize: 13 },
-    slotCardContainer: {
+    timelineLeft: {
+        width: 50,
+        alignItems: 'flex-end',
+        paddingRight: 12,
+        paddingTop: 8,
+    },
+    timeStart: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: c.text,
+        letterSpacing: -0.2,
+    },
+    timeEnd: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: c.subtext,
+        marginTop: 2,
+    },
+    timelineLineContainer: {
+        width: 20,
+        alignItems: 'center',
+    },
+    timelineLine: {
+        width: 2,
+        height: '100%',
+        backgroundColor: c.glassBorder,
+        position: 'absolute',
+        top: 20, // Start line below dot
+        bottom: 0,
+    },
+    timelineDot: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2,
+        marginTop: 8, // Align with time text
+    },
+
+    timelineContentWrapper: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
-        gap: 12
+        paddingBottom: 16, // Space between rows
+        paddingRight: 8,
     },
-    statusDotPresent: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#34C759', marginLeft: 8 },
-    statusDotAbsent: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30', marginLeft: 8 },
-    quickMarkRow: {
+    timelineCard: {
+        flex: 1,
         flexDirection: 'column',
-        gap: 6,
-        paddingLeft: 4,
-        borderLeftWidth: 1,
-        borderLeftColor: c.glassBorder
-    },
-    miniMarkBtn: {
-        width: 32,
-        height: 32,
+        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.6)',
         borderRadius: 16,
-        backgroundColor: c.surface,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    timelineSubject: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: c.text,
+        flex: 1,
+    },
+    cardDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 4,
+    },
+    cardDetailText: {
+        fontSize: 11,
+        color: c.subtext,
+        fontWeight: '600',
+    },
+
+    // Quick Actions
+    quickActions: {
+        flexDirection: 'row',
+        marginTop: 12,
+        backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.04)',
+        borderRadius: 8,
+        padding: 4,
+        alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+    },
+    actionBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+    },
+    actionBtnActive: {
+        backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#FFF',
+    },
+    actionBtnText: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: c.subtext,
+    },
+    actionDivider: {
+        width: 1,
+        backgroundColor: c.glassBorder,
+        marginVertical: 4,
+    },
+
+    deleteSideBtn: {
+        padding: 10,
+        marginLeft: 4,
+        opacity: 0.6,
+        alignSelf: 'center',
+    },
+
+    statusBadge: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)'
+        borderColor: 'rgba(255,255,255,0.1)'
     },
 
-    emptyState: { alignItems: 'center', paddingTop: 60, gap: 8 },
-    emptyText: { fontSize: 18, fontWeight: '700', color: c.text },
-    emptySubText: { color: c.subtext },
+    emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 100 },
+    emptyText: { fontSize: 18, fontWeight: '800', color: c.text, marginBottom: 4 },
+    emptySubText: { color: c.subtext, fontSize: 14 },
 
-    // Modal
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: {
-        backgroundColor: c.glassBgEnd, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24,
-        maxHeight: '90%', width: '100%', borderWidth: 1, borderColor: c.glassBorder
+    modalContent: { borderRadius: 32, width: '100%', maxHeight: height * 0.65, overflow: 'hidden', borderWidth: 1, borderColor: c.glassBorder, flexShrink: 1, backgroundColor: isDark ? '#000000' : '#FFF', paddingTop: 24 },
+    modalTitle: { fontSize: 20, fontWeight: '800', color: c.text, marginBottom: 20, textAlign: 'center', paddingHorizontal: 24 },
+    modalSub: { fontSize: 13, color: c.subtext, fontWeight: '600', paddingHorizontal: 24, marginTop: -15, marginBottom: 15, textAlign: 'center' },
+    modalHeader: { paddingBottom: 10 },
+
+    subjectGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    subjectChip: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1.5, borderColor: c.glassBorder, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' },
+    subjectChipText: { fontSize: 13, fontWeight: '700', color: c.text },
+
+    timeRangeGrid: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    timeInputBox: { flex: 1, padding: 16, borderRadius: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderWidth: 1, borderColor: c.glassBorder },
+    timeLabel: { fontSize: 10, fontWeight: '800', color: c.subtext, marginBottom: 4 },
+    timeVal: { fontSize: 15, fontWeight: '700', color: c.text },
+    timeDash: { width: 10, height: 2, backgroundColor: c.glassBorder, borderRadius: 1 },
+
+    inputField: { padding: 18, borderRadius: 20, backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderWidth: 1, borderColor: c.glassBorder, color: c.text, fontSize: 15, fontWeight: '600' },
+
+    structureCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 16,
+        borderRadius: 20,
+        backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: isDark ? 0.2 : 0.05,
+        shadowRadius: 4,
+        elevation: 2
     },
-    modalTitle: { fontSize: 20, fontWeight: '800', color: c.text, marginBottom: 20, textAlign: 'center' },
-    label: { fontSize: 12, fontWeight: '700', color: c.subtext, marginBottom: 8, marginTop: 16, textTransform: 'uppercase' },
+    miniInput: { flex: 1, height: 48, paddingHorizontal: 16, borderRadius: 14, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)', color: c.text, fontWeight: '700', fontSize: 14 },
+    deleteIconBox: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: c.danger + '12', borderRadius: 12 },
+    addPeriodGhostBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, borderRadius: 20, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.primary, marginTop: 8 },
 
-    subjectList: { maxHeight: 150, marginBottom: 10 },
-    subjectOption: { padding: 12, borderBottomWidth: 1, borderBottomColor: c.glassBorder },
-    selectedOption: { backgroundColor: c.primary + '20', borderRadius: 12, borderBottomWidth: 0 },
-    optionText: { color: c.text, fontWeight: '600' },
-    selectedOptionText: { color: c.primary, fontWeight: '800' },
+    stickyFooter: { flexDirection: 'row', paddingTop: 24, paddingHorizontal: 24, paddingBottom: 24, gap: 12, borderTopWidth: 1, borderTopColor: c.glassBorder, backgroundColor: isDark ? '#000' : '#FFF' },
+    cancelActionBtn: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: 18, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', alignItems: 'center' },
+    primaryBtn: { flex: 1, paddingVertical: 16, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+    saveActionText: { color: '#FFF', fontWeight: '800', fontSize: 16 },
 
-    input: { backgroundColor: c.surface, padding: 16, borderRadius: 16, color: c.text, fontWeight: '600', borderWidth: 1, borderColor: c.glassBorder },
-
-    timeRangeContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    timeInputBtn: { flex: 1, backgroundColor: c.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder },
-    timeLabel: { fontSize: 10, color: c.subtext, fontWeight: '700', marginBottom: 4 },
-    timeValue: { fontSize: 15, fontWeight: '700', color: c.text },
-    timeSeparator: { width: 10, height: 2, backgroundColor: c.glassBorder },
-
-    modalActions: { flexDirection: 'row', gap: 16, marginTop: 32 },
-    cancelBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 16, backgroundColor: c.surface },
-    saveBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 16, backgroundColor: c.primary },
-    cancelText: { color: c.text, fontWeight: '700' },
-    saveText: { color: '#FFF', fontWeight: '800' },
-
-    // Time Picker
-    pickerContainer: { borderRadius: 24, padding: 20, width: '85%', borderWidth: 1, borderColor: c.glassBorder },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
+    pickerContainer: { width: '85%', borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: c.glassBorder },
     pickerTitle: { fontSize: 18, fontWeight: '800', color: c.text, textAlign: 'center', marginBottom: 20 },
-    pickerRow: { flexDirection: 'row', height: 180, marginBottom: 20 },
+    pickerRow: { flexDirection: 'row', alignItems: 'center', height: 200, paddingHorizontal: 10 },
     columnScroll: { flex: 1 },
-    pickerItem: { paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
+    pickerItem: { height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
     pickerSelected: { backgroundColor: c.primary + '20' },
-    pickerText: { fontSize: 18, color: c.subtext, fontWeight: '600' },
-    pickerSelectedText: { color: c.primary, fontWeight: '800', fontSize: 22 },
     colon: { fontSize: 24, fontWeight: '800', color: c.text, alignSelf: 'center', paddingBottom: 10 },
     ampmColumn: { flex: 1, justifyContent: 'center', gap: 8 },
-    confirmBtn: { backgroundColor: c.primary, padding: 14, borderRadius: 14, alignItems: 'center' },
+    confirmBtn: { padding: 14, borderRadius: 14, alignItems: 'center' },
     confirmText: { color: '#FFF', fontWeight: '800', fontSize: 16 }
 });
 

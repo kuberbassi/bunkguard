@@ -13,6 +13,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { skillsService } from '../services';
 import AnimatedHeader from '../components/AnimatedHeader';
+import PressableScale from '../components/PressableScale';
+
+const { height } = Dimensions.get('window');
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -66,6 +69,25 @@ const SkillTrackerScreen = ({ navigation }) => {
         name: '', category: 'Technical', level: 'beginner', progress: 0, notes: ''
     });
     const [saving, setSaving] = useState(false);
+
+    // Animation Refs
+    const modalScale = useRef(new Animated.Value(0.9)).current;
+    const modalOpacity = useRef(new Animated.Value(0)).current;
+
+    const animateModal = (toVisible) => {
+        if (toVisible) {
+            modalScale.setValue(0.9);
+            modalOpacity.setValue(0);
+            Animated.parallel([
+                Animated.spring(modalScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                Animated.timing(modalOpacity, { toValue: 1, duration: 200, useNativeDriver: true })
+            ]).start();
+        }
+    };
+
+    useEffect(() => {
+        if (modalVisible) animateModal(true);
+    }, [modalVisible]);
 
     useEffect(() => { fetchSkills(); }, []);
 
@@ -177,12 +199,12 @@ const SkillTrackerScreen = ({ navigation }) => {
                         <Text style={styles.skillLevel}>{item.level} • {cat.name}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity onPress={() => { setEditingSkill(item); setFormData(item); setModalVisible(true); }} style={styles.miniBtn}>
+                        <PressableScale onPress={() => { setEditingSkill(item); setFormData(item); setModalVisible(true); }} style={styles.miniBtn}>
                             <Edit2 size={16} color={c.text} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.miniBtn, { backgroundColor: c.glassBgStart }]}>
+                        </PressableScale>
+                        <PressableScale onPress={() => handleDelete(item)} style={[styles.miniBtn, { backgroundColor: c.glassBgStart }]}>
                             <Trash2 size={16} color={c.text} />
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
                 </View>
 
@@ -246,31 +268,45 @@ const SkillTrackerScreen = ({ navigation }) => {
                     {['All', ...SKILL_CATEGORIES.map(c => c.name)].map(cat => {
                         const catMeta = cat === 'All' ? null : SKILL_CATEGORIES.find(c => c.name === cat);
                         const isActive = filter === cat;
+                        const color = catMeta ? catMeta.color : '#0A84FF';
+
                         return (
-                            <TouchableOpacity
+                            <PressableScale
                                 key={cat}
-                                style={[
-                                    styles.filterChip,
-                                    isActive && {
-                                        backgroundColor: catMeta ? catMeta.color : c.primary,
-                                        borderColor: catMeta ? catMeta.color : c.primary,
-                                        shadowColor: catMeta ? catMeta.color : c.primary,
-                                        shadowOpacity: 0.3,
-                                        shadowRadius: 8,
-                                        elevation: 4
-                                    }
-                                ]}
                                 onPress={() => setFilter(cat)}
+                                style={{ borderRadius: 20, overflow: 'hidden' }}
                             >
-                                <Text style={[styles.filterText, isActive && { color: '#FFF' }]}>{cat}</Text>
-                            </TouchableOpacity>
+                                {isActive ? (
+                                    <LinearGradient
+                                        colors={[color, color + 'DD']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={[
+                                            styles.filterChip,
+                                            {
+                                                borderWidth: 0,
+                                                shadowColor: color,
+                                                shadowOpacity: 0.35,
+                                                shadowRadius: 8,
+                                                elevation: 5
+                                            }
+                                        ]}
+                                    >
+                                        <Text style={[styles.filterText, { color: '#FFF', fontWeight: '800' }]}>{cat}</Text>
+                                    </LinearGradient>
+                                ) : (
+                                    <View style={styles.filterChip}>
+                                        <Text style={styles.filterText}>{cat}</Text>
+                                    </View>
+                                )}
+                            </PressableScale>
                         );
                     })}
                 </ScrollView>
             </AnimatedHeader>
 
             {/* FAB */}
-            <TouchableOpacity
+            <PressableScale
                 style={styles.fab}
                 onPress={() => {
                     setFormData({ name: '', category: 'Technical', level: 'beginner', progress: 0, notes: '' });
@@ -278,95 +314,97 @@ const SkillTrackerScreen = ({ navigation }) => {
                     setModalVisible(true);
                 }}
             >
-                <LinearGradient colors={[c.primary, c.primary]} style={styles.fabGrad}>
+                <LinearGradient
+                    colors={theme.gradients.primary}
+                    style={styles.fabGrad}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                >
                     <Plus size={28} color="#FFF" />
                 </LinearGradient>
-            </TouchableOpacity>
+            </PressableScale>
 
             {/* MODAL - Flush Bottom Sheet */}
             <Modal animationType="slide" visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
-                <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.75)' }}>
-                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setModalVisible(false)} />
-                    <LinearGradient colors={[isDark ? '#1a1a1a' : '#fff', isDark ? '#1a1a1a' : '#f0f0f0']}
-                        style={[styles.modalContent, {
-                            paddingBottom: 24 + insets.bottom,
-                            borderBottomLeftRadius: 0,
-                            borderBottomRightRadius: 0,
-                            height: 'auto',
-                            maxHeight: '90%'
-                        }]}
-                    >
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{editingSkill ? 'Edit Skill' : 'New Skill'}</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <X size={24} color={c.text} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView style={{ marginBottom: 20 }} showsVerticalScrollIndicator={false}>
-                            <Text style={styles.label}>SKILL NAME</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={formData.name}
-                                onChangeText={t => setFormData({ ...formData, name: t })}
-                                placeholder="e.g. React Native"
-                                placeholderTextColor={c.subtext}
-                            />
-
-                            <Text style={styles.label}>CATEGORY</Text>
-                            <View style={styles.chipGrid}>
-                                {SKILL_CATEGORIES.map(cat => (
-                                    <TouchableOpacity
-                                        key={cat.name}
-                                        style={[styles.catChip, formData.category === cat.name && { borderColor: cat.color, backgroundColor: cat.color + '10' }]}
-                                        onPress={() => setFormData({ ...formData, category: cat.name })}
-                                    >
-                                        <cat.icon size={14} color={formData.category === cat.name ? cat.color : c.subtext} />
-                                        <Text style={[styles.catText, formData.category === cat.name && { color: cat.color }]}>{cat.name}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.75)', padding: 20 }}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
+                    <Animated.View style={[styles.modalRefined, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
+                        <LinearGradient colors={[isDark ? '#1a1a1a' : '#fff', isDark ? '#1a1a1a' : '#f0f0f0']} style={{ flexShrink: 1 }}>
+                            <View style={[styles.modalHeader, { padding: 24, paddingBottom: 0 }]}>
+                                <Text style={styles.modalTitle}>{editingSkill ? 'Edit Skill' : 'New Skill'}</Text>
+                                <PressableScale onPress={() => setModalVisible(false)}>
+                                    <X size={24} color={c.text} />
+                                </PressableScale>
                             </View>
 
-                            <Text style={styles.label}>LEVEL</Text>
-                            <View style={styles.chipGrid}>
-                                {SKILL_LEVELS.map(lvl => (
-                                    <TouchableOpacity
-                                        key={lvl}
-                                        style={[styles.catChip, formData.level === lvl && { borderColor: c.primary, backgroundColor: c.primary + '10' }]}
-                                        onPress={() => setFormData({ ...formData, level: lvl })}
-                                    >
-                                        <Text style={[styles.catText, formData.level === lvl && { color: c.primary }]}>{lvl.toUpperCase()}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                            <View style={{ flexShrink: 1, maxHeight: height * 0.7 }}>
+                                <ScrollView contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false} style={{ flexGrow: 0 }}>
+                                    <Text style={styles.label}>SKILL NAME</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        value={formData.name}
+                                        onChangeText={t => setFormData({ ...formData, name: t })}
+                                        placeholder="e.g. React Native"
+                                        placeholderTextColor={c.subtext}
+                                    />
+
+                                    <Text style={styles.label}>CATEGORY</Text>
+                                    <View style={styles.chipGrid}>
+                                        {SKILL_CATEGORIES.map(cat => (
+                                            <PressableScale
+                                                key={cat.name}
+                                                style={[styles.catChip, formData.category === cat.name && { borderColor: cat.color, backgroundColor: cat.color + '10' }]}
+                                                onPress={() => setFormData({ ...formData, category: cat.name })}
+                                            >
+                                                <cat.icon size={14} color={formData.category === cat.name ? cat.color : c.subtext} style={{ marginRight: 4 }} />
+                                                <Text style={[styles.catText, formData.category === cat.name && { color: cat.color }]}>{cat.name}</Text>
+                                            </PressableScale>
+                                        ))}
+                                    </View>
+
+                                    <Text style={styles.label}>LEVEL</Text>
+                                    <View style={styles.chipGrid}>
+                                        {SKILL_LEVELS.map(lvl => (
+                                            <PressableScale
+                                                key={lvl}
+                                                style={[styles.catChip, formData.level === lvl && { borderColor: c.primary, backgroundColor: c.primary + '10' }]}
+                                                onPress={() => setFormData({ ...formData, level: lvl })}
+                                            >
+                                                <Text style={[styles.catText, formData.level === lvl && { color: c.primary }]}>{lvl.toUpperCase()}</Text>
+                                            </PressableScale>
+                                        ))}
+                                    </View>
+
+                                    <Text style={styles.label}>PROGRESS ({formData.progress}%)</Text>
+                                    <View style={styles.sliderContainer}>
+                                        <TextInput
+                                            style={[styles.input, { textAlign: 'center', fontSize: 20, fontWeight: 'bold' }]}
+                                            value={String(formData.progress)}
+                                            keyboardType="numeric"
+                                            onChangeText={t => {
+                                                const v = parseInt(t) || 0;
+                                                setFormData({ ...formData, progress: Math.min(100, Math.max(0, v)) });
+                                            }}
+                                        />
+                                    </View>
+                                    <View style={{ height: 20 }} />
+                                </ScrollView>
                             </View>
 
-                            <Text style={styles.label}>PROGRESS ({formData.progress}%)</Text>
-                            <View style={styles.sliderContainer}>
-                                <TextInput
-                                    style={[styles.input, { textAlign: 'center', fontSize: 20, fontWeight: 'bold' }]}
-                                    value={String(formData.progress)}
-                                    keyboardType="numeric"
-                                    onChangeText={t => {
-                                        const v = parseInt(t) || 0;
-                                        setFormData({ ...formData, progress: Math.min(100, Math.max(0, v)) });
-                                    }}
-                                />
+                            {/* Sticky Footer */}
+                            <View style={[styles.modalFooter, { padding: 24, borderTopWidth: 1, borderTopColor: c.glassBorder }]}>
+                                <PressableScale style={[styles.saveBtn, { overflow: 'hidden' }]} onPress={handleSave} disabled={saving}>
+                                    <LinearGradient colors={theme.gradients.primary} style={styles.saveGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                        {saving ? <Text style={styles.saveText}>SAVING...</Text> : (
+                                            <>
+                                                <Save size={20} color="#FFF" />
+                                                <Text style={styles.saveText}>SAVE SKILL</Text>
+                                            </>
+                                        )}
+                                    </LinearGradient>
+                                </PressableScale>
                             </View>
-
-                            <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-                                <LinearGradient colors={[c.primary, '#3b82f6']} style={styles.saveGrad}>
-                                    {saving ? <Text style={styles.saveText}>SAVING...</Text> : (
-                                        <>
-                                            <Save size={20} color="#FFF" />
-                                            <Text style={styles.saveText}>SAVE SKILL</Text>
-                                        </>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-                            {/* Extra spacing for scrolling comfortably above chin */}
-                            <View style={{ height: 20 }} />
-                        </ScrollView>
-                    </LinearGradient>
+                        </LinearGradient>
+                    </Animated.View>
                 </View>
             </Modal>
         </View>
@@ -412,16 +450,20 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     fab: {
         position: 'absolute', bottom: 30, right: 30,
         width: 64, height: 64, borderRadius: 32, overflow: 'hidden',
-        shadowColor: c.primary, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8
+        shadowColor: c.primary, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8,
+        zIndex: 999,
+        backgroundColor: c.primary // Ensure fallback color matches
     },
-    fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 32 },
 
     // Modal
     modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.75)' },
-    modalContent: {
-        borderTopLeftRadius: 30, borderTopRightRadius: 30,
-        padding: 24, height: '95%',
-        shadowColor: "#000", shadowOffset: { height: -4 }, shadowOpacity: 0.2, shadowRadius: 10
+    modalRefined: {
+        borderRadius: 32,
+        maxHeight: height * 0.8, width: '100%',
+        borderWidth: 1, borderColor: c.glassBorder,
+        overflow: 'hidden',
+        flexShrink: 1
     },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
     modalTitle: { fontSize: 24, fontWeight: '900', color: c.text },
@@ -432,14 +474,14 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     },
     chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     catChip: {
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-        paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12,
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14,
         backgroundColor: c.glassBgEnd, borderWidth: 1, borderColor: c.glassBorder
     },
     catText: { fontSize: 11, fontWeight: '700', color: c.subtext },
 
     saveBtn: { marginTop: 30, borderRadius: 16, overflow: 'hidden' },
-    saveGrad: { flexDirection: 'row', padding: 18, justifyContent: 'center', alignItems: 'center', gap: 8 },
+    saveGrad: { flexDirection: 'row', padding: 18, justifyContent: 'center', alignItems: 'center', gap: 10 },
     saveText: { color: '#FFF', fontWeight: '800', fontSize: 16, letterSpacing: 0.5 }
 });
 

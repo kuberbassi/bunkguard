@@ -5,6 +5,9 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import nest_asyncio
 from datetime import datetime
+from flask_socketio import SocketIO
+
+socketio = SocketIO(cors_allowed_origins="*", async_mode='threading')
 
 nest_asyncio.apply()
 
@@ -177,5 +180,8 @@ def create_app():
     
     # Initialize Rate Limiter
     init_limiter(app)
+    
+    # Initialize SocketIO
+    socketio.init_app(app)
     
     return app

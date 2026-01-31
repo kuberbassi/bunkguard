@@ -21,17 +21,21 @@ const AssignmentsScreen = ({ navigation }) => {
     const [filter, setFilter] = useState('All');
 
     const c = {
-        bgStart: isDark ? '#000000' : '#F8F9FA',
-        bgEnd: isDark ? '#000000' : '#FFFFFF',
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
-        card: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
-        border: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
-        primary: '#34C759', // Green
-        secondary: '#0A84FF', // Blue
-        tertiary: '#FF9500', // Orange
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        bgGradStart: isDark ? '#000000' : '#FFFFFF',
+        bgGradMid: isDark ? '#000000' : '#F8F9FA',
+        bgGradEnd: isDark ? '#000000' : '#FFFFFF',
+
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
+
+        primary: theme.palette.green,
+        secondary: theme.palette.purple,
+        tertiary: theme.palette.orange,
+        surface: isDark ? '#121212' : '#FFFFFF',
     };
 
     useEffect(() => { fetchSubjects(); }, [selectedSemester]);
@@ -115,10 +119,11 @@ const AssignmentsScreen = ({ navigation }) => {
         const progress = total > 0 ? (completed / total) * 100 : 0;
 
         return (
-            <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+            <View style={styles.card}>
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={StyleSheet.absoluteFill} />
                 {/* Progress Bar Top */}
-                <View style={{ height: 4, backgroundColor: c.border, width: '100%', position: 'absolute', top: 0, left: 0, right: 0 }}>
-                    <View style={{ height: '100%', backgroundColor: c.primary, width: `${progress}%` }} />
+                <View style={{ height: 4, backgroundColor: c.glassBorder, width: '100%', position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' }}>
+                    <LinearGradient colors={theme.gradients.success} style={{ height: '100%', width: `${progress}%` }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
                 </View>
 
                 <View style={{ padding: 16 }}>
@@ -138,22 +143,28 @@ const AssignmentsScreen = ({ navigation }) => {
                                 <View style={styles.stepper}>
                                     <TouchableOpacity
                                         onPress={() => updatePracticals(item._id, { completed: Math.max(0, practicals.completed - 1) })}
-                                        style={[styles.stepBtn, { borderColor: c.border }]}
+                                        style={styles.stepBtn}
                                     >
                                         <Minus size={16} color={c.subtext} />
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={() => updatePracticals(item._id, { completed: Math.min(practicals.total, practicals.completed + 1) })}
-                                        style={[styles.stepBtn, { backgroundColor: c.secondary, borderColor: c.secondary }]}
                                     >
-                                        <Plus size={16} color="#FFF" />
+                                        <LinearGradient colors={theme.gradients.ocean} style={styles.stepBtnActive}>
+                                            <Plus size={16} color="#FFF" />
+                                        </LinearGradient>
                                     </TouchableOpacity>
                                 </View>
 
                                 <TouchableOpacity
                                     onPress={() => updatePracticals(item._id, { hardcopy: !practicals.hardcopy })}
-                                    style={[styles.toggleBtn, practicals.hardcopy ? { backgroundColor: '#10B981' } : { borderColor: c.border, borderWidth: 1 }]}
+                                    style={styles.toggleBtn}
                                 >
+                                    {practicals.hardcopy ? (
+                                        <LinearGradient colors={theme.gradients.success} style={[StyleSheet.absoluteFill, { borderRadius: 10 }]} />
+                                    ) : (
+                                        <View style={[StyleSheet.absoluteFill, { borderRadius: 10, borderWidth: 1, borderColor: c.glassBorder }]} />
+                                    )}
                                     <CheckCircle size={14} color={practicals.hardcopy ? "#FFF" : c.subtext} />
                                     <Text style={[styles.toggleText, { color: practicals.hardcopy ? "#FFF" : c.subtext }]}>
                                         {practicals.hardcopy ? 'SUBMITTED' : 'MARK DONE'}
@@ -193,8 +204,13 @@ const AssignmentsScreen = ({ navigation }) => {
 
                                 <TouchableOpacity
                                     onPress={() => updateAssignments(item._id, { hardcopy: !assignments.hardcopy })}
-                                    style={[styles.toggleBtn, assignments.hardcopy ? { backgroundColor: '#10B981' } : { borderColor: c.border, borderWidth: 1 }]}
+                                    style={styles.toggleBtn}
                                 >
+                                    {assignments.hardcopy ? (
+                                        <LinearGradient colors={theme.gradients.success} style={[StyleSheet.absoluteFill, { borderRadius: 10 }]} />
+                                    ) : (
+                                        <View style={[StyleSheet.absoluteFill, { borderRadius: 10, borderWidth: 1, borderColor: c.glassBorder }]} />
+                                    )}
                                     <CheckCircle size={14} color={assignments.hardcopy ? "#FFF" : c.subtext} />
                                     <Text style={[styles.toggleText, { color: assignments.hardcopy ? "#FFF" : c.subtext }]}>
                                         {assignments.hardcopy ? 'SUBMITTED' : 'MARK DONE'}
@@ -210,30 +226,35 @@ const AssignmentsScreen = ({ navigation }) => {
 
     const styles = StyleSheet.create({
         card: {
-            borderRadius: 16, marginBottom: 16, borderWidth: 1, overflow: 'hidden',
-            shadowColor: "#000", shadowOffset: { height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
+            borderRadius: 24, marginBottom: 16, borderWidth: 1, borderColor: c.glassBorder, overflow: 'hidden',
+            backgroundColor: c.surface,
+            shadowColor: "#000", shadowOffset: { height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4
         },
-        subjectName: { fontSize: 18, fontWeight: '800', flex: 1 },
-        code: { fontSize: 12, fontWeight: '600', opacity: 0.7 },
-        sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' },
-        sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-        counter: { fontSize: 12, fontWeight: '800' },
+        subjectName: { fontSize: 18, fontWeight: '800', flex: 1, letterSpacing: -0.5 },
+        code: { fontSize: 12, fontWeight: '700', opacity: 0.6 },
+        sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, alignItems: 'center' },
+        sectionTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase' },
+        counter: { fontSize: 12, fontWeight: '900' },
         controls: { flexDirection: 'row', gap: 12 },
         stepper: { flexDirection: 'row', gap: 8, flex: 1 },
         stepBtn: {
-            width: 40, height: 36, borderRadius: 10, borderWidth: 1,
-            alignItems: 'center', justifyContent: 'center'
+            width: 44, height: 40, borderRadius: 12, borderWidth: 1, borderColor: c.glassBorder,
+            alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'
+        },
+        stepBtnActive: {
+            width: 44, height: 40, borderRadius: 12,
+            alignItems: 'center', justifyContent: 'center',
         },
         toggleBtn: {
-            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            borderRadius: 10, height: 36
+            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            borderRadius: 12, height: 40, position: 'relative'
         },
-        toggleText: { fontSize: 10, fontWeight: '800' }
+        toggleText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 }
     });
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgStart, c.bgEnd]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFill} />
             <AnimatedHeader
                 title="Assignments"
                 subtitle="TRACK YOUR WORK"
@@ -248,34 +269,65 @@ const AssignmentsScreen = ({ navigation }) => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 12, gap: 10, marginTop: 8 }}
                 >
-                    {['All', 'Assignment', 'Practical'].map(tab => (
+                    {[
+                        { id: 'All', color: ['#0A84FF', '#3DA5FF'] },
+                        { id: 'Assignment', color: ['#FF9500', '#FFAD33'] },
+                        { id: 'Practical', color: ['#34C759', '#5CD97A'] }
+                    ].map(tab => (
                         <TouchableOpacity
-                            key={tab}
-                            onPress={() => setFilter(tab)}
-                            style={{
-                                paddingVertical: 8,
-                                paddingHorizontal: 16,
-                                borderRadius: 20,
-                                backgroundColor: filter === tab ? c.primary : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
-                                borderWidth: 1,
-                                borderColor: filter === tab ? c.primary : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
-                            }}
+                            key={tab.id}
+                            onPress={() => setFilter(tab.id)}
+                            style={{ borderRadius: 20, overflow: 'hidden' }}
                         >
-                            <Text style={{
-                                color: filter === tab ? '#FFF' : c.subtext,
-                                fontSize: 13,
-                                fontWeight: '700',
-                                letterSpacing: 0.5
-                            }}>
-                                {tab}
-                            </Text>
+                            {filter === tab.id ? (
+                                <LinearGradient
+                                    colors={tab.color}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={{
+                                        paddingVertical: 8,
+                                        paddingHorizontal: 16,
+                                        shadowColor: tab.color[0],
+                                        shadowOpacity: 0.35,
+                                        shadowRadius: 8,
+                                        elevation: 5
+                                    }}
+                                >
+                                    <Text style={{
+                                        color: '#FFF',
+                                        fontSize: 13,
+                                        fontWeight: '800',
+                                        letterSpacing: 0.5
+                                    }}>
+                                        {tab.id}
+                                    </Text>
+                                </LinearGradient>
+                            ) : (
+                                <View style={{
+                                    paddingVertical: 8,
+                                    paddingHorizontal: 16,
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                    borderRadius: 20,
+                                    borderWidth: 1,
+                                    borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'
+                                }}>
+                                    <Text style={{
+                                        color: c.subtext,
+                                        fontSize: 13,
+                                        fontWeight: '700',
+                                        letterSpacing: 0.5
+                                    }}>
+                                        {tab.id}
+                                    </Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
             </AnimatedHeader>
 
             <Animated.FlatList
-                contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 140 + insets.top }} // Adjusted padding for new header
+                contentContainerStyle={{ padding: 20, paddingBottom: 100 + insets.bottom, paddingTop: 140 + insets.top }} // Adjusted padding for new header
                 data={filteredSubjects}
                 renderItem={renderItem}
                 keyExtractor={item => item._id}

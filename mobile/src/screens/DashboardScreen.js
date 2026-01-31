@@ -3,6 +3,7 @@ import {
     View, Text, StyleSheet, TouchableOpacity, RefreshControl,
     Platform, StatusBar, Animated, Dimensions, Alert, ScrollView as RNScrollView
 } from 'react-native';
+import PressableScale from '../components/PressableScale';
 
 const ScrollView = RNScrollView;
 const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
@@ -20,7 +21,6 @@ import AddSubjectModal from '../components/AddSubjectModal';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSemester } from '../contexts/SemesterContext';
-
 const DashboardScreen = ({ navigation }) => {
     const { user } = useAuth();
     const { isDark } = useTheme();
@@ -28,20 +28,20 @@ const DashboardScreen = ({ navigation }) => {
     const insets = useSafeAreaInsets();
 
     // AMOLED Dark Mode Palette
+    // JetBrains New UI Palette
     const c = {
-        // ... (same color palette as before)
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
-        bgGradMid: isDark ? '#000000' : '#F5F5F7',
+        bgGradMid: isDark ? '#000000' : '#F7F8FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-        glassBgStart: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.9)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.7)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#8E8E93' : '#6E6E73',
-        primary: isDark ? '#FFFFFF' : '#000000',
-        accent: '#FF3B30',
-        success: '#34C759',
-        danger: '#FF3B30',
+        glassBgStart: isDark ? 'rgba(18, 18, 18, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+        glassBgEnd: isDark ? 'rgba(18, 18, 18, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+        glassBorder: isDark ? theme.palette.border : 'rgba(0,0,0,0.08)',
+        text: isDark ? theme.palette.text : '#1E1F22',
+        subtext: isDark ? theme.palette.subtext : '#6E6E73',
+        primary: theme.palette.purple,
+        accent: theme.palette.magenta,
+        success: theme.palette.green,
+        danger: theme.palette.red,
     };
 
     const styles = getStyles(c, isDark);
@@ -104,7 +104,9 @@ const DashboardScreen = ({ navigation }) => {
                     data.categories,
                     data.code,
                     data.professor,
-                    data.classroom
+                    data.classroom,
+                    data.practical_total,
+                    data.assignment_total
                 );
             }
             setModalVisible(false);
@@ -227,10 +229,10 @@ const DashboardScreen = ({ navigation }) => {
                 <Animated.View style={heroStyle}>
                     <LinearGradient
                         colors={isAtRisk
-                            ? [c.glassBgStart || '#1a1a1a', c.glassBgStart || '#1a1a1a']
-                            : [c.glassBgStart || '#fff', c.glassBgStart || '#fff']}
-                        style={styles.heroCard}
-                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                            ? theme.gradients.poppy || ['#FF318C', '#FF8F3F', '#FFEF5A']
+                            : theme.gradients.vibrant}
+                        style={[styles.heroCard, { overflow: 'hidden' }]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.5 }}
                     >
                         <View style={styles.heroInner}>
                             <View style={{ flex: 1 }}>
@@ -242,13 +244,14 @@ const DashboardScreen = ({ navigation }) => {
 
                                 {/* Progress Bar */}
                                 <View style={styles.progressBg}>
-                                    <View style={[styles.progressFill, { width: `${overallAttendance}%`, backgroundColor: isAtRisk ? c.danger : c.success }]} />
+                                    <View style={[styles.progressFill, { width: `${overallAttendance}%`, backgroundColor: '#FFFFFF' }]} />
                                 </View>
+                                <Text style={styles.progressText}>{overallAttendance.toFixed(1)}% Attended</Text>
                             </View>
 
-                            <View style={[styles.statusPill, { borderColor: isAtRisk ? c.danger : c.success }]}>
-                                <Text style={{ color: isAtRisk ? c.danger : c.success, fontWeight: '700' }}>
-                                    {isAtRisk ? 'Action Needed' : 'On Track'}
+                            <View style={[styles.statusPill, { borderColor: 'rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+                                <Text style={styles.statusText}>
+                                    {isAtRisk ? 'At Risk' : 'On Track'}
                                 </Text>
                             </View>
                         </View>
@@ -257,9 +260,9 @@ const DashboardScreen = ({ navigation }) => {
                         <View style={styles.ringContainer}>
                             <LinearGradient
                                 colors={isAtRisk
-                                    ? [c.danger || '#FF3B30', '#ffffff00']
+                                    ? ['#FFFFFF', '#ffffff00']
                                     : [c.success || '#34C759', '#ffffff00']}
-                                style={styles.ring}
+                                style={[styles.ring, isAtRisk && { opacity: 0.4 }]}
                             />
                         </View>
                     </LinearGradient>
@@ -268,7 +271,7 @@ const DashboardScreen = ({ navigation }) => {
                 {/* STATS ROW */}
                 <Animated.View style={[styles.statsRow, statsStyle]}>
                     <LinearGradient
-                        colors={[c.glassBgStart || '#FFF', c.glassBgEnd || '#F0F0F0']}
+                        colors={isDark ? theme.gradients.cardDark : ['#FFFFFF', '#F8F9FA']}
                         style={styles.statCard}
                     >
                         <Book size={20} color={c.text} opacity={0.8} />
@@ -279,29 +282,33 @@ const DashboardScreen = ({ navigation }) => {
                     </LinearGradient>
 
 
-                    <TouchableOpacity
+                    <PressableScale
                         style={{ flex: 1.2, minWidth: 130 }}
                         onPress={() => {
                             setEditingSubject(null);
                             setModalVisible(true);
                         }}
-                        activeOpacity={0.7}
                     >
                         <LinearGradient
-                            colors={isDark ? ['#1C1C1E', '#2C2C2E'] : [c.accent ? (c.accent + '10') : '#E0E0E0', c.accent ? (c.accent + '18') : '#EEEEEE']}
+                            colors={isDark ? ['#2B2D30', '#1E1F22'] : ['#F0F0F0', '#E5E5E5']}
                             style={styles.addCourseBtn}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                         >
-                            <View style={styles.addCourseIconBox}>
-                                <Plus size={20} color={c.accent} strokeWidth={2.5} />
-                            </View>
+                            <LinearGradient
+                                colors={theme.gradients.primary}
+                                style={styles.addCourseIconBox}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                <Plus size={20} color="#FFF" strokeWidth={2.5} />
+                            </LinearGradient>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.addCourseLabel} numberOfLines={1}>Add Subject</Text>
                                 <Text style={styles.addCourseSub} numberOfLines={1}>Quick add</Text>
                             </View>
                         </LinearGradient>
-                    </TouchableOpacity>
+                    </PressableScale>
                 </Animated.View>
 
 
@@ -348,14 +355,14 @@ const DashboardScreen = ({ navigation }) => {
                 colors={c}
                 rightComponent={
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity
+                        <PressableScale
                             onPress={() => navigation.navigate('Notifications')}
                             style={styles.bellBtn}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
                             <Bell size={24} color={c.text} />
                             {hasUnread && <View style={styles.badgeDot} />}
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
                 }
             />
@@ -447,13 +454,18 @@ const getStyles = (c, isDark) => StyleSheet.create({
         paddingHorizontal: 24,
     },
     heroCard: {
-        borderRadius: 32,
-        padding: 24,
-        height: 190,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: c.glassBorder,
-        overflow: 'hidden'
+        borderRadius: 36,
+        padding: 28,
+        height: 210,
+        marginBottom: 24,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.3)',
+        overflow: 'hidden',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20
     },
     heroInner: {
         flex: 1,
@@ -463,13 +475,13 @@ const getStyles = (c, isDark) => StyleSheet.create({
     },
     ringContainer: {
         position: 'absolute',
-        right: -40,
-        top: -40,
-        width: 180,
-        height: 180,
-        borderRadius: 90,
+        right: -60,
+        top: -60,
+        width: 220,
+        height: 220,
+        borderRadius: 110,
         zIndex: 1,
-        opacity: 0.2
+        opacity: 0.25
     },
     ring: {
         flex: 1,
@@ -477,8 +489,8 @@ const getStyles = (c, isDark) => StyleSheet.create({
     },
     heroLabel: {
         fontSize: 12,
-        fontWeight: '700',
-        color: c.subtext,
+        fontWeight: '800',
+        color: 'rgba(255,255,255,0.85)',
         textTransform: 'uppercase',
         letterSpacing: 1,
         marginBottom: 4
@@ -488,29 +500,54 @@ const getStyles = (c, isDark) => StyleSheet.create({
         alignItems: 'baseline',
     },
     heroValue: {
-        fontSize: 64,
+        fontSize: 60,
         fontWeight: '800',
-        color: c.text,
+        color: '#FFFFFF',
         letterSpacing: -3
     },
     heroSymbol: {
         fontSize: 24,
         fontWeight: '600',
-        color: c.subtext,
+        color: 'rgba(255,255,255,0.7)',
         marginLeft: 4,
         marginBottom: 12
     },
-    statusPill: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 20,
+    progressBg: {
+        height: 10,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        borderRadius: 5,
+        marginTop: 16,
+        overflow: 'hidden',
         borderWidth: 1,
-        alignSelf: 'flex-start'
+        borderColor: 'rgba(255,255,255,0.1)'
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 5,
+    },
+    progressText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.8)',
+        marginTop: 8,
+        letterSpacing: 0.5
+    },
+    statusPill: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.6)',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignSelf: 'flex-start',
+        marginTop: 4
     },
     statusText: {
-        fontSize: 13,
-        fontWeight: '800',
-        letterSpacing: 0.5
+        fontSize: 9,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase'
     },
     // Stats
     statsRow: {

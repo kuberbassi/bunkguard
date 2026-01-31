@@ -7,6 +7,8 @@ import AnimatedHeader from '../components/AnimatedHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PressableScale from '../components/PressableScale';
+import { theme, Layout } from '../theme';
 
 const ActivityLogScreen = ({ navigation }) => {
     const { isDark } = useTheme();
@@ -17,14 +19,19 @@ const ActivityLogScreen = ({ navigation }) => {
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
-        primary: '#0A84FF',
-        success: isDark ? '#34C759' : '#10B981',
-        danger: '#FF3B30'
+
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
+
+        primary: theme.palette.purple,
+        success: theme.palette.green,
+        danger: theme.palette.red,
+        warning: theme.palette.orange,
+        surface: isDark ? '#121212' : '#FFFFFF',
     };
 
 
@@ -53,32 +60,60 @@ const ActivityLogScreen = ({ navigation }) => {
     const renderItem = ({ item }) => {
         let Icon = AlertCircle;
         let color = c.subtext;
+        let gradient = [c.subtext + '20', c.subtext + '10'];
 
-        // System Log handling
-        // Action types: "Attendance Marked", "Subject Added", "Subject Deleted", "Data Overridden", "Google Auth", etc.
         const action = item.action || '';
 
-        if (action.includes('Attendance')) { Icon = CheckCircle; color = c.success; }
-        else if (action.includes('Deleted')) { Icon = Trash2; color = c.danger; }
-        else if (action.includes('Added') || action.includes('Created')) { Icon = CheckCircle; color = c.primary; }
-        else if (action.includes('Overridden') || action.includes('Updated')) { Icon = Edit; color = '#F59E0B'; }
-        else if (action.includes('Import')) { Icon = ArrowLeft; color = c.primary; }
+        if (action.includes('Attendance')) {
+            Icon = CheckCircle;
+            color = c.success;
+            gradient = theme.gradients.success;
+        }
+        else if (action.includes('Deleted')) {
+            Icon = Trash2;
+            color = c.danger;
+            gradient = theme.gradients.danger;
+        }
+        else if (action.includes('Added') || action.includes('Created')) {
+            Icon = CheckCircle;
+            color = isDark ? theme.palette.selection : theme.palette.blue;
+            gradient = theme.gradients.royal;
+        }
+        else if (action.includes('Overridden') || action.includes('Updated')) {
+            Icon = Edit;
+            color = c.warning;
+            gradient = ['#FF8F3F', '#FFEF5A'];
+        }
+        else if (action.includes('Import') || action.includes('Auth')) {
+            Icon = ArrowLeft;
+            color = isDark ? theme.palette.purple : theme.palette.blue;
+            gradient = theme.gradients.primary;
+        }
 
         return (
-            <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.logItem}>
-                <View style={[styles.iconBox, { backgroundColor: color + '20' }]}>
-                    <Icon size={20} color={color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.logTitle}>{item.action}</Text>
-                    <Text style={styles.logSub}>
-                        {item.description}
-                    </Text>
-                </View>
-                <Text style={styles.timeText}>
-                    {item.timestamp ? (item.timestamp.$date ? new Date(item.timestamp.$date) : new Date(item.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                </Text>
-            </LinearGradient>
+            <PressableScale style={styles.logWrapper}>
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.logItem}>
+                    <LinearGradient
+                        colors={gradient}
+                        style={styles.iconBox}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <Icon size={18} color="#FFF" />
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.logTitle}>{item.action}</Text>
+                        <Text style={styles.logSub} numberOfLines={2}>
+                            {item.description}
+                        </Text>
+                    </View>
+                    <View style={styles.timeContainer}>
+                        <Text style={styles.timeText}>
+                            {item.timestamp ? (item.timestamp.$date ? new Date(item.timestamp.$date) : new Date(item.timestamp)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </Text>
+                    </View>
+                </LinearGradient>
+            </PressableScale>
         );
     };
 
@@ -115,28 +150,45 @@ const ActivityLogScreen = ({ navigation }) => {
 };
 
 const getStyles = (c, isDark, insets) => StyleSheet.create({
-    headerContainer: {
-        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-        justifyContent: 'flex-end', paddingBottom: 16
+    listContent: {
+        paddingTop: Layout.header.maxHeight + (insets?.top || 20) - 30,
+        paddingHorizontal: 16,
+        paddingBottom: 40 + insets.bottom
     },
-    glassOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        backgroundColor: c.glassBgStart, borderBottomWidth: 1, borderBottomColor: c.glassBorder
+
+    logWrapper: {
+        marginBottom: 12,
     },
-    headerContent: { paddingHorizontal: 24 },
-    headerTitle: { fontWeight: '900', color: c.text, letterSpacing: -1 },
-    headerSub: { color: c.subtext, fontWeight: '600', fontSize: 13, marginTop: 4 },
-
-    listContent: { paddingTop: 140, paddingHorizontal: 20, paddingBottom: 100 + insets.bottom },
-
     logItem: {
-        flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20,
-        marginBottom: 12, borderWidth: 1, borderColor: c.glassBorder, gap: 16
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        gap: 14,
+        backgroundColor: c.surface
     },
-    iconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    logTitle: { fontSize: 15, fontWeight: '700', color: c.text },
-    logSub: { fontSize: 13, color: c.subtext, marginTop: 2 },
-    timeText: { fontSize: 12, fontWeight: '600', color: c.subtext }
+    iconBox: {
+        width: 38,
+        height: 38,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: "#000",
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { height: 2 }
+    },
+    logTitle: { fontSize: 16, fontWeight: '800', color: c.text, letterSpacing: -0.3 },
+    logSub: { fontSize: 13, color: c.subtext, marginTop: 2, lineHeight: 18 },
+    timeContainer: {
+        backgroundColor: c.glassBorder,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    timeText: { fontSize: 11, fontWeight: '800', color: c.subtext }
 });
 
 export default ActivityLogScreen;

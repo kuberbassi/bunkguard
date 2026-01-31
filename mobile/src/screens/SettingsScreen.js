@@ -4,11 +4,14 @@ import {
     ScrollView, TextInput, Alert, ActivityIndicator, Animated, RefreshControl
 } from 'react-native';
 import { theme, Layout as AppLayout } from '../theme';
+import PressableScale from '../components/PressableScale';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     LogOut, User, Bell, ChevronRight, Edit2,
-    Download, Upload, Trash2, FileText, AlertTriangle, Camera
+    Download, Upload, Trash2, FileText, AlertTriangle, Camera,
+    RefreshCw, CheckCircle2, ArrowDownCircle
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { attendanceService } from '../services';
@@ -16,35 +19,38 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import AnimatedHeader from '../components/AnimatedHeader';
+import { useUpdate } from '../contexts/UpdateContext';
 import { useSemester } from '../contexts/SemesterContext';
 
 const SettingsScreen = ({ navigation }) => {
     const { user, logout, updateUser } = useAuth();
     const { isDark, toggleTheme } = useTheme();
     const { selectedSemester, updateSemester } = useSemester();
+    const insets = useSafeAreaInsets();
 
     // AMOLED Theme
     const c = {
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
-        bgGradMid: isDark ? '#000000' : '#F8F9FA',
+        bgGradMid: isDark ? '#000000' : '#F7F8FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
 
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
 
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
 
-        primary: '#0A84FF',
-        accent: isDark ? '#0A84FF' : '#007AFF', // Added missing accent property
-        danger: '#FF3B30',
+        primary: theme.palette.purple,
+        accent: theme.palette.magenta,
+        danger: theme.palette.red,
+        surface: isDark ? '#121212' : '#FFFFFF',
 
-        inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+        inputBg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
     };
 
 
-    const styles = getStyles(c, isDark);
+    const styles = getStyles(c, isDark, insets);
     const scrollY = useRef(new Animated.Value(0)).current;
 
     // ... state ...
@@ -65,6 +71,8 @@ const SettingsScreen = ({ navigation }) => {
     const [attendanceThreshold, setAttendanceThreshold] = useState('75');
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [accentColor, setAccentColor] = useState(c.primary);
+
+    const { updateStatus, latestRelease, downloadProgress, checkUpdate, downloadAndInstallUpdate, currentVersion } = useUpdate();
 
     useEffect(() => {
         if (user) {
@@ -314,6 +322,8 @@ const SettingsScreen = ({ navigation }) => {
         extrapolate: 'clamp'
     });
 
+
+
     const titleSize = scrollY.interpolate({
         inputRange: [0, 100],
         outputRange: [AppLayout.header.maxTitleSize, AppLayout.header.minTitleSize],
@@ -361,7 +371,7 @@ const SettingsScreen = ({ navigation }) => {
                 {/* NEW HERO PROFILE CARD */}
                 {/* NEW HERO PROFILE CARD */}
                 <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                    <TouchableOpacity onPress={handleUploadPFP} style={{ position: 'relative', marginBottom: 16 }}>
+                    <PressableScale onPress={handleUploadPFP} style={{ position: 'relative', marginBottom: 16 }}>
                         <View style={styles.heroAvatar}>
                             {user?.picture ? (
                                 <Image source={{ uri: user.picture }} style={{ width: '100%', height: '100%' }} />
@@ -374,7 +384,7 @@ const SettingsScreen = ({ navigation }) => {
                         <View style={styles.editBadge}>
                             <Camera size={14} color="#FFF" />
                         </View>
-                    </TouchableOpacity>
+                    </PressableScale>
                     <Text style={styles.heroName}>{user?.name || 'Student'}</Text>
                     <Text style={styles.heroEmail}>{user?.email}</Text>
                 </View>
@@ -383,9 +393,9 @@ const SettingsScreen = ({ navigation }) => {
                 <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Profile Details</Text>
-                        <TouchableOpacity onPress={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}>
+                        <PressableScale onPress={() => editingProfile ? handleSaveProfile() : setEditingProfile(true)}>
                             {editingProfile ? <Text style={{ color: c.primary, fontWeight: '700' }}>Save</Text> : <Edit2 size={20} color={c.primary} />}
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -492,94 +502,124 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                     </View>
 
-                    <TouchableOpacity
+                    <PressableScale
                         onPress={handleSaveProfile}
-                        style={{
-                            marginTop: 16,
-                            backgroundColor: c.primary,
-                            paddingVertical: 12,
-                            borderRadius: 12,
-                            alignItems: 'center'
-                        }}
                     >
-                        <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 16 }}>Update Preferences</Text>
-                    </TouchableOpacity>
+                        <LinearGradient colors={theme.gradients.primary} style={styles.updateBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>Update Preferences</Text>
+                        </LinearGradient>
+                    </PressableScale>
                 </LinearGradient>
 
-                {/* SYSTEM & LOGS */}
+                {/* SYSTEM & UPDATES */}
                 <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
                     <Text style={styles.sectionTitle}>System</Text>
-                    <TouchableOpacity style={styles.actionRow} onPress={() => navigation.navigate('ActivityLog')}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={[styles.iconBox, { backgroundColor: c.subtext + '20' }]}>
-                                <FileText size={20} color={c.text} />
-                            </View>
-                            <Text style={styles.settingLabel}>System Logs</Text>
-                        </View>
-                        <ChevronRight size={20} color={c.subtext} />
-                    </TouchableOpacity>
-                </LinearGradient>
 
-                {/* DATA ACTIONS */}
-                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>
-                    <Text style={styles.sectionTitle}>Data & Sync</Text>
-
-                    <TouchableOpacity style={styles.actionRow} onPress={handleExportData}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={[styles.iconBox, { backgroundColor: c.primary + '20' }]}>
-                                <Download size={20} color={c.primary} />
+                    {/* Update Checker */}
+                    <View style={styles.updateCard}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12 }}>
+                            <View style={[styles.iconBox, { backgroundColor: c.primary + '15' }]}>
+                                <RefreshCw size={18} color={c.primary} />
                             </View>
-                            <Text style={styles.settingLabel}>Export Backup</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.settingLabel}>App Version</Text>
+                                <Text style={styles.settingSub}>Current: v{currentVersion}</Text>
+                            </View>
+                            {updateStatus === 'idle' && (
+                                <TouchableOpacity onPress={checkUpdate} style={styles.checkBtn}>
+                                    <Text style={styles.checkBtnText}>Check Update</Text>
+                                </TouchableOpacity>
+                            )}
+                            {updateStatus === 'checking' && <ActivityIndicator size="small" color={c.primary} />}
+                            {updateStatus === 'up-to-date' && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <CheckCircle2 size={16} color="#4CAF50" />
+                                    <Text style={{ color: '#4CAF50', fontWeight: 'bold' }}>Up to date</Text>
+                                </View>
+                            )}
                         </View>
-                        <ChevronRight size={20} color={c.subtext} />
-                    </TouchableOpacity>
+
+                        {updateStatus === 'available' && (
+                            <View style={styles.availableBox}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.releaseTitle}>New Version: {latestRelease.tag_name}</Text>
+                                    <Text style={styles.releaseNotes} numberOfLines={2}>{latestRelease.name}</Text>
+                                </View>
+                                <TouchableOpacity onPress={downloadAndInstallUpdate} style={styles.downloadBtn}>
+                                    <ArrowDownCircle size={20} color="#FFF" />
+                                    <Text style={styles.downloadBtnText}>Update Now</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {updateStatus === 'downloading' && (
+                            <View style={{ marginTop: 8 }}>
+                                <Text style={styles.downloadText}>Downloading update... {Math.round(downloadProgress * 100)}%</Text>
+                                <View style={styles.progressBar}>
+                                    <View style={[styles.progressFill, { width: `${downloadProgress * 100}%` }]} />
+                                </View>
+                            </View>
+                        )}
+                    </View>
 
                     <View style={styles.divider} />
 
-                    <TouchableOpacity style={styles.actionRow} onPress={handleImportData}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={[styles.iconBox, { backgroundColor: c.primary + '20' }]}>
-                                <Upload size={20} color={c.primary} />
+                    <PressableScale style={styles.actionRow} onPress={() => navigation.navigate('ActivityLog')}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                            <View style={[styles.iconBox, { backgroundColor: c.subtext + '15' }]}>
+                                <FileText size={18} color={c.text} />
                             </View>
-                            <Text style={styles.settingLabel}>Import Data</Text>
+                            <Text style={styles.settingLabel}>System Logs</Text>
                         </View>
-                        <ChevronRight size={20} color={c.subtext} />
-                    </TouchableOpacity>
+                        <ChevronRight size={18} color={c.subtext} />
+                    </PressableScale>
                 </LinearGradient>
+
+
 
                 {/* DANGER ZONE */}
-                <LinearGradient colors={[c.danger + '10', c.danger + '05']} style={[styles.card, { borderColor: c.danger + '40' }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                        <AlertTriangle size={18} color={c.danger} />
-                        <Text style={[styles.sectionTitle, { color: c.danger, marginBottom: 0 }]}>Danger Zone</Text>
+                <View style={styles.dangerZoneContainer}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                        <AlertTriangle size={16} color={c.danger} strokeWidth={2.5} />
+                        <Text style={[styles.sectionTitle, { color: c.danger, marginBottom: 0, fontSize: 11, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' }]}>Danger Zone</Text>
                     </View>
 
-                    <TouchableOpacity style={styles.dangerBtn} onPress={logout}>
-                        <LogOut size={18} color={c.danger} />
-                        <Text style={styles.dangerText}>Log Out</Text>
-                    </TouchableOpacity>
+                    <PressableScale style={styles.dangerBtn} onPress={logout}>
+                        <View style={[styles.dangerIconBox, { backgroundColor: c.danger + '15', marginRight: 16 }]}>
+                            <LogOut size={18} color={c.danger} strokeWidth={2.5} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.dangerText}>Log Out</Text>
+                            <Text style={styles.dangerSubtext}>Sign out from this device</Text>
+                        </View>
+                        <ChevronRight size={18} color={c.danger + '60'} />
+                    </PressableScale>
 
-                    <TouchableOpacity style={[styles.dangerBtn, { marginTop: 12, backgroundColor: c.danger + '20' }]} onPress={handleDeleteAllData}>
-                        <Trash2 size={18} color={c.danger} />
-                        <Text style={styles.dangerText}>Reset All Data</Text>
-                    </TouchableOpacity>
-                </LinearGradient>
+                    <PressableScale style={[styles.dangerBtn, { marginTop: 12 }]} onPress={handleDeleteAllData}>
+                        <View style={[styles.dangerIconBox, { backgroundColor: c.danger + '15', marginRight: 16 }]}>
+                            <Trash2 size={18} color={c.danger} strokeWidth={2.5} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.dangerText}>Reset All Data</Text>
+                            <Text style={styles.dangerSubtext}>Permanently delete all records</Text>
+                        </View>
+                        <ChevronRight size={18} color={c.danger + '60'} />
+                    </PressableScale>
 
-                <View style={{ height: 100 }} />
+                    {
+                        loading && (
+                            <View style={styles.loader}>
+                                <ActivityIndicator size="large" color={c.primary} />
+                            </View>
+                        )
+                    }
+                </View>
             </Animated.ScrollView>
-
-            {
-                loading && (
-                    <View style={styles.loader}>
-                        <ActivityIndicator size="large" color={c.primary} />
-                    </View>
-                )
-            }
-        </View >
+        </View>
     );
 };
 
-const getStyles = (c, isDark) => StyleSheet.create({
+const getStyles = (c, isDark, insets) => StyleSheet.create({
     headerContainer: {
         position: 'absolute',
         top: 0, left: 0, right: 0,
@@ -621,11 +661,13 @@ const getStyles = (c, isDark) => StyleSheet.create({
         fontSize: 14, color: c.subtext, fontWeight: '500'
     },
     editBadge: {
-        position: 'absolute', bottom: 6, right: 6,
-        backgroundColor: c.primary, padding: 6, borderRadius: 12
+        position: 'absolute', bottom: 4, right: 4,
+        backgroundColor: c.primary, padding: 8, borderRadius: 14,
+        borderWidth: 2, borderColor: '#000'
     },
     scrollContent: {
-        paddingHorizontal: 20
+        paddingHorizontal: 20,
+        paddingBottom: 40 + insets.bottom
     },
     card: {
         borderRadius: 26,
@@ -702,20 +744,52 @@ const getStyles = (c, isDark) => StyleSheet.create({
         backgroundColor: c.glassBorder,
         marginVertical: 12
     },
+    updateBtn: {
+        marginTop: 16,
+        paddingVertical: 14,
+        borderRadius: 16,
+        alignItems: 'center',
+        shadowColor: c.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+    },
+    dangerZoneContainer: {
+        borderRadius: 24,
+        padding: 24,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: c.danger + '30',
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(224, 98, 96, 0.03)',
+    },
     dangerBtn: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        borderRadius: 16,
-        gap: 8,
+        padding: 18,
+        borderRadius: 20,
+        gap: 14,
         borderWidth: 1,
-        borderColor: c.danger + '50'
+        borderColor: c.danger + '20',
+        backgroundColor: isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.02)',
+    },
+    dangerIconBox: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     dangerText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: c.danger
+        fontSize: 16,
+        fontWeight: '800',
+        color: c.danger,
+        letterSpacing: -0.3
+    },
+    dangerSubtext: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: c.subtext,
+        marginTop: 2,
     },
     loader: {
         position: 'absolute',
@@ -723,6 +797,78 @@ const getStyles = (c, isDark) => StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.75)',
         justifyContent: 'center', alignItems: 'center',
         zIndex: 100
+    },
+    updateCard: {
+        padding: 4
+    },
+    checkBtn: {
+        backgroundColor: c.primary + '15',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: c.primary + '30'
+    },
+    checkBtnText: {
+        color: c.primary,
+        fontSize: 12,
+        fontWeight: 'bold'
+    },
+    availableBox: {
+        backgroundColor: c.primary + '10',
+        borderRadius: 16,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: c.primary + '20'
+    },
+    releaseTitle: {
+        color: c.text,
+        fontSize: 14,
+        fontWeight: '800'
+    },
+    releaseNotes: {
+        color: c.subtext,
+        fontSize: 12,
+        marginTop: 2
+    },
+    downloadBtn: {
+        backgroundColor: c.primary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 14,
+        shadowColor: c.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4
+    },
+    downloadBtnText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: 'bold'
+    },
+    downloadText: {
+        color: c.subtext,
+        fontSize: 12,
+        marginBottom: 8,
+        fontWeight: '600'
+    },
+    progressBar: {
+        height: 6,
+        backgroundColor: c.inputBg,
+        borderRadius: 3,
+        overflow: 'hidden'
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: c.primary,
+        borderRadius: 3
     }
 });
 

@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'BunkGuard',
-        short_name: 'BunkGuard',
+        name: 'AcadHub',
+        short_name: 'AcadHub',
         description: 'Smart Attendance Tracker',
         theme_color: '#ffffff',
         icons: [

@@ -17,6 +17,8 @@
 - **Multi-Semester Support**: Isolated data for each semester
 - **Medical Leave Tracking**: Separate medical attendance calculations
 - **Calendar View**: See your complete attendance history at a glance
+- **v2.0.0** 🚀: Automated version checking and in-app updates
+- **Real-time Sync**: Changes on web instantly reflect on mobile via Socket.IO
 
 ### 📅 Dynamic Timetable
 - **Customizable Structure**: Define your own periods and breaks
@@ -38,6 +40,7 @@
 - **Install Anywhere**: Works on mobile, tablet, and desktop
 - **Offline Support**: Core functionality works without internet
 - **Push Notifications**: Get alerted even when browser is closed
+- **Update System**: Checks GitHub for new APK releases automatically
 
 ### 📲 Native Mobile App
 - **React Native**: Smooth 120fps performance on iOS/Android

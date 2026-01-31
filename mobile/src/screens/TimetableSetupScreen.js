@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Platform, StatusBar, TouchableOpacity, FlatList, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Animated, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Platform, StatusBar, TouchableOpacity, FlatList, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Animated, KeyboardAvoidingView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useSemester } from '../contexts/SemesterContext';
 import { theme, Layout } from '../theme';
-import api from '../services/api';
-import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, Settings } from 'lucide-react-native';
+import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, Settings, X, Save } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { attendanceService } from '../services';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -30,7 +31,7 @@ const TimetableSetupScreen = ({ navigation }) => {
         primary: '#0A84FF',
         danger: '#FF3B30',
         surface: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-        modalBg: isDark ? ['rgba(10, 10, 10, 0.98)', 'rgba(20, 20, 20, 0.98)'] : ['rgba(255, 255, 255, 0.98)', 'rgba(248, 249, 250, 0.98)']
+        modalBg: isDark ? '#000000' : '#FFFFFF',
     };
 
 
@@ -43,15 +44,25 @@ const TimetableSetupScreen = ({ navigation }) => {
     };
 
     const [selectedDay, setSelectedDay] = useState('Monday');
-    const [timetable, setTimetable] = useState({});
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
     const scrollY = useRef(new Animated.Value(0)).current;
+    const queryClient = useQueryClient();
+
+    // Queries
+    const { data: timetableData, isLoading: timetableLoading, refetch: refetchTimetable } = useQuery({
+        queryKey: ['timetable', selectedSemester],
+        queryFn: () => attendanceService.getTimetable(selectedSemester),
+    });
+
+    const { data: subjects = [] } = useQuery({
+        queryKey: ['subjects', selectedSemester],
+        queryFn: () => attendanceService.getSubjects(selectedSemester),
+    });
+
+    const timetable = timetableData?.schedule || {};
+    const periods = timetableData?.periods || [];
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
-    const [subjects, setSubjects] = useState([]);
-    const [periods, setPeriods] = useState([]);
     const [newSlot, setNewSlot] = useState({
         subject_id: '', name: '', startTime: '', endTime: '',
         time: '', classroom: '', type: 'Lecture'
@@ -122,28 +133,16 @@ const TimetableSetupScreen = ({ navigation }) => {
         setTimePickerVisible(false);
     };
 
-    const fetchData = async () => {
-        try {
-            const [ttResponse, subResponse] = await Promise.all([
-                api.get(`/api/timetable?semester=${selectedSemester}`),
-                api.get(`/api/subjects?semester=${selectedSemester}`)
-            ]);
-            setTimetable(ttResponse.data.schedule || {});
-            setPeriods(ttResponse.data.periods || []);
-            setSubjects(subResponse.data || []);
-        } catch (error) {
-            console.error("Failed to load timetable data", error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
+    const fetchData = () => {
+        refetchTimetable();
+        queryClient.invalidateQueries({ queryKey: ['subjects', selectedSemester] });
     };
-
-    useEffect(() => { fetchData(); }, [selectedSemester]);
 
     // Structure Editor Functions
     const openStructureEditor = () => {
-        setTempPeriods(JSON.parse(JSON.stringify(periods))); // Deep copy
+        // Initialize with default slots if empty, or just copy existing
+        const initialPeriods = (periods && periods.length > 0) ? periods : [];
+        setTempPeriods(JSON.parse(JSON.stringify(initialPeriods))); // Deep copy
         setStructureModalVisible(true);
     };
 
@@ -171,68 +170,72 @@ const TimetableSetupScreen = ({ navigation }) => {
         setTempPeriods(updated);
     };
 
-    const handleSaveStructure = async () => {
-        setSavingStructure(true);
-        try {
-            await api.post(`/api/timetable/structure?semester=${selectedSemester}`, tempPeriods);
-            await fetchData();
+    const saveStructureMutation = useMutation({
+        mutationFn: (newPeriods) => attendanceService.saveTimetableStructure(newPeriods, selectedSemester),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['timetable', selectedSemester] });
             setStructureModalVisible(false);
-        } catch (error) {
-            console.error("Failed to save structure", error);
+        },
+        onError: (err) => {
             Alert.alert("Error", "Failed to save grid structure.");
-        } finally {
-            setSavingStructure(false);
         }
+    });
+
+    const handleSaveStructure = () => {
+        saveStructureMutation.mutate(tempPeriods);
     };
 
 
-    const handleAddSlot = async (quickData = null) => {
+    const saveSlotMutation = useMutation({
+        mutationFn: async (slotData) => {
+            // If editing, delete the old slot first
+            if (editingSlot && (editingSlot.id || editingSlot._id)) {
+                await api.delete(`/api/timetable/slot/${editingSlot.id || editingSlot._id}?semester=${selectedSemester}`);
+            }
+            return attendanceService.addTimetableSlot(slotData);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['timetable', selectedSemester] });
+            setModalVisible(false);
+            setEditingSlot(null);
+            setNewSlot({ subject_id: '', name: '', startTime: '09:00 AM', endTime: '10:00 AM', classroom: '', type: 'Lecture' });
+        },
+        onError: (error) => {
+            const errorMessage = error.response?.data?.error || error.response?.data?.message || "Failed to add class.";
+            Alert.alert("Error", errorMessage);
+        }
+    });
+
+    const handleAddSlot = (quickData = null) => {
         const slotData = quickData || newSlot;
 
         if (!slotData.subject_id && !['Break', 'Free', 'Custom'].includes(slotData.type)) {
             return Alert.alert("Missing Fields", "Please select a subject.");
         }
 
-        setAddingSlot(true);
-        try {
-            // If editing, delete the old slot first
-            if (editingSlot && (editingSlot.id || editingSlot._id)) {
-                try {
-                    await api.delete(`/api/timetable/slot/${editingSlot.id || editingSlot._id}`);
-                } catch (e) { /* console.log("Error deleting old slot during edit", e); */ }
-            }
+        const payload = {
+            semester: selectedSemester,
+            day: selectedDay,
+            ...slotData,
+            start_time: slotData.startTime || newSlot.startTime,
+            end_time: slotData.endTime || newSlot.endTime,
+            time: `${slotData.startTime || newSlot.startTime} - ${slotData.endTime || newSlot.endTime}`
+        };
 
-            await api.post('/api/timetable/slot', {
-                semester: selectedSemester,
-                day: selectedDay,
-                ...slotData,
-                start_time: slotData.startTime || newSlot.startTime,
-                end_time: slotData.endTime || newSlot.endTime,
-                time: `${slotData.startTime || newSlot.startTime} - ${slotData.endTime || newSlot.endTime}`
-            });
-            await fetchData();
-            setModalVisible(false);
-            setEditingSlot(null);
-            setNewSlot({ subject_id: '', name: '', startTime: '09:00 AM', endTime: '10:00 AM', classroom: '', type: 'Lecture' });
-        } catch (error) {
-            console.error("Add slot failed", error);
-        } finally {
-            setAddingSlot(false);
-        }
+        saveSlotMutation.mutate(payload);
     };
 
-    const handleDeleteSlot = async (slotId) => {
+    const deleteSlotMutation = useMutation({
+        mutationFn: (slotId) => api.delete(`/api/timetable/slot/${slotId}?semester=${selectedSemester}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['timetable', selectedSemester] });
+        }
+    });
+
+    const handleDeleteSlot = (slotId) => {
         Alert.alert("Delete Class", "Remove this class from the schedule?", [
             { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete", style: "destructive",
-                onPress: async () => {
-                    try {
-                        if (slotId) await api.delete(`/api/timetable/slot/${slotId}`);
-                        fetchData();
-                    } catch (error) { console.error("Error", error); }
-                }
-            }
+            { text: "Delete", style: "destructive", onPress: () => deleteSlotMutation.mutate(slotId) }
         ]);
     };
 
@@ -243,27 +246,36 @@ const TimetableSetupScreen = ({ navigation }) => {
             displayTime = `${periods[index].startTime} - ${periods[index].endTime}`;
         }
 
+        let startTime = '09:00';
+        let endTime = '10:00';
+        if (displayTime && displayTime.includes('-')) {
+            [startTime, endTime] = displayTime.split('-').map(s => s.trim());
+        } else if (item.startTime && item.endTime) {
+            startTime = item.startTime;
+            endTime = item.endTime;
+        }
+
         // Break/Free Logic
         let displaySubject = 'Unknown Subject';
-        let infoIcon = <Book size={12} color={c.subtext} />;
+        let infoIcon = <Book size={14} color={c.subtext} />;
 
         const isStructureBreak = periods[index] && periods[index].type && periods[index].type.toLowerCase() === 'break';
 
         // Case-insensitive type checks
-        const itemType = (item.type || '').toLowerCase();
+        let itemType = (item.type || '').toLowerCase();
         const isFree = itemType === 'free';
         const isBreak = itemType === 'break' || isStructureBreak;
         const isCustom = itemType === 'custom';
 
         if (isBreak) {
             displaySubject = 'Break';
-            infoIcon = <Coffee size={12} color={c.subtext} />;
+            infoIcon = <Coffee size={14} color={theme.palette.orange} />;
         } else if (isFree) {
-            displaySubject = 'Free/Empty';
-            infoIcon = <LayoutDashboard size={12} color={c.subtext} />;
+            displaySubject = 'Free Slot';
+            infoIcon = <LayoutDashboard size={14} color={c.subtext} />;
         } else if (isCustom) {
             displaySubject = item.label || item.name || 'Custom';
-            infoIcon = <Edit2 size={12} color={c.subtext} />;
+            infoIcon = <Edit2 size={14} color={c.subtext} />;
         } else {
             let subjectName = item.name || item.subject_name;
             if (!subjectName && item.subject_id) {
@@ -298,22 +310,57 @@ const TimetableSetupScreen = ({ navigation }) => {
             setModalVisible(true);
         };
 
+        const getSubjectColor = (name) => {
+            const lower = (name || '').toLowerCase();
+            if (lower.includes('lab') || lower.includes('practical')) return theme.palette.green;
+            if (lower.includes('break')) return theme.palette.orange;
+            if (lower.includes('math')) return theme.palette.cyan;
+            return theme.palette.purple;
+        };
+
+        const accentColor = getSubjectColor(displaySubject);
+
+        // Determine if last item to hide connector line
+        const isLast = index === currentSlots.length - 1;
+
         return (
-            <View style={styles.slotCard}>
-                <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Text style={[styles.slotSubject, (item.type === 'Break' || isStructureBreak) && { color: c.primary }]} numberOfLines={1}>{displaySubject}</Text>
-                    <View style={styles.timeRow}>
-                        <Clock size={12} color={c.subtext} style={{ marginRight: 6 }} />
-                        <Text style={styles.slotTime}>{displayTime || item.time || '09:00 AM - 10:00 AM'}</Text>
+            <View style={styles.timelineRow}>
+                {/* Left: Time */}
+                <View style={styles.timelineLeft}>
+                    <Text style={styles.timeStart}>{startTime}</Text>
+                    <Text style={styles.timeEnd}>{endTime}</Text>
+                </View>
+
+                {/* Middle: Line & Dot */}
+                <View style={styles.timelineLineContainer}>
+                    {!isLast && <View style={[styles.timelineLine, { backgroundColor: c.glassBorder }]} />}
+                    <View style={[styles.timelineDot, { borderColor: accentColor, backgroundColor: c.surface }]} >
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accentColor }} />
                     </View>
                 </View>
 
-                <View style={styles.actions}>
-                    <TouchableOpacity style={styles.iconBtn} onPress={onEdit}>
-                        <Edit2 size={18} color={c.primary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconBtn} onPress={() => handleDeleteSlot(item.id || item._id)}>
-                        <Trash2 size={18} color={c.danger} />
+                {/* Right: Content */}
+                <View style={styles.timelineContentWrapper}>
+                    <Pressable onPress={onEdit} style={[styles.timelineCard, { borderColor: isBreak ? 'transparent' : c.glassBorder }]}>
+                        <View style={styles.cardHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                {infoIcon}
+                                <Text style={[styles.timelineSubject, isBreak && { color: theme.palette.orange }]} numberOfLines={1}>{displaySubject}</Text>
+                            </View>
+                        </View>
+
+                        {/* Location / Details */}
+                        {item.classroom ? (
+                            <View style={styles.cardDetailRow}>
+                                <MapPin size={12} color={c.subtext} />
+                                <Text style={styles.cardDetailText}>{item.classroom}</Text>
+                            </View>
+                        ) : null}
+                    </Pressable>
+
+                    {/* Delete Action - Outside card */}
+                    <TouchableOpacity style={styles.deleteSideBtn} onPress={() => handleDeleteSlot(item.id || item._id)}>
+                        <Trash2 size={16} color={c.danger} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -381,7 +428,7 @@ const TimetableSetupScreen = ({ navigation }) => {
             {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
 
             {/* Content */}
-            {loading ? (
+            {timetableLoading ? (
                 <View style={styles.center}><ActivityIndicator size="large" color={c.primary} /></View>
             ) : (
                 <Animated.FlatList
@@ -397,7 +444,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                         </View>
                     }
                     onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                    onRefresh={fetchData} refreshing={refreshing}
+                    onRefresh={fetchData} refreshing={false}
                     progressViewOffset={Layout.header.minHeight + insets.top + 20}
                     tintColor={c.primary}
                 />
@@ -441,239 +488,278 @@ const TimetableSetupScreen = ({ navigation }) => {
                 </View>
             </AnimatedHeader>
 
-            {/* Structure Editor Modal - Flush Bottom Sheet */}
-            <Modal animationType="slide" transparent visible={structureModalVisible} onRequestClose={() => setStructureModalVisible(false)}>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
-                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setStructureModalVisible(false)} />
-                    <LinearGradient
-                        colors={c.modalBg}
-                        style={[
-                            styles.modalContent,
-                            {
-                                maxHeight: '85%',
-                                paddingBottom: 20 + insets.bottom, // Safe area + spacing
-                                borderBottomLeftRadius: 0,
-                                borderBottomRightRadius: 0
-                            }
-                        ]}
-                    >
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <Text style={styles.modalTitle}>Edit Grid Structure</Text>
-                            <TouchableOpacity onPress={() => setStructureModalVisible(false)}>
-                                <Text style={{ color: c.subtext }}>Close</Text>
-                            </TouchableOpacity>
-                        </View>
+            {/* Structure Editor Modal - Centered Premium Style */}
+            <Modal animationType="fade" transparent visible={structureModalVisible} onRequestClose={() => setStructureModalVisible(false)}>
+                <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+                    activeOpacity={1}
+                    onPress={() => setStructureModalVisible(false)}
+                >
+                    <Pressable style={styles.centeredModal} onPress={(e) => e.stopPropagation()}>
+                        <View
+                            style={[styles.modalContentCentered, { backgroundColor: c.modalBg }]}
+                        >
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 24 }}>
+                                <Text style={styles.modalTitle}>Edit Grid Structure</Text>
+                                <TouchableOpacity onPress={() => setStructureModalVisible(false)}>
+                                    <View style={{ padding: 8, backgroundColor: c.surface, borderRadius: 12 }}>
+                                        <Text style={{ color: c.subtext, fontWeight: '700' }}>Close</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
 
-                        <ScrollView style={{ marginBottom: 20 }} showsVerticalScrollIndicator={false}>
-                            {tempPeriods.map((p, index) => (
-                                <View key={index} style={styles.structRow}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                            <Text style={{ fontWeight: '800', color: c.subtext, width: 20 }}>{index + 1}</Text>
-                                            <View style={styles.structInput}>
-                                                <Text style={{ color: c.text, fontWeight: '700' }}>{p.name || (index + 1).toString()}</Text>
+                            <ScrollView
+                                showsVerticalScrollIndicator={false}
+                                style={{ maxHeight: 300, flexGrow: 0 }}
+                                contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 8 }}
+                                scrollEventThrottle={16}
+                                nestedScrollEnabled={true}
+                                bounces={true}
+                            >
+                                {tempPeriods.map((p, index) => (
+                                    <View key={index} style={styles.structRow}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>
+                                                    <Text style={{ fontWeight: '800', color: c.text, fontSize: 12 }}>{index + 1}</Text>
+                                                </View>
+                                                <View style={styles.structInput}>
+                                                    <Text style={{ color: c.text, fontWeight: '700', fontSize: 14 }}>{p.name || (index + 1).toString()}</Text>
+                                                </View>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                                                <TouchableOpacity
+                                                    style={[styles.structTypeBtn, p.type === 'break' ? { borderColor: '#FFA500', backgroundColor: '#FF950015' } : { borderColor: c.primary, backgroundColor: c.primary + '15' }]}
+                                                    onPress={() => togglePeriodType(index)}
+                                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                                >
+                                                    <Text style={[styles.structTypeText, p.type === 'break' ? { color: '#FFA500' } : { color: c.primary }]}>
+                                                        {p.type === 'break' ? 'BREAK' : 'CLASS'}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.iconBtn, { backgroundColor: c.surface, borderRadius: 8, width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }]}
+                                                    onPress={() => handleDeletePeriod(index)}
+                                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                                >
+                                                    <Trash2 size={16} color={c.danger} />
+                                                </TouchableOpacity>
                                             </View>
                                         </View>
-                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 36 }}>
                                             <TouchableOpacity
-                                                style={[styles.structTypeBtn, p.type === 'break' ? { borderColor: '#FFA500' } : { borderColor: c.primary }]}
-                                                onPress={() => togglePeriodType(index)}
+                                                style={styles.timePill}
+                                                onPress={() => openTimePicker('struct_start', index)}
+                                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                             >
-                                                <Text style={[styles.structTypeText, p.type === 'break' ? { color: '#FFA500' } : { color: c.primary }]}>
-                                                    {p.type === 'break' ? 'BREAK' : 'CLASS'}
-                                                </Text>
+                                                <Clock size={11} color={c.subtext} />
+                                                <Text style={{ color: c.text, fontWeight: '600', fontSize: 12 }}>{p.startTime}</Text>
                                             </TouchableOpacity>
-                                            <TouchableOpacity style={styles.iconBtn} onPress={() => handleDeletePeriod(index)}>
-                                                <Trash2 size={20} color={c.subtext} />
+                                            <Text style={{ color: c.subtext, fontWeight: '600', fontSize: 12 }}>—</Text>
+                                            <TouchableOpacity
+                                                style={styles.timePill}
+                                                onPress={() => openTimePicker('struct_end', index)}
+                                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                            >
+                                                <Clock size={11} color={c.subtext} />
+                                                <Text style={{ color: c.text, fontWeight: '600', fontSize: 12 }}>{p.endTime}</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
+                                ))}
+                            </ScrollView>
 
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 30 }}>
-                                        <TouchableOpacity style={styles.timePill} onPress={() => openTimePicker('struct_start', index)}>
-                                            <Clock size={12} color={c.subtext} />
-                                            <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>{p.startTime}</Text>
-                                        </TouchableOpacity>
-                                        <Text style={{ color: c.subtext }}>-</Text>
-                                        <TouchableOpacity style={styles.timePill} onPress={() => openTimePicker('struct_end', index)}>
-                                            <Clock size={12} color={c.subtext} />
-                                            <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>{p.endTime}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            ))}
-                        </ScrollView>
-
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: c.glassBorder }]} onPress={handleAddPeriod}>
-                                <Plus size={20} color={c.primary} />
-                                <Text style={{ color: c.primary, fontWeight: '700', marginLeft: 8 }}>Add Period</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveStructure} disabled={savingStructure}>
-                                {savingStructure ? <ActivityIndicator color="white" /> : <Text style={styles.saveText}>Save & Close</Text>}
-                            </TouchableOpacity>
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={[styles.saveBtn, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.primary, paddingVertical: 14, paddingHorizontal: 18 }]}
+                                    onPress={handleAddPeriod}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                    <Plus size={16} color={c.primary} />
+                                    <Text style={{ color: c.primary, fontWeight: '700', marginLeft: 4, fontSize: 13 }}>Add Period</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.saveBtn, { paddingVertical: 14, paddingHorizontal: 18, flex: 1.5, borderRadius: 16, overflow: 'hidden' }]}
+                                    onPress={handleSaveStructure}
+                                    disabled={savingStructure}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                    <LinearGradient
+                                        colors={theme.gradients.primary}
+                                        style={{ ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' }}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                    >
+                                        {savingStructure ? <ActivityIndicator color="white" /> : <Text style={styles.saveText}>Save & Close</Text>}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </LinearGradient>
-                </View>
+                    </Pressable>
+                </TouchableOpacity>
             </Modal>
 
-            {/* ADD SLOT MODAL */}
-            <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+            {/* ADD SLOT MODAL - Centered Premium Style */}
+            <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}
+                    style={{ flex: 1 }}
                 >
-                    <View style={{ width: '100%', alignItems: 'center' }}>
-                        {/* Close on tap outside - partially handled by upper view, but this specific wrapper helps layout */}
-                    </View>
-
-                    <LinearGradient
-                        colors={c.modalBg}
-                        style={[styles.modalContent, {
-                            paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20,
-                            height: '90%', // Almost full screen
-                        }]}
+                    <Pressable
+                        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+                        onPress={() => { setModalVisible(false); setEditingSlot(null); }}
                     >
-                        {/* Drag Handle */}
-                        <View style={styles.dragHandle} />
+                        <Pressable style={styles.centeredModal} onPress={(e) => e.stopPropagation()}>
+                            <View
+                                style={[styles.modalContentCentered, { backgroundColor: c.modalBg }]}
+                            >
 
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                            <Text style={{ fontSize: 24, fontWeight: '800', color: c.text, flex: 1, letterSpacing: -0.5 }}>
-                                {editingSlot ? 'Edit Class' : 'New Class'}
-                            </Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.surface, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: c.glassBorder }}>
-                                <Clock size={12} color={c.primary} style={{ marginRight: 6 }} />
-                                <Text style={{ fontWeight: '700', color: c.text, fontSize: 13 }}>{newSlot.startTime || '--:--'} - {newSlot.endTime || '--:--'}</Text>
-                            </View>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                            <Text style={styles.label}>Time Slot</Text>
-                            <View style={{ height: 60, marginBottom: 20 }}>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                                    {periods.map((p, index) => {
-                                        const periodStartMin = getMinutes(p.startTime);
-                                        const slotStartMin = getMinutes(newSlot.startTime);
-                                        const isSelected = Math.abs(periodStartMin - slotStartMin) < 5;
-                                        return (
-                                            <TouchableOpacity
-                                                key={index}
-                                                style={[styles.timeChip, isSelected && styles.timeChipSelected]}
-                                                onPress={() => {
-                                                    const isBreakPeriod = p.type && p.type.toLowerCase() === 'break';
-                                                    setNewSlot({
-                                                        ...newSlot,
-                                                        startTime: p.startTime,
-                                                        endTime: p.endTime,
-                                                        type: isBreakPeriod ? 'Break' : 'Lecture'
-                                                    });
-                                                }}
-                                            >
-                                                <Text style={[styles.timeChipNum, isSelected && styles.timeChipTextSelected]}>{p.type === 'break' || p.type === 'Break' ? 'Break' : (index + 1)}</Text>
-                                                <Text style={[styles.timeChipText, isSelected && styles.timeChipTextSelected]}>{p.startTime}</Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
-                            </View>
-
-                            {/* Quick Actions: Break, Free, Custom */}
-                            <Text style={styles.label}>Select Slot Type</Text>
-                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-                                <TouchableOpacity
-                                    style={[styles.quickActionBtn, {
-                                        backgroundColor: (newSlot.type || '').toLowerCase() === 'break' ? '#FF950020' : c.surface,
-                                        borderColor: '#FF9500',
-                                        borderWidth: 1
-                                    }]}
-                                    onPress={() => handleAddSlot({ type: 'Break', subject_id: null, name: 'Break' })}
-                                >
-                                    <Coffee size={20} color="#FF9500" />
-                                    <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Break</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.quickActionBtn, {
-                                        backgroundColor: (newSlot.type || '').toLowerCase() === 'free' ? '#34C75920' : c.surface,
-                                        borderColor: '#34C759',
-                                        borderWidth: 1
-                                    }]}
-                                    onPress={() => handleAddSlot({ type: 'Free', subject_id: null, name: 'Free' })}
-                                >
-                                    <LayoutDashboard size={20} color="#34C759" />
-                                    <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Free</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.quickActionBtn, { backgroundColor: (newSlot.type || '').toLowerCase() === 'custom' ? c.primary + '20' : c.surface, borderColor: c.primary, borderWidth: 1 }]}
-                                    onPress={() => setNewSlot({ ...newSlot, type: 'Custom', subject_id: null })}
-                                >
-                                    <Edit2 size={20} color={c.primary} />
-                                    <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Custom</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Custom Name Input - Show when Custom is selected */}
-                            {newSlot.type === 'Custom' && (
-                                <View style={{ marginBottom: 20 }}>
-                                    <Text style={styles.label}>Custom Name</Text>
-                                    <TextInput
-                                        style={[styles.input, { marginBottom: 10 }]}
-                                        placeholder="e.g. Library, Sports, Lab"
-                                        placeholderTextColor={c.subtext}
-                                        value={newSlot.label || ''}
-                                        onChangeText={(txt) => setNewSlot({ ...newSlot, label: txt, name: txt })}
-                                        autoFocus
-                                    />
-                                    <TouchableOpacity
-                                        style={{ backgroundColor: c.primary, padding: 12, borderRadius: 10, alignItems: 'center' }}
-                                        onPress={() => newSlot.label && handleAddSlot({ type: 'Custom', subject_id: null, label: newSlot.label, name: newSlot.label })}
-                                    >
-                                        <Text style={{ color: '#FFF', fontWeight: '700' }}>Save Custom Slot</Text>
-                                    </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingHorizontal: 24 }}>
+                                    <Text style={{ fontSize: 24, fontWeight: '800', color: c.text, flex: 1, letterSpacing: -0.5 }}>
+                                        {editingSlot ? 'Edit Class' : 'New Class'}
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.surface, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: c.glassBorder }}>
+                                        <Clock size={12} color={c.primary} style={{ marginRight: 6 }} />
+                                        <Text style={{ fontWeight: '700', color: c.text, fontSize: 13 }}>{newSlot.startTime || '--:--'} - {newSlot.endTime || '--:--'}</Text>
+                                    </View>
                                 </View>
-                            )}
 
-                            {/* Always Show Subjects */}
-                            <View style={{ flex: 1, marginTop: 10 }}>
-                                <Text style={styles.label}>Assign Subject</Text>
-                                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                                    <View style={styles.subGrid}>
-                                        {subjects.map((sub, mapIdx) => {
-                                            const subId = safeId(sub._id || sub.id);
-                                            const isSelected = safeId(newSlot.subject_id) === subId;
+                                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+                                    <View style={{ paddingBottom: 20, paddingTop: 4, paddingHorizontal: 24 }}>
+                                        <Text style={styles.label}>Time Slot</Text>
+                                        <View style={{ height: 60, marginBottom: 20 }}>
+                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                                                {periods.map((p, index) => {
+                                                    const periodStartMin = getMinutes(p.startTime);
+                                                    const slotStartMin = getMinutes(newSlot.startTime);
+                                                    const isSelected = Math.abs(periodStartMin - slotStartMin) < 5;
+                                                    return (
+                                                        <TouchableOpacity
+                                                            key={index}
+                                                            style={[styles.timeChip, isSelected && styles.timeChipSelected]}
+                                                            onPress={() => {
+                                                                const isBreakPeriod = p.type && p.type.toLowerCase() === 'break';
+                                                                setNewSlot({
+                                                                    ...newSlot,
+                                                                    startTime: p.startTime,
+                                                                    endTime: p.endTime,
+                                                                    type: isBreakPeriod ? 'Break' : 'Lecture'
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Text style={[styles.timeChipNum, isSelected && styles.timeChipTextSelected]}>{p.type === 'break' || p.type === 'Break' ? 'Break' : (index + 1)}</Text>
+                                                            <Text style={[styles.timeChipText, isSelected && styles.timeChipTextSelected]}>{p.startTime}</Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </ScrollView>
+                                        </View>
 
-                                            return (
+                                        {/* Quick Actions: Break, Free, Custom */}
+                                        <Text style={styles.label}>Select Slot Type</Text>
+                                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                                            <TouchableOpacity
+                                                style={[styles.quickActionBtn, {
+                                                    backgroundColor: (newSlot.type || '').toLowerCase() === 'break' ? '#FF950020' : c.surface,
+                                                    borderColor: '#FF9500',
+                                                    borderWidth: 1
+                                                }]}
+                                                onPress={() => handleAddSlot({ type: 'Break', subject_id: null, name: 'Break' })}
+                                            >
+                                                <Coffee size={20} color="#FF9500" />
+                                                <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Break</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.quickActionBtn, {
+                                                    backgroundColor: (newSlot.type || '').toLowerCase() === 'free' ? '#34C75920' : c.surface,
+                                                    borderColor: '#34C759',
+                                                    borderWidth: 1
+                                                }]}
+                                                onPress={() => handleAddSlot({ type: 'Free', subject_id: null, name: 'Free' })}
+                                            >
+                                                <LayoutDashboard size={20} color="#34C759" />
+                                                <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Free</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.quickActionBtn, { backgroundColor: (newSlot.type || '').toLowerCase() === 'custom' ? c.primary + '20' : c.surface, borderColor: c.primary, borderWidth: 1 }]}
+                                                onPress={() => setNewSlot({ ...newSlot, type: 'Custom', subject_id: null })}
+                                            >
+                                                <Edit2 size={20} color={c.primary} />
+                                                <Text style={{ color: c.text, fontWeight: '600', fontSize: 13 }}>Custom</Text>
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        {/* Custom Name Input - Show when Custom is selected */}
+                                        {newSlot.type === 'Custom' && (
+                                            <View style={{ marginBottom: 20 }}>
+                                                <Text style={styles.label}>Custom Name</Text>
+                                                <TextInput
+                                                    style={[styles.input, { marginBottom: 10 }]}
+                                                    placeholder="e.g. Library, Sports, Lab"
+                                                    placeholderTextColor={c.subtext}
+                                                    value={newSlot.label || ''}
+                                                    onChangeText={(txt) => setNewSlot({ ...newSlot, label: txt, name: txt })}
+                                                    autoFocus
+                                                />
                                                 <TouchableOpacity
-                                                    key={subId || `sub-${mapIdx}`}
-                                                    style={[styles.subCard, isSelected && styles.subCardSelected]}
-                                                    onPress={() => setNewSlot({ ...newSlot, subject_id: subId, name: sub.name, type: 'Lecture' })}
+                                                    style={{ backgroundColor: c.primary, padding: 12, borderRadius: 10, alignItems: 'center' }}
+                                                    onPress={() => newSlot.label && handleAddSlot({ type: 'Custom', subject_id: null, label: newSlot.label, name: newSlot.label })}
                                                 >
-                                                    <Text style={styles.subName} numberOfLines={2}>{sub.name}</Text>
-                                                    <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
+                                                    <Text style={{ color: '#FFF', fontWeight: '700' }}>Save Custom Slot</Text>
                                                 </TouchableOpacity>
-                                            );
-                                        })}
+                                            </View>
+                                        )}
+
+                                        {/* Always Show Subjects */}
+                                        <View style={{ flex: 1, marginTop: 10 }}>
+                                            <Text style={styles.label}>Assign Subject</Text>
+                                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                                                <View style={styles.subGrid}>
+                                                    {subjects.map((sub, mapIdx) => {
+                                                        const subId = safeId(sub._id || sub.id);
+                                                        const isSelected = safeId(newSlot.subject_id) === subId;
+
+                                                        return (
+                                                            <TouchableOpacity
+                                                                key={subId || `sub-${mapIdx}`}
+                                                                style={[styles.subCard, isSelected && styles.subCardSelected]}
+                                                                onPress={() => setNewSlot({ ...newSlot, subject_id: subId, name: sub.name, type: 'Lecture' })}
+                                                            >
+                                                                <Text style={styles.subName} numberOfLines={2}>{sub.name}</Text>
+                                                                <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
+                                                            </TouchableOpacity>
+                                                        );
+                                                    })}
+                                                </View>
+                                            </ScrollView>
+                                        </View>
                                     </View>
                                 </ScrollView>
+
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity style={styles.cancelBtn} onPress={() => { setModalVisible(false); setEditingSlot(null); }}>
+                                        <Text style={styles.cancelText}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={handleAddSlot} disabled={addingSlot} style={{ flex: 2, borderRadius: 16, overflow: 'hidden' }}>
+                                        <LinearGradient
+                                            colors={theme.gradients.primary}
+                                            style={[styles.saveBtn, { height: '100%' }]}
+                                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                        >
+                                            {addingSlot ? <ActivityIndicator color="white" /> : <Text style={styles.saveText}>{editingSlot ? 'Update' : 'Add Class'}</Text>}
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
-
-                        </ScrollView>
-
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setModalVisible(false); setEditingSlot(null); }}>
-                                <Text style={styles.cancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.saveBtn} onPress={() => handleAddSlot()} disabled={addingSlot}>
-                                {addingSlot ? <ActivityIndicator color="white" /> : <Text style={styles.saveText}>{editingSlot ? 'Save Changes' : 'Add Class'}</Text>}
-                            </TouchableOpacity>
-                        </View>
-                    </LinearGradient>
+                        </Pressable>
+                    </Pressable>
                 </KeyboardAvoidingView>
             </Modal>
 
             {/* TIME PICKER MODAL */}
             <Modal transparent visible={timePickerVisible} animationType="fade" onRequestClose={() => setTimePickerVisible(false)}>
                 <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setTimePickerVisible(false)}>
-                    <LinearGradient colors={c.modalBg} style={styles.pickerContainer}>
+                    <View style={[styles.pickerContainer, { backgroundColor: c.modalBg }]}>
                         <Text style={styles.pickerTitle}>Select Time</Text>
                         <View style={styles.pickerRow}>
                             <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
@@ -699,10 +785,19 @@ const TimetableSetupScreen = ({ navigation }) => {
                                 ))}
                             </View>
                         </View>
-                        <TouchableOpacity style={styles.confirmBtn} onPress={handleTimeConfirm}>
-                            <Text style={styles.confirmText}>Confirm</Text>
-                        </TouchableOpacity>
-                    </LinearGradient>
+                        <View style={{ borderRadius: 14, overflow: 'hidden', marginTop: 10 }}>
+                            <Pressable onPress={handleTimeConfirm}>
+                                <LinearGradient
+                                    colors={theme.gradients.primary}
+                                    style={styles.confirmBtn}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                >
+                                    <Text style={styles.confirmText}>Confirm</Text>
+                                </LinearGradient>
+                            </Pressable>
+                        </View>
+                    </View>
                 </TouchableOpacity>
             </Modal>
         </View >
@@ -726,14 +821,99 @@ const getStyles = (c, isDark) => StyleSheet.create({
     listContent: { padding: 20 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-    slotCard: {
-        flexDirection: 'row', padding: 16, borderRadius: 20, marginBottom: 12,
-        borderWidth: 1, borderColor: c.glassBorder, alignItems: 'center',
-        backgroundColor: c.glassBgEnd // Card background
+    // Timeline Row
+    timelineRow: {
+        flexDirection: 'row',
+        marginBottom: 0,
+        height: 70, // Fixed height for alignment
     },
-    slotSubject: { fontSize: 16, fontWeight: '700', color: c.text, marginBottom: 6 },
-    timeRow: { flexDirection: 'row', alignItems: 'center' },
-    slotTime: { fontWeight: '600', color: c.subtext, fontSize: 13 },
+    timelineLeft: {
+        width: 50,
+        alignItems: 'flex-end',
+        paddingRight: 12,
+        paddingTop: 8,
+    },
+    timeStart: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: c.text,
+        letterSpacing: -0.2,
+    },
+    timeEnd: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: c.subtext,
+        marginTop: 2,
+    },
+    timelineLineContainer: {
+        width: 20,
+        alignItems: 'center',
+    },
+    timelineLine: {
+        width: 2,
+        height: '100%',
+        backgroundColor: c.glassBorder,
+        position: 'absolute',
+        top: 20, // Start line below dot
+        bottom: 0,
+    },
+    timelineDot: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2,
+        marginTop: 8, // Align with time text
+    },
+
+    timelineContentWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingBottom: 16, // Space between rows
+        paddingRight: 8,
+    },
+    timelineCard: {
+        flex: 1,
+        flexDirection: 'column',
+        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.6)',
+        borderRadius: 16,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    timelineSubject: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: c.text,
+        flex: 1,
+    },
+    cardDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 4,
+    },
+    cardDetailText: {
+        fontSize: 11,
+        color: c.subtext,
+        fontWeight: '600',
+    },
+
+    deleteSideBtn: {
+        padding: 10,
+        marginLeft: 4,
+        opacity: 0.6,
+        alignSelf: 'center',
+    },
 
     actions: { flexDirection: 'row', alignItems: 'center' },
     iconBtn: { padding: 8, marginLeft: 4 },
@@ -744,10 +924,31 @@ const getStyles = (c, isDark) => StyleSheet.create({
     emptyText: { fontSize: 18, fontWeight: '700', color: c.text },
     emptySubText: { color: c.subtext },
 
-    // Modal
+    // Modal - Centered Premium Style
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center' },
+    centeredModal: {
+        width: '100%',
+        maxWidth: 500,
+        maxHeight: '85%',
+        borderRadius: 24,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10
+    },
+    modalContentCentered: {
+        borderRadius: 32,
+        width: '100%',
+        maxHeight: '90%',
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        paddingTop: 24
+    },
     modalContent: {
-        backgroundColor: c.glassBgEnd, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24,
+        backgroundColor: c.glassBgEnd, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 24,
         width: '100%', borderWidth: 1, borderColor: c.glassBorder,
         borderBottomWidth: 0,
         position: 'absolute', bottom: 0 // Force absolute bottom
@@ -756,20 +957,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
         width: 50, height: 6, backgroundColor: c.subtext + '40', borderRadius: 4, alignSelf: 'center', marginBottom: 24, marginTop: -8
     },
     modalTitle: { fontSize: 24, fontWeight: '800', color: c.text, marginBottom: 20 },
-    label: { fontSize: 13, fontWeight: '800', color: c.subtext, marginBottom: 16, marginTop: 24, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-    // Scrollable Time Chips (New)
-    timeChip: {
-        paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14,
-        backgroundColor: c.surface, borderWidth: 1, borderColor: c.glassBorder,
-        alignItems: 'center', minWidth: 60
-    },
-    timeChipSelected: {
-        backgroundColor: c.primary, borderColor: c.primary
-    },
-    timeChipNum: { fontSize: 10, color: c.subtext, fontWeight: '700', marginBottom: 2 },
-    timeChipText: { fontSize: 13, color: c.text, fontWeight: '700' },
-    timeChipTextSelected: { color: '#FFF' },
+    label: { fontSize: 13, fontWeight: '800', color: c.subtext, marginBottom: 16, marginTop: 20, textTransform: 'uppercase', letterSpacing: 0.5 },
 
 
     subjectList: { maxHeight: 150, marginBottom: 10 },
@@ -786,18 +974,18 @@ const getStyles = (c, isDark) => StyleSheet.create({
     timeValue: { fontSize: 15, fontWeight: '700', color: c.text },
     timeSeparator: { width: 10, height: 2, backgroundColor: c.glassBorder },
 
-    modalActions: { flexDirection: 'row', gap: 16, marginTop: 32 },
+    modalActions: { flexDirection: 'row', gap: 16, marginTop: 32, paddingHorizontal: 24, paddingBottom: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: c.glassBorder },
     cancelBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 16, backgroundColor: c.surface },
     saveBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 16, backgroundColor: c.primary, flexDirection: 'row', justifyContent: 'center' },
     cancelText: { color: c.text, fontWeight: '700' },
     saveText: { color: '#FFF', fontWeight: '800' },
 
     // Structure Editor items
-    structRow: { padding: 16, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.surface },
-    structInput: { backgroundColor: c.glassBgEnd, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, minWidth: 120 },
+    structRow: { padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.surface },
+    structInput: { backgroundColor: c.glassBgEnd, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, minWidth: 100 },
     structTypeBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, alignItems: 'center' },
-    structTypeText: { fontWeight: '800', fontSize: 10 },
-    timePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.glassBgEnd, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: c.glassBorder },
+    structTypeText: { fontWeight: '800', fontSize: 9 },
+    timePill: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: c.glassBgEnd, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: c.glassBorder },
 
     // Time Picker
     pickerContainer: { borderRadius: 24, padding: 20, width: '85%', borderWidth: 1, borderColor: c.glassBorder },
@@ -810,7 +998,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
     pickerSelectedText: { color: c.primary, fontWeight: '800', fontSize: 22 },
     colon: { fontSize: 24, fontWeight: '800', color: c.text, alignSelf: 'center', paddingBottom: 10 },
     ampmColumn: { flex: 1, justifyContent: 'center', gap: 8 },
-    confirmBtn: { backgroundColor: c.primary, padding: 14, borderRadius: 14, alignItems: 'center' },
+    confirmBtn: { padding: 14, alignItems: 'center', justifyContent: 'center' },
     confirmText: { color: '#FFF', fontWeight: '800', fontSize: 16 },
 
     // Grid Layouts
@@ -829,15 +1017,13 @@ const getStyles = (c, isDark) => StyleSheet.create({
     typeTextSelected: { color: c.primary },
 
     // Subject Grid - Expanded
-    subGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 40 },
+    subGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 20 },
     subCard: { width: '48%', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.surface, minHeight: 80, justifyContent: 'center' },
-    dragHandle: {
-        width: 50, height: 6, backgroundColor: c.subtext + '40', borderRadius: 4, alignSelf: 'center', marginBottom: 16, marginTop: -8
-    },
-    modalTitle: { fontSize: 24, fontWeight: '800', color: c.text, marginBottom: 12 },
-    label: { fontSize: 11, fontWeight: '800', color: c.subtext, marginBottom: 8, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+    subCardSelected: { borderColor: c.primary, backgroundColor: c.primary + '15' },
+    subName: { fontSize: 15, fontWeight: '700', color: c.text, marginBottom: 4 },
+    subLabel: { fontSize: 10, color: c.subtext },
 
-    // Scrollable Time Chips (New)
+    // Time Chips
     timeChip: {
         paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14,
         backgroundColor: c.surface, borderWidth: 1, borderColor: c.glassBorder,
@@ -848,43 +1034,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
     },
     timeChipNum: { fontSize: 10, color: c.subtext, fontWeight: '700', marginBottom: 2 },
     timeChipText: { fontSize: 13, color: c.text, fontWeight: '700' },
-    timeChipTextSelected: { color: '#FFF' },
-
-
-    subjectList: { maxHeight: 150, marginBottom: 10 },
-    subjectOption: { padding: 12, borderBottomWidth: 1, borderBottomColor: c.glassBorder },
-    selectedOption: { backgroundColor: c.primary + '20', borderRadius: 12, borderBottomWidth: 0 },
-    optionText: { color: c.text, fontWeight: '600' },
-    selectedOptionText: { color: c.primary, fontWeight: '800' },
-
-    input: { backgroundColor: c.surface, padding: 16, borderRadius: 16, color: c.text, fontWeight: '600', borderWidth: 1, borderColor: c.glassBorder },
-
-    timeRangeContainer: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    timeInputBtn: { flex: 1, backgroundColor: c.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder },
-    timeLabel: { fontSize: 10, color: c.subtext, fontWeight: '700', marginBottom: 4 },
-    timeValue: { fontSize: 15, fontWeight: '700', color: c.text },
-    timeSeparator: { width: 10, height: 2, backgroundColor: c.glassBorder },
-
-    modalActions: { flexDirection: 'row', gap: 16, marginTop: 16, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.glassBorder },
-    cancelBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 16, backgroundColor: c.surface },
-    saveBtn: { flex: 1, padding: 16, alignItems: 'center', borderRadius: 16, backgroundColor: c.primary, flexDirection: 'row', justifyContent: 'center' },
-    cancelText: { color: c.text, fontWeight: '700' },
-    saveText: { color: '#FFF', fontWeight: '800' },
-
-
-    // Type Pills - Compact 2x2 Grid
-    typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-    typePill: { width: '48%', paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surface },
-    typePillSelected: { borderColor: c.primary, backgroundColor: c.primary + '15' },
-    typeText: { fontWeight: '800', color: c.text, fontSize: 13, marginTop: 4 },
-    typeTextSelected: { color: c.primary },
-
-    // Subject Grid - Expanded
-    subGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 20 },
-    subCard: { width: '48%', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.surface, minHeight: 80, justifyContent: 'center' },
-    subCardSelected: { borderColor: c.primary, backgroundColor: c.primary + '15' },
-    subName: { fontSize: 15, fontWeight: '700', color: c.text, marginBottom: 4 },
-    subLabel: { fontSize: 10, color: c.subtext }
+    timeChipTextSelected: { color: '#FFF' }
 });
 
 export default TimetableSetupScreen;

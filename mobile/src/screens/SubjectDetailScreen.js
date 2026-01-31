@@ -18,17 +18,21 @@ const SubjectDetailScreen = ({ route, navigation }) => {
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
-        primary: '#0A84FF',
-        success: isDark ? '#34C759' : '#10B981',
-        danger: '#FF3B30',
-        warning: '#FF9F0A',
-        purple: '#BF5AF2',
-        inputBg: isDark ? '#1C1C1E' : '#F2F2F7',
+
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
+
+        primary: theme.palette.purple,
+        success: theme.palette.green,
+        danger: theme.palette.red,
+        warning: theme.palette.orange,
+        purple: theme.palette.magenta,
+        inputBg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+        surface: isDark ? '#121212' : '#FFFFFF',
     };
 
     const styles = getStyles(c, isDark);
@@ -154,42 +158,40 @@ const SubjectDetailScreen = ({ route, navigation }) => {
 
     // --- RENDERERS ---
 
-    const getStatusColor = (status) => {
+    const getStatusTheme = (status) => {
         switch (status) {
-            case 'present': return c.success;
-            case 'approved_medical': return c.success;
-            case 'absent': return c.danger;
-            case 'late': return c.warning;
-            case 'cancelled': return c.subtext;
-            case 'substituted': return c.purple;
-            default: return c.text;
+            case 'present': return { colors: theme.gradients.success, Icon: CheckCircle };
+            case 'approved_medical': return { colors: theme.gradients.success, Icon: Shield };
+            case 'absent': return { colors: theme.gradients.danger, Icon: XCircle };
+            case 'late': return { colors: theme.gradients.orange, Icon: AlertCircle };
+            case 'cancelled': return { colors: ['#64748B', '#475569'], Icon: XCircle };
+            case 'substituted': return { colors: theme.gradients.magenta, Icon: Clock };
+            default: return { colors: ['#94A3B8', '#64748B'], Icon: AlertCircle };
         }
     };
 
     const renderLogItem = ({ item }) => {
-        const color = getStatusColor(item.status);
+        const { colors: gradColors, Icon } = getStatusTheme(item.status);
+        const color = gradColors[0];
 
         return (
-            <TouchableOpacity
-                activeOpacity={0.7}
+            <PressableScale
                 onPress={() => { setSelectedLog(item); setStatusNote(item.notes || ''); setLogModalVisible(true); }}
             >
                 <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.logCard}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <View style={[styles.iconBox, { backgroundColor: color + '20' }]}>
-                            {item.status === 'present' ? <CheckCircle size={18} color={color} /> :
-                                item.status === 'absent' ? <XCircle size={18} color={color} /> :
-                                    <AlertCircle size={18} color={color} />}
-                        </View>
-                        <View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                        <LinearGradient colors={gradColors} style={styles.iconBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                            <Icon size={18} color="#FFF" />
+                        </LinearGradient>
+                        <View style={{ flex: 1 }}>
                             <Text style={styles.dateText}>{item.date}</Text>
                             <Text style={[styles.statusText, { color: color }]}>{item.status.toUpperCase().replace('_', ' ')}</Text>
                             {item.notes ? <Text style={styles.notesText}>{item.notes}</Text> : null}
                         </View>
+                        <ChevronRight size={18} color={c.subtext} opacity={0.5} />
                     </View>
-                    <Edit2 size={16} color={c.subtext} />
                 </LinearGradient>
-            </TouchableOpacity>
+            </PressableScale>
         );
     };
 
@@ -228,7 +230,7 @@ const SubjectDetailScreen = ({ route, navigation }) => {
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 onRefresh={() => { setRefreshing(true); fetchLogs(); }}
                 refreshing={refreshing}
-                ListHeaderComponent={<View style={{ height: 140 }} />}
+                ListHeaderComponent={<View style={{ height: Layout.header.maxHeight + insets.top + 10 }} />}
                 ListEmptyComponent={<Text style={styles.empty}>No attendance history found.</Text>}
             />
 
@@ -237,7 +239,7 @@ const SubjectDetailScreen = ({ route, navigation }) => {
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
                     <Animated.View style={{ transform: [{ scale: modalScale }], opacity: modalOpacity, flex: 1, justifyContent: 'center' }}>
                         <LinearGradient
-                            colors={[isDark ? '#1a1a1a' : '#ffffff', isDark ? '#101010' : '#f0f0f0']}
+                            colors={[isDark ? '#000000' : '#ffffff', isDark ? '#000000' : '#f0f0f0']}
                             style={styles.modalContent}
                         >
                             <View style={styles.dragBar} />
@@ -289,7 +291,7 @@ const SubjectDetailScreen = ({ route, navigation }) => {
             {/* --- SUBJECT EDIT MODAL --- */}
             <Modal animationType="slide" transparent={true} visible={editSubjectVisible} onRequestClose={() => setEditSubjectVisible(false)}>
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalOverlay}>
-                    <LinearGradient colors={[isDark ? '#1a1a1a' : '#fff', isDark ? '#101010' : '#f0f0f0']} style={styles.modalContent}>
+                    <LinearGradient colors={[isDark ? '#000000' : '#fff', isDark ? '#000000' : '#f0f0f0']} style={styles.modalContent}>
                         <View style={styles.dragBar} />
                         <Text style={styles.modalTitle}>Edit Subject</Text>
 
@@ -345,33 +347,32 @@ const SubjectDetailScreen = ({ route, navigation }) => {
 
 const getStyles = (c, isDark) => StyleSheet.create({
     header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, justifyContent: 'flex-end', paddingBottom: 16 },
-    glassOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: c.glassBgStart, borderBottomWidth: 1, borderBottomColor: c.glassBorder },
+    glassOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: c.bgGradStart, borderBottomWidth: 1, borderBottomColor: c.glassBorder },
     headerContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 16 },
-    backBtn: { padding: 8, borderRadius: 12, backgroundColor: c.glassBgEnd },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: c.text },
-    headerSub: { color: c.subtext, fontWeight: '600', fontSize: 13 },
-    list: { padding: 20 },
-    logCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: c.glassBorder },
-    iconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    dateText: { fontSize: 14, fontWeight: '700', color: c.text },
-    statusText: { fontSize: 11, fontWeight: '800', marginTop: 2 },
-    notesText: { fontSize: 11, color: c.subtext, marginTop: 4, fontStyle: 'italic' },
-    empty: { textAlign: 'center', marginTop: 40, color: c.subtext },
+    backBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' },
+    headerTitle: { fontSize: 22, fontWeight: '800', color: c.text, letterSpacing: -0.5 },
+    headerSub: { color: c.subtext, fontWeight: '600', fontSize: 13, marginTop: 2 },
+    list: { paddingHorizontal: 16, paddingBottom: 40 },
+    logCard: { padding: 16, borderRadius: 24, marginBottom: 12, borderWidth: 1, borderColor: c.glassBorder, backgroundColor: c.surface },
+    iconBox: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    dateText: { fontSize: 15, fontWeight: '800', color: c.text, letterSpacing: -0.3 },
+    statusText: { fontSize: 11, fontWeight: '800', marginTop: 2, letterSpacing: 0.5 },
+    notesText: { fontSize: 12, color: c.subtext, marginTop: 4, fontStyle: 'italic' },
+    empty: { textAlign: 'center', marginTop: 60, color: c.subtext, fontSize: 15, fontWeight: '600' },
 
     // Modals
-    // Centered Modal Style
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 20 },
-    modalContent: { borderRadius: 32, padding: 24, paddingBottom: 24, maxHeight: '85%', width: '100%', borderWidth: 1, borderColor: c.glassBorder },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 20 },
+    modalContent: { borderRadius: 32, padding: 24, paddingBottom: 24, maxHeight: '85%', width: '100%', borderWidth: 1, borderColor: c.glassBorder, backgroundColor: '#000000' },
 
     dragBar: { width: 40, height: 4, backgroundColor: c.subtext, borderRadius: 10, opacity: 0.3, marginBottom: 20, alignSelf: 'center' },
-    modalTitle: { fontSize: 22, fontWeight: '800', color: c.text, marginBottom: 4 },
-    modalSub: { color: c.subtext, marginBottom: 20 },
-    statusRow: { flexDirection: 'row', gap: 10, paddingBottom: 20 },
-    statusChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, marginRight: 8 },
-    chipText: { fontWeight: '700', fontSize: 13 },
+    modalTitle: { fontSize: 24, fontWeight: '900', color: c.text, marginBottom: 4, letterSpacing: -0.5 },
+    modalSub: { color: c.subtext, marginBottom: 24, fontWeight: '600' },
+    statusRow: { flexDirection: 'row', gap: 12, paddingBottom: 20 },
+    statusChip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, borderWidth: 1 },
+    chipText: { fontWeight: '800', fontSize: 13, letterSpacing: 0.5 },
     input: { backgroundColor: c.inputBg, borderRadius: 16, padding: 16, color: c.text, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: c.glassBorder },
-    label: { color: c.subtext, fontSize: 13, fontWeight: '600', marginBottom: 6, marginLeft: 4 },
-    fullBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 16, gap: 8 },
+    label: { color: c.subtext, fontSize: 13, fontWeight: '700', marginBottom: 8, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+    fullBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 18, borderRadius: 20, gap: 10 },
 });
 
 export default SubjectDetailScreen;

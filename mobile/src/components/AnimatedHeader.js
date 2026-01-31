@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated, Platform, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Layout } from '../theme';
+import { theme, Layout } from '../theme';
 import { ChevronLeft } from 'lucide-react-native';
 
 /**
@@ -79,7 +79,7 @@ const AnimatedHeader = ({
                 style={[
                     StyleSheet.absoluteFill,
                     {
-                        backgroundColor: colors.glassBgStart,
+                        backgroundColor: isDark ? theme.palette.background : '#FFFFFF',
                         opacity: backgroundOpacity,
                         borderBottomWidth: 1,
                         borderBottomColor: colors.glassBorder

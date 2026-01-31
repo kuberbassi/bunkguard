@@ -28,9 +28,6 @@ const PLATFORMS = [
     { value: 'coursera', label: 'Coursera', icon: Globe, color: 'bg-blue-500' },
     { value: 'udemy', label: 'Udemy', icon: Video, color: 'bg-purple-500' },
     { value: 'youtube', label: 'YouTube', icon: Video, color: 'bg-red-500' },
-    { value: 'edx', label: 'edX', icon: GraduationCap, color: 'bg-indigo-500' },
-    { value: 'linkedin', label: 'LinkedIn Learning', icon: Globe, color: 'bg-blue-600' },
-    { value: 'college', label: 'College LMS', icon: Book, color: 'bg-green-600' },
     { value: 'custom', label: 'Custom', icon: Globe, color: 'bg-gray-500' },
 ];
 

@@ -1,23 +1,24 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import PressableScale from './PressableScale';
 import { theme } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
     // Aquamorphic Palette
     const c = {
-        glassBgStart: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.6)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.4)',
+        glassBgStart: isDark ? 'rgba(43, 45, 48, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+        glassBgEnd: isDark ? 'rgba(43, 45, 48, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+        glassBorder: isDark ? theme.palette.border : 'rgba(0,0,0,0.08)',
 
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#A1A1AA' : '#636366',
+        text: isDark ? theme.palette.text : '#1E1F22',
+        subtext: isDark ? theme.palette.subtext : '#636366',
 
-        success: '#00D2BE', // Teal
-        danger: '#FF2D55',
+        success: theme.palette.green,
+        danger: theme.palette.red,
 
-        iconBg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-        warning: '#FF9F0A',
+        iconBg: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+        warning: theme.palette.orange,
     };
 
     const styles = getStyles(c, isDark);
@@ -46,9 +47,9 @@ const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
     }
 
     return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        <PressableScale onPress={onPress}>
             <LinearGradient
-                colors={[c.glassBgStart, c.glassBgEnd]}
+                colors={isDark ? theme.gradients.cardDark : ['#FFFFFF', '#F8F9FA']}
                 style={styles.card}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             >
@@ -63,12 +64,18 @@ const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
                     </View>
 
                     {/* Fluid Ring Badge */}
-                    <View style={[styles.percentBadge, { borderColor: pct < 75 ? c.danger : c.success }]}>
-                        <Text style={[styles.percentText, { color: pct < 75 ? c.danger : c.success }]}>
-                            {pct.toFixed(0)}
-                            <Text style={{ fontSize: 10 }}>%</Text>
-                        </Text>
-                    </View>
+                    <LinearGradient
+                        colors={pct < 75 ? theme.gradients.danger : theme.gradients.success}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={styles.percentBadge}
+                    >
+                        <View style={styles.percentInner}>
+                            <Text style={styles.percentText}>
+                                {pct.toFixed(0)}
+                                <Text style={{ fontSize: 10 }}>%</Text>
+                            </Text>
+                        </View>
+                    </LinearGradient>
                 </View>
 
                 {/* Status Message (Bunk Guard) */}
@@ -96,17 +103,22 @@ const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
                     </View>
                 </View>
             </LinearGradient>
-        </TouchableOpacity>
+        </PressableScale>
     );
 };
 
 const getStyles = (c, isDark) => StyleSheet.create({
     card: {
-        borderRadius: 26, // Fluid shape
-        padding: 20,
-        marginBottom: 16,
+        borderRadius: 28,
+        padding: 24,
+        marginBottom: 20,
         borderWidth: 1,
         borderColor: c.glassBorder,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: isDark ? 0.4 : 0.08,
+        shadowRadius: 12,
+        elevation: 5,
     },
     headerRow: {
         flexDirection: 'row',
@@ -142,16 +154,23 @@ const getStyles = (c, isDark) => StyleSheet.create({
         fontWeight: '600'
     },
     percentBadge: {
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        padding: 2, // Border effect from gradient
+        overflow: 'hidden',
+    },
+    percentInner: {
+        flex: 1,
         borderRadius: 24,
-        borderWidth: 3,
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.1)', // Subtle overlay
     },
     percentText: {
         fontWeight: '900',
         fontSize: 16,
+        color: '#FFFFFF', // High contrast on gradient
     },
     statsGrid: {
         flexDirection: 'row',

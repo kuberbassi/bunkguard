@@ -9,7 +9,8 @@ import { ChevronLeft, ChevronRight, Calendar as CalIcon } from 'lucide-react-nat
 import { LinearGradient } from 'expo-linear-gradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSemester } from '../contexts/SemesterContext';
-import { Layout } from '../theme';
+import { theme, Layout } from '../theme';
+import PressableScale from '../components/PressableScale';
 
 // Helper: Get YYYY-MM key from date string or Date object
 const getMonthKey = (date) => {
@@ -42,20 +43,23 @@ const CalendarScreen = ({ navigation }) => {
     // Theme setup
     const c = useMemo(() => ({
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
-        bgGradMid: isDark ? '#000000' : '#F8F9FA',
+        bgGradMid: isDark ? '#000000' : '#F7F8FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
-        text: isDark ? '#FFFFFF' : '#000000',
-        subtext: isDark ? '#9CA3AF' : '#6B7280',
-        primary: '#0A84FF',
-        success: '#22C55E',
-        danger: '#EF4444',
-        surface: isDark ? '#1C1C1E' : '#FFFFFF',
+
+        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+
+        text: isDark ? '#FFFFFF' : '#1E1F22',
+        subtext: isDark ? '#BABBBD' : '#6B7280',
+
+        primary: theme.palette.purple,
+        success: theme.palette.green,
+        danger: theme.palette.red,
+        surface: isDark ? '#121212' : '#FFFFFF',
     }), [isDark]);
 
-    const styles = useMemo(() => getStyles(c, isDark), [c, isDark]);
+    const styles = useMemo(() => getStyles(c, isDark, insets), [c, isDark, insets]);
     const scrollY = useRef(new Animated.Value(0)).current;
 
     // --- STATE ---
@@ -116,6 +120,7 @@ const CalendarScreen = ({ navigation }) => {
     // --- HANDLERS ---
 
     const onMonthChange = (date) => {
+        console.log("Calendar month changed to:", date.dateString);
         setCurrentMonth(date.dateString);
     };
 
@@ -137,7 +142,7 @@ const CalendarScreen = ({ navigation }) => {
         }
     };
 
-    const handleMarkAttendance = async (subjectId, status, note = '', logId = null, skipRefresh = false, type = 'Lecture') => {
+    const handleMarkAttendance = async (subjectId, status, note = '', logId = null, skipRefresh = false, type = 'Lecture', substitutedById = null) => {
         try {
             // 1. Optimistic Update (List)
             setDayClasses(prev => prev.map(c => c._id === subjectId ? { ...c, marked_status: status } : c));
@@ -176,7 +181,7 @@ const CalendarScreen = ({ navigation }) => {
                     status,
                     selectedDate,
                     note,
-                    null, // substituted_by_id
+                    substitutedById, // substituted_by_id
                     type
                 );
             }
@@ -235,8 +240,7 @@ const CalendarScreen = ({ navigation }) => {
         if (total > maxDots && dots.length < maxDots) dots.push(c.subtext); // overflow dot
 
         return (
-            <TouchableOpacity
-                activeOpacity={0.7}
+            <PressableScale
                 onPress={() => onDayPress(date)}
                 style={[
                     styles.dayContainer,
@@ -258,7 +262,7 @@ const CalendarScreen = ({ navigation }) => {
                         <View key={idx} style={[styles.dot, { backgroundColor: color }]} />
                     ))}
                 </View>
-            </TouchableOpacity>
+            </PressableScale>
         );
     }, (prev, next) => {
         return (
@@ -294,22 +298,26 @@ const CalendarScreen = ({ navigation }) => {
                             {new Date(currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </Text>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                            <TouchableOpacity onPress={() => {
+                            <PressableScale onPress={() => {
                                 const d = new Date(currentMonth);
                                 d.setDate(1); // Safety: Start from 1st to avoid month-end skips
                                 d.setMonth(d.getMonth() - 1);
-                                setCurrentMonth(d.toISOString().split('T')[0]);
+                                const newDate = d.toISOString().split('T')[0];
+                                console.log("Navigating to previous month:", newDate);
+                                setCurrentMonth(newDate);
                             }} style={styles.navBtn}>
                                 <ChevronLeft size={20} color={c.text} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => {
+                            </PressableScale>
+                            <PressableScale onPress={() => {
                                 const d = new Date(currentMonth);
                                 d.setDate(1); // Safety: Start from 1st to avoid month-end skips
                                 d.setMonth(d.getMonth() + 1);
-                                setCurrentMonth(d.toISOString().split('T')[0]);
+                                const newDate = d.toISOString().split('T')[0];
+                                console.log("Navigating to next month:", newDate);
+                                setCurrentMonth(newDate);
                             }} style={styles.navBtn}>
                                 <ChevronRight size={20} color={c.text} />
-                            </TouchableOpacity>
+                            </PressableScale>
                         </View>
                     </View>
 
@@ -369,9 +377,9 @@ const CalendarScreen = ({ navigation }) => {
                 colors={c}
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                        <TouchableOpacity onPress={() => navigation.navigate('TimetableSetup')} style={styles.manageBtn}>
+                        <PressableScale onPress={() => navigation.navigate('TimetableSetup')} style={styles.manageBtn}>
                             <Text style={styles.manageText}>Manage</Text>
-                        </TouchableOpacity>
+                        </PressableScale>
                     </View>
                 }
             />
@@ -389,8 +397,8 @@ const CalendarScreen = ({ navigation }) => {
     );
 };
 
-const getStyles = (c, isDark) => StyleSheet.create({
-    scrollContent: { padding: 16, paddingTop: Layout.header.maxHeight - 10, paddingBottom: 40 },
+const getStyles = (c, isDark, insets) => StyleSheet.create({
+    scrollContent: { padding: 16, paddingTop: Layout.header.maxHeight + (insets?.top || 20) - 30, paddingBottom: 40 },
     manageBtn: { backgroundColor: c.glassBgEnd, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: c.glassBorder },
     manageText: { color: c.primary, fontWeight: '700', fontSize: 12 },
     calendarCard: {
@@ -404,7 +412,15 @@ const getStyles = (c, isDark) => StyleSheet.create({
         paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8
     },
     monthTitle: { fontSize: 18, fontWeight: '800', color: c.text, textTransform: 'capitalize' },
-    navBtn: { padding: 8, borderRadius: 12, backgroundColor: c.glassBgEnd, borderWidth: 1, borderColor: c.glassBorder },
+    navBtn: {
+        padding: 8,
+        borderRadius: 12,
+        backgroundColor: c.glassBgEnd,
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        // Increased touch target
+        hitSlop: { top: 15, bottom: 15, left: 15, right: 15 }
+    },
 
     // Day Component
     dayContainer: {

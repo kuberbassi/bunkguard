@@ -787,11 +787,9 @@ def mark_attendance():
             })
              subjects_collection.update_one({'_id': sub_id}, {'$inc': {'total': 1, 'attended': 1}})
         
-    create_system_log(
-        session['user']['email'], 
-        "Attendance Marked", 
-        f"Marked '{subject.get('name')}' as {status} for {date_str}"
-    )
+    from api import socketio
+    socketio.emit('attendance_updated', {'email': session['user']['email'], 'date': date_str}, room=session['user']['email'])
+    
     return jsonify({"success": True})
 
 
@@ -820,6 +818,9 @@ def mark_all_attendance():
                 subjects_collection.update_one({'_id': subject_id}, update_query)
                 marked_count += 1
 
+    from api import socketio
+    socketio.emit('attendance_updated', {'email': user_email, 'date': date_str}, room=user_email)
+    
     create_system_log(user_email, "Bulk Attendance", f"Marked {marked_count} classes as {status} for {date_str}.")
     return jsonify({"success": True, "message": f"Marked {marked_count} classes."})
 
@@ -1055,6 +1056,9 @@ def edit_attendance(log_id):
     subject = subjects_collection.find_one({'_id': subject_id})
     create_system_log(session['user']['email'], "Attendance Edited", f"Changed '{subject.get('name')}' from {old_status} to {new_status}.")
     
+    from api import socketio
+    socketio.emit('attendance_updated', {'email': session['user']['email'], 'date': new_date or log['date']}, room=session['user']['email'])
+
     return jsonify({"success": True})
 
 
@@ -1113,6 +1117,9 @@ def delete_attendance(log_id):
     subject = subjects_collection.find_one({'_id': subject_id})
     subject_name = subject.get('name') if subject else "Unknown Subject"
     create_system_log(session['user']['email'], "Attendance Deleted", f"Removed attendance record for '{subject_name}' on {log['date']}.")
+    
+    from api import socketio
+    socketio.emit('attendance_updated', {'email': session['user']['email'], 'date': log['date']}, room=session['user']['email'])
     
     return jsonify({"success": True})
 
@@ -1987,6 +1994,9 @@ def handle_timetable():
             {'$set': {'schedule': data, 'semester': semester}}, 
             upsert=True
         )
+        from api import socketio
+        socketio.emit('timetable_updated', {'email': user_email, 'semester': semester}, room=user_email)
+        
         log_user_action(user_email, "Schedule Updated", f"User saved changes to the class schedule for Semester {semester}.")
         return jsonify({"success": True})
         
@@ -2075,6 +2085,9 @@ def save_timetable_structure():
         {'$set': {'periods': periods, 'semester': semester}}, # Ensure semester is set if upserting
         upsert=True
     )
+    from api import socketio
+    socketio.emit('timetable_updated', {'email': user_email, 'semester': semester}, room=user_email)
+    
     return jsonify({"success": True})
 
 
@@ -2124,6 +2137,9 @@ def add_timetable_slot():
         {'$push': {f'schedule.{day}': slot_data}},
         upsert=True
     )
+    
+    from api import socketio
+    socketio.emit('timetable_updated', {'email': user_email, 'semester': semester}, room=user_email)
     
     return jsonify({"success": True, "slot": slot_data})
 
@@ -2177,6 +2193,9 @@ def update_timetable_slot(slot_id):
          {'$push': {f'schedule.{day}': slot_data}}
     )
     
+    from api import socketio
+    socketio.emit('timetable_updated', {'email': user_email, 'semester': semester}, room=user_email)
+    
     return jsonify({"success": True})
 
 @api_bp.route('/timetable/slot/<slot_id>', methods=['DELETE'])
@@ -2197,6 +2216,9 @@ def delete_timetable_slot(slot_id):
             {'owner_email': user_email, 'semester': semester},
             {'$pull': {f'schedule.{day}': {'_id': slot_id}}}
         )
+    
+    from api import socketio
+    socketio.emit('timetable_updated', {'email': user_email, 'semester': semester}, room=user_email)
     
     return jsonify({"success": True})
 

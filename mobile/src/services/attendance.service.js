@@ -158,15 +158,19 @@ export const attendanceService = {
         return response.data;
     },
 
-    addSubject: async (subjectName, semester, categories, code, professor, classroom) => {
+    addSubject: async (subjectName, semester, categories, code, professor, classroom, practical_total, assignment_total) => {
         await api.post('/api/add_subject', {
             subject_name: subjectName,
             semester,
             categories,
             code,
             professor,
-            classroom
+            classroom,
+            practical_total,
+            assignment_total
         });
+        // Invalidate Dashboard Cache
+        delete CACHE[`dash_${semester}`];
     },
 
     deleteSubject: async (subjectId) => {
@@ -186,6 +190,9 @@ export const attendanceService = {
             subject_id: subjectId,
             ...data
         });
+        // Invalidate Dashboard Cache
+        if (data.semester) delete CACHE[`dash_${data.semester}`];
+        delete CACHE[`dash_1`]; delete CACHE[`dash_2`];
     },
 
     updateAttendanceCount: async (subjectId, attended, total) => {
@@ -316,15 +323,7 @@ export const attendanceService = {
         return response.data;
     },
 
-    // ==================== Academic Records ====================
-    getAcademicRecords: async () => {
-        const response = await api.get('/api/academic_records');
-        return response.data;
-    },
 
-    updateAcademicRecord: async (data) => {
-        await api.post('/api/update_academic_record', data);
-    },
 
     // ==================== Semester Results (IPU Grading) ====================
     getSemesterResults: async () => {

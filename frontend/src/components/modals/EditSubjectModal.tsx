@@ -146,7 +146,7 @@ const EditSubjectModal: React.FC<EditSubjectModalProps> = ({ isOpen, onClose, su
                     <div className="space-y-1">
                         <label className="text-xs font-semibold text-on-surface-variant uppercase ml-1">Categories</label>
                         <div className="flex flex-wrap gap-2 p-2 bg-surface-container rounded-xl min-h-[46px]">
-                            {['Theory', 'Practical', 'Assignment', 'Project'].map((cat) => (
+                            {['Theory', 'Practical', 'Assignment'].map((cat) => (
                                 <button
                                     key={cat}
                                     type="button"

@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, Alert, Animated, Platform, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SectionList, Modal, TextInput, Alert, Animated, Platform, RefreshControl, Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme';
-import { Plus, X, Globe, Video, Book, GraduationCap, Clock, Trash2, Edit2, ExternalLink } from 'lucide-react-native';
+import { Plus, X, Globe, Video, Clock, Trash2, Edit2, ExternalLink, Save, CheckCircle2 } from 'lucide-react-native';
 import api from '../services/api';
 import AnimatedHeader from '../components/AnimatedHeader';
 import * as Linking from 'expo-linking';
+import PressableScale from '../components/PressableScale';
 
 const PLATFORMS = [
     { value: 'coursera', label: 'Coursera', icon: Globe, color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.1)' },
     { value: 'udemy', label: 'Udemy', icon: Video, color: '#A855F7', bg: 'rgba(168, 85, 247, 0.1)' },
     { value: 'youtube', label: 'YouTube', icon: Video, color: '#EF4444', bg: 'rgba(239, 68, 68, 0.1)' },
-    { value: 'edx', label: 'edX', icon: GraduationCap, color: '#6366F1', bg: 'rgba(99, 102, 241, 0.1)' },
-    { value: 'linkedin', label: 'LinkedIn', icon: Globe, color: '#2563EB', bg: 'rgba(37, 99, 235, 0.1)' },
-    { value: 'college', label: 'College LMS', icon: Book, color: '#16A34A', bg: 'rgba(22, 163, 74, 0.1)' },
     { value: 'custom', label: 'Custom', icon: Globe, color: '#6B7280', bg: 'rgba(107, 114, 128, 0.1)' },
 ];
+
+const { height } = Dimensions.get('window');
 
 const CourseManagerScreen = ({ navigation }) => {
     const { isDark } = useTheme();
@@ -31,6 +31,25 @@ const CourseManagerScreen = ({ navigation }) => {
     const [formData, setFormData] = useState({ title: '', platform: 'coursera', url: '', progress: '0', instructor: '', targetCompletionDate: '' });
     const [editingItem, setEditingItem] = useState(null);
 
+    // Animation Refs
+    const modalScale = useRef(new Animated.Value(0.9)).current;
+    const modalOpacity = useRef(new Animated.Value(0)).current;
+
+    const animateModal = (toVisible) => {
+        if (toVisible) {
+            modalScale.setValue(0.9);
+            modalOpacity.setValue(0);
+            Animated.parallel([
+                Animated.spring(modalScale, { toValue: 1, friction: 8, tension: 40, useNativeDriver: true }),
+                Animated.timing(modalOpacity, { toValue: 1, duration: 200, useNativeDriver: true })
+            ]).start();
+        }
+    };
+
+    useEffect(() => {
+        if (modalVisible) animateModal(true);
+    }, [modalVisible]);
+
     const c = {
         bgStart: isDark ? '#000000' : '#F8F9FA',
         bgEnd: isDark ? '#000000' : '#FFFFFF',
@@ -42,6 +61,9 @@ const CourseManagerScreen = ({ navigation }) => {
         accent: '#64D2FF',
         glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
         glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        completionGreen: '#10B981',
+        completionGreenBg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
+        completionGreenBorder: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)',
     };
 
     useEffect(() => { fetchCourses(); }, []);
@@ -99,71 +121,93 @@ const CourseManagerScreen = ({ navigation }) => {
     const renderItem = ({ item }) => {
         const platform = getPlatformConfig(item.platform);
         const Icon = platform.icon;
+        const isCompleted = item.progress >= 100;
+        const progressColor = isCompleted ? c.completionGreen : platform.color;
 
         return (
-            <TouchableOpacity
+            <PressableScale
                 activeOpacity={0.9}
                 onPress={() => { setEditingItem(item); setFormData({ ...item, progress: String(item.progress || 0) }); setModalVisible(true); }}
-                style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}
+                style={[
+                    styles.card,
+                    {
+                        backgroundColor: isCompleted ? c.completionGreenBg : c.card,
+                        borderColor: isCompleted ? c.completionGreenBorder : c.border,
+                        borderWidth: isCompleted ? 1.5 : 1
+                    }
+                ]}
             >
                 <View style={styles.cardHeader}>
-                    <View style={[styles.badge, { backgroundColor: platform.bg }]}>
-                        <Icon size={12} color={platform.color} />
-                        <Text style={[styles.badgeText, { color: platform.color }]}>{platform.label}</Text>
+                    <View style={[styles.badge, { backgroundColor: isCompleted ? 'rgba(16, 185, 129, 0.15)' : platform.bg }]}>
+                        <Icon size={12} color={isCompleted ? c.completionGreen : platform.color} />
+                        <Text style={[styles.badgeText, { color: isCompleted ? c.completionGreen : platform.color }]}>
+                            {isCompleted ? 'COMPLETED' : platform.label}
+                        </Text>
                     </View>
-                    {item.url ? (
-                        <TouchableOpacity onPress={() => Linking.openURL(item.url).catch(() => { })} style={{ padding: 4 }}>
-                            <ExternalLink size={16} color={c.subtext} />
-                        </TouchableOpacity>
-                    ) : null}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {isCompleted && <CheckCircle2 size={18} color={c.completionGreen} strokeWidth={2.5} />}
+                        {item.url ? (
+                            <PressableScale onPress={() => Linking.openURL(item.url).catch(() => { })} style={{ padding: 4 }}>
+                                <ExternalLink size={16} color={c.subtext} />
+                            </PressableScale>
+                        ) : null}
+                    </View>
                 </View>
 
-                <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{item.title}</Text>
-                {item.instructor ? <Text style={[styles.instructor, { color: c.subtext }]}>by {item.instructor}</Text> : null}
+                <Text style={[styles.title, { color: c.text, fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
+                {item.instructor ? <Text style={[styles.instructor, { color: c.subtext, fontSize: 13 }]}>by {item.instructor}</Text> : null}
 
-                <View style={{ marginTop: 12 }}>
+                <View style={{ marginTop: 14 }}>
                     <View style={styles.progressRow}>
                         <Text style={[styles.progressLabel, { color: c.subtext }]}>Progress</Text>
-                        <Text style={[styles.progressVal, { color: c.text }]}>{item.progress}%</Text>
+                        <Text style={[styles.progressVal, { color: isCompleted ? c.completionGreen : c.text, fontWeight: isCompleted ? '800' : '700' }]}>
+                            {item.progress}%
+                        </Text>
                     </View>
-                    <View style={styles.track}>
-                        <View style={{ width: `${item.progress}%`, height: '100%', backgroundColor: platform.color, borderRadius: 3 }} />
+                    <View style={[styles.track, { height: 8, backgroundColor: isDark ? '#2C2C2E' : '#E5E7EB' }]}>
+                        <LinearGradient
+                            colors={isCompleted ? [c.completionGreen, '#34D399'] : [progressColor, progressColor]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={{ width: `${item.progress}%`, height: '100%', borderRadius: 4 }}
+                        />
                     </View>
                 </View>
 
                 {item.targetCompletionDate ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 }}>
-                        <Clock size={10} color={c.subtext} />
-                        <Text style={{ fontSize: 10, color: c.subtext }}>Target: {item.targetCompletionDate}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 }}>
+                        <Clock size={11} color={c.subtext} />
+                        <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>Target: {item.targetCompletionDate}</Text>
                     </View>
                 ) : null}
-            </TouchableOpacity>
+            </PressableScale>
         );
     };
 
     const styles = StyleSheet.create({
         card: {
-            padding: 16, borderRadius: 20, marginBottom: 12, borderWidth: 1,
-            shadowColor: "#000", shadowOffset: { height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
+            padding: 18, borderRadius: 22, marginBottom: 14, borderWidth: 1,
+            shadowColor: "#000", shadowOffset: { height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3
         },
-        cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-        badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-        badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-        title: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
-        instructor: { fontSize: 12, marginTop: 2 },
-        progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-        progressLabel: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
-        progressVal: { fontSize: 12, fontWeight: '700' },
-        track: { height: 6, backgroundColor: isDark ? '#333' : '#E5E7EB', borderRadius: 3, overflow: 'hidden' },
+        cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+        badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+        badgeText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+        title: { fontSize: 18, fontWeight: '800', lineHeight: 24, letterSpacing: -0.3 },
+        instructor: { fontSize: 13, marginTop: 3, fontWeight: '500' },
+        progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+        progressLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+        progressVal: { fontSize: 13, fontWeight: '700' },
+        track: { height: 8, backgroundColor: isDark ? '#2C2C2E' : '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
 
         fab: {
             position: 'absolute', bottom: 30, right: 30,
-            width: 56, height: 56, borderRadius: 28,
+            width: 56, height: 56, borderRadius: 28, overflow: 'hidden',
             alignItems: 'center', justifyContent: 'center',
-            shadowOpacity: 0.3, shadowRadius: 8, elevation: 5
+            shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
+            zIndex: 999
         },
         modalView: {
-            flex: 1, backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
+            flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7',
             marginTop: 80, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24
         },
         input: {
@@ -173,8 +217,38 @@ const CourseManagerScreen = ({ navigation }) => {
         },
         label: { color: c.subtext, fontSize: 11, marginBottom: 6, fontWeight: '700', marginLeft: 4, textTransform: 'uppercase' },
         platformChip: {
-            paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1,
-            flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, marginRight: 8
+            paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+            flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, marginRight: 8
+        },
+        modalRefined: {
+            borderRadius: 32, maxHeight: height * 0.8, width: '100%',
+            overflow: 'hidden', borderWidth: 1, borderColor: c.glassBorder,
+            flexShrink: 1
+        },
+        sectionHeader: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            marginBottom: 16,
+            paddingBottom: 8,
+            borderBottomWidth: 1,
+            borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+        },
+        sectionTitle: {
+            fontSize: 20,
+            fontWeight: '900',
+            letterSpacing: -0.5
+        },
+        countBadge: {
+            paddingHorizontal: 12,
+            paddingVertical: 4,
+            borderRadius: 12,
+            borderWidth: 1
+        },
+        countText: {
+            fontSize: 13,
+            fontWeight: '800'
         }
     });
 
@@ -190,90 +264,124 @@ const CourseManagerScreen = ({ navigation }) => {
                 onBack={() => navigation.goBack()}
             />
 
-            <Animated.FlatList
+            <Animated.SectionList
                 contentContainerStyle={{ padding: 20, paddingBottom: 100, paddingTop: 100 + insets.top }}
-                data={courses}
+                sections={[
+                    {
+                        title: 'In Progress',
+                        data: courses.filter(c => c.progress > 0 && c.progress < 100)
+                    },
+                    {
+                        title: 'Not Started',
+                        data: courses.filter(c => c.progress === 0)
+                    },
+                    {
+                        title: 'Completed',
+                        data: courses.filter(c => c.progress >= 100)
+                    }
+                ].filter(section => section.data.length > 0)}
                 renderItem={renderItem}
+                renderSectionHeader={({ section }) => (
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: c.text }]}>{section.title}</Text>
+                        <View style={[
+                            styles.countBadge,
+                            {
+                                backgroundColor: section.title === 'Completed' ? c.completionGreenBg : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
+                                borderColor: section.title === 'Completed' ? c.completionGreenBorder : 'transparent'
+                            }
+                        ]}>
+                            <Text style={[
+                                styles.countText,
+                                { color: section.title === 'Completed' ? c.completionGreen : c.subtext }
+                            ]}>
+                                {section.data.length}
+                            </Text>
+                        </View>
+                    </View>
+                )}
                 keyExtractor={item => item._id?.$oid || item._id || Math.random().toString()}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
+                stickySectionHeadersEnabled={false}
             />
 
-            <TouchableOpacity style={styles.fab} onPress={() => { setFormData({ platform: 'coursera' }); setEditingItem(null); setModalVisible(true); }}>
-                <LinearGradient colors={[c.primary, c.accent]} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' }}>
-                    <Plus color="#FFF" />
+            <PressableScale style={[styles.fab, { overflow: 'hidden' }]} onPress={() => { setFormData({ platform: 'coursera' }); setEditingItem(null); setModalVisible(true); }}>
+                <LinearGradient colors={theme.gradients.primary} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                    <Plus color="#FFF" size={28} />
                 </LinearGradient>
-            </TouchableOpacity>
+            </PressableScale>
 
             {/* MODAL - Flush Bottom Sheet */}
-            <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
-                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setModalVisible(false)} />
-                    <LinearGradient colors={[isDark ? '#1C1C1E' : '#F2F2F7', isDark ? '#1C1C1E' : '#FFFFFF']}
-                        style={{
-                            borderTopLeftRadius: 20,
-                            borderTopRightRadius: 20,
-                            padding: 24,
-                            maxHeight: '90%',
-                            paddingBottom: 24 + insets.bottom // Flush bottom with internal padding
-                        }}
-                    >
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
-                            <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>{editingItem ? 'Edit' : 'Add'} Course</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}><X color={c.text} /></TouchableOpacity>
-                        </View>
-
-                        <Animated.ScrollView showsVerticalScrollIndicator={false}>
-                            <Text style={styles.label}>TITLE</Text>
-                            <TextInput style={styles.input} value={formData.title} onChangeText={t => setFormData({ ...formData, title: t })} placeholder="Course Name" placeholderTextColor={c.subtext} />
-
-                            <Text style={styles.label}>PLATFORM</Text>
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 }}>
-                                {PLATFORMS.map(p => (
-                                    <TouchableOpacity
-                                        key={p.value}
-                                        style={[styles.platformChip, {
-                                            backgroundColor: formData.platform === p.value ? p.bg : 'transparent',
-                                            borderColor: formData.platform === p.value ? p.color : c.border
-                                        }]}
-                                        onPress={() => setFormData({ ...formData, platform: p.value })}
-                                    >
-                                        <p.icon size={14} color={formData.platform === p.value ? p.color : c.subtext} />
-                                        <Text style={{ fontSize: 12, fontWeight: '600', color: formData.platform === p.value ? p.color : c.subtext }}>{p.label}</Text>
-                                    </TouchableOpacity>
-                                ))}
+            <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
+                    <Animated.View style={[styles.modalRefined, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
+                        <LinearGradient colors={[isDark ? '#000000' : '#FFFFFF', isDark ? '#000000' : '#F2F2F7']} style={{ flexShrink: 1 }}>
+                            <View style={{ padding: 24, paddingBottom: 0, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+                                <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>{editingItem ? 'Edit' : 'Add'} Course</Text>
+                                <PressableScale onPress={() => setModalVisible(false)}><X color={c.text} /></PressableScale>
                             </View>
 
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.label}>PROGRESS (%)</Text>
-                                    <TextInput style={styles.input} keyboardType="numeric" value={String(formData.progress || '')} onChangeText={t => setFormData({ ...formData, progress: t })} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.label}>TARGET DATE</Text>
-                                    <TextInput style={styles.input} value={formData.targetCompletionDate} onChangeText={t => setFormData({ ...formData, targetCompletionDate: t })} placeholder="YYYY-MM-DD" placeholderTextColor={c.subtext} />
-                                </View>
+                            <View style={{ flexShrink: 1, maxHeight: height * 0.7 }}>
+                                <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24 }} style={{ flexGrow: 0 }}>
+                                    <Text style={styles.label}>TITLE</Text>
+                                    <TextInput style={styles.input} value={formData.title} onChangeText={t => setFormData({ ...formData, title: t })} placeholder="Course Name" placeholderTextColor={c.subtext} />
+
+                                    <Text style={styles.label}>PLATFORM</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 }}>
+                                        {PLATFORMS.map(p => (
+                                            <PressableScale
+                                                key={p.value}
+                                                style={[styles.platformChip, {
+                                                    backgroundColor: formData.platform === p.value ? p.bg : 'transparent',
+                                                    borderColor: formData.platform === p.value ? p.color : c.border
+                                                }]}
+                                                onPress={() => setFormData({ ...formData, platform: p.value })}
+                                            >
+                                                <p.icon size={14} color={formData.platform === p.value ? p.color : c.subtext} style={{ marginRight: 6 }} />
+                                                <Text style={{ fontSize: 12, fontWeight: '600', color: formData.platform === p.value ? p.color : c.subtext }}>{p.label}</Text>
+                                            </PressableScale>
+                                        ))}
+                                    </View>
+
+                                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.label}>PROGRESS (%)</Text>
+                                            <TextInput style={styles.input} keyboardType="numeric" value={String(formData.progress || '')} onChangeText={t => setFormData({ ...formData, progress: t })} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.label}>TARGET DATE</Text>
+                                            <TextInput style={styles.input} value={formData.targetCompletionDate} onChangeText={t => setFormData({ ...formData, targetCompletionDate: t })} placeholder="YYYY-MM-DD" placeholderTextColor={c.subtext} />
+                                        </View>
+                                    </View>
+
+                                    <Text style={styles.label}>INSTRUCTOR</Text>
+                                    <TextInput style={styles.input} value={formData.instructor} onChangeText={t => setFormData({ ...formData, instructor: t })} placeholder="Instructor Name" placeholderTextColor={c.subtext} />
+
+                                    <Text style={styles.label}>URL (Optional)</Text>
+                                    <TextInput style={styles.input} value={formData.url} onChangeText={t => setFormData({ ...formData, url: t })} placeholder="https://..." placeholderTextColor={c.subtext} />
+
+                                    {editingItem && (
+                                        <PressableScale onPress={() => { handleDelete(editingItem._id); setModalVisible(false); }} style={{ padding: 16, alignItems: 'center', marginTop: 8 }}>
+                                            <Text style={{ color: '#FF3B30', fontWeight: '600' }}>Delete Course</Text>
+                                        </PressableScale>
+                                    )}
+                                    <View style={{ height: 20 }} />
+                                </Animated.ScrollView>
                             </View>
 
-                            <Text style={styles.label}>INSTRUCTOR</Text>
-                            <TextInput style={styles.input} value={formData.instructor} onChangeText={t => setFormData({ ...formData, instructor: t })} placeholder="Instructor Name" placeholderTextColor={c.subtext} />
-
-                            <Text style={styles.label}>URL (Optional)</Text>
-                            <TextInput style={styles.input} value={formData.url} onChangeText={t => setFormData({ ...formData, url: t })} placeholder="https://..." placeholderTextColor={c.subtext} />
-
-                            <TouchableOpacity onPress={handleSave} style={{ backgroundColor: c.primary, padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 20 }}>
-                                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>SAVE COURSE</Text>
-                            </TouchableOpacity>
-
-                            {editingItem && (
-                                <TouchableOpacity onPress={() => { handleDelete(editingItem._id); setModalVisible(false); }} style={{ padding: 16, alignItems: 'center', marginTop: 8 }}>
-                                    <Text style={{ color: '#FF3B30', fontWeight: '600' }}>Delete Course</Text>
-                                </TouchableOpacity>
-                            )}
-                            {/* Extra spacing for scrolling comfortably above chin */}
-                            <View style={{ height: 20 }} />
-                        </Animated.ScrollView>
-                    </LinearGradient>
+                            {/* Sticky Footer */}
+                            <View style={{ padding: 24, borderTopWidth: 1, borderTopColor: c.border }}>
+                                <PressableScale onPress={handleSave} style={{ borderRadius: 16, overflow: 'hidden' }}>
+                                    <LinearGradient colors={theme.gradients.primary} style={{ padding: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                        <Save size={20} color="#FFF" />
+                                        <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>SAVE COURSE</Text>
+                                    </LinearGradient>
+                                </PressableScale>
+                            </View>
+                        </LinearGradient>
+                    </Animated.View>
                 </View>
             </Modal>
         </View>
