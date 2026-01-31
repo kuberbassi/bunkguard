@@ -479,11 +479,11 @@ const ResultsScreen = ({ navigation }) => {
 
                 {/* Grading Ref Toggle */}
                 <PressableScale style={styles.refToggle} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setShowGradingRef(!showGradingRef); }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                         <Info size={16} color={c.primary} />
                         <Text style={{ color: c.primary, fontWeight: '600' }}>Grading Key</Text>
                     </View>
-                    {showGradingRef ? <ChevronUp size={16} color={c.subtext} /> : <ChevronDown size={16} color={c.subtext} />}
+                    {showGradingRef ? <ChevronUp size={18} color={c.subtext} /> : <ChevronDown size={18} color={c.subtext} />}
                 </PressableScale>
 
                 {showGradingRef && (
@@ -627,7 +627,7 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     statLabel: { fontSize: 10, fontWeight: '700', color: c.subtext, marginBottom: 4 },
     statValue: { fontSize: 22, fontWeight: '800', color: c.text },
 
-    refToggle: { flexDirection: 'row', justifyContent: 'space-between', padding: 12, borderRadius: 12, backgroundColor: c.glassBgEnd, marginBottom: 12 },
+    refToggle: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 12, backgroundColor: c.glassBgEnd, marginBottom: 12 },
     refChip: { padding: 8, borderRadius: 12, borderWidth: 1, borderColor: c.glassBorder, minWidth: 50, alignItems: 'center' },
 
     actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

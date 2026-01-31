@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, Image, Switch,
-    ScrollView, TextInput, Alert, ActivityIndicator, Animated, RefreshControl
+    ScrollView, TextInput, Alert, ActivityIndicator, Animated, RefreshControl, Modal
 } from 'react-native';
 import { theme, Layout as AppLayout } from '../theme';
 import PressableScale from '../components/PressableScale';
@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     LogOut, User, Bell, ChevronRight, Edit2,
     Download, Upload, Trash2, FileText, AlertTriangle, Camera,
-    RefreshCw, CheckCircle2, ArrowDownCircle
+    RefreshCw, CheckCircle2, ArrowDownCircle, HelpCircle, X
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { attendanceService } from '../services';
@@ -71,6 +71,7 @@ const SettingsScreen = ({ navigation }) => {
     const [attendanceThreshold, setAttendanceThreshold] = useState('75');
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [accentColor, setAccentColor] = useState(c.primary);
+    const [showHowToUse, setShowHowToUse] = useState(false);
 
     const { updateStatus, latestRelease, downloadProgress, checkUpdate, downloadAndInstallUpdate, currentVersion } = useUpdate();
 
@@ -573,6 +574,21 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                         <ChevronRight size={18} color={c.subtext} />
                     </PressableScale>
+
+                    <View style={styles.divider} />
+
+                    <PressableScale style={styles.actionRow} onPress={() => setShowHowToUse(true)}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                            <View style={[styles.iconBox, { backgroundColor: theme.palette.purple + '15' }]}>
+                                <HelpCircle size={18} color={theme.palette.purple} />
+                            </View>
+                            <View>
+                                <Text style={styles.settingLabel}>How to Use App</Text>
+                                <Text style={styles.settingSub}>Quick guide to all features</Text>
+                            </View>
+                        </View>
+                        <ChevronRight size={18} color={c.subtext} />
+                    </PressableScale>
                 </LinearGradient>
 
 
@@ -615,6 +631,121 @@ const SettingsScreen = ({ navigation }) => {
                     }
                 </View>
             </Animated.ScrollView>
+
+            {/* How to Use Modal */}
+            <Modal
+                visible={showHowToUse}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => setShowHowToUse(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: isDark ? '#0D0D0D' : '#FFFFFF' }}>
+                    {/* Header with safe area */}
+                    <LinearGradient
+                        colors={theme.gradients.primary}
+                        style={{ paddingTop: insets.top, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <HelpCircle size={22} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '700' }}>📱 How to Use AcadHub</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => setShowHowToUse(false)} style={{ padding: 4 }}>
+                            <X size={24} color="#FFF" />
+                        </TouchableOpacity>
+                    </LinearGradient>
+
+                    {/* Content */}
+                    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
+
+                        {/* Step 1 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>📅 1. Pick Your Semester</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                On Dashboard, tap the semester dropdown at the top and select your current semester. This keeps all your data organized.
+                            </Text>
+                        </View>
+
+                        {/* Step 2 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>📚 2. Add Your Subjects</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Tap the ➕ button on Dashboard → Enter subject name → Select categories (Theory, Lab, Tutorial) → Save. Repeat for all courses!
+                            </Text>
+                        </View>
+
+                        {/* Step 3 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>⏰ 3. Setup Class Timings</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Go to Calendar tab → Tap "Manage" → Tap ⚙️ gear icon → Add each period with time and type (Class/Break) → Save & Close.
+                            </Text>
+                        </View>
+
+                        {/* Step 4 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🗓️ 4. Build Your Timetable</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Still in Manage, tap ➕ icon → Pick day & time slot → Choose subject (or Free/Break) → Fill all slots for your week!
+                            </Text>
+                        </View>
+
+                        {/* Step 5 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>✋ 5. Mark Attendance</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Tap any date in Calendar → Toggle ✅ Present or ❌ Absent for each class. For substitution, medical leave, or notes, tap the ⋯ three-dot menu.
+                            </Text>
+                        </View>
+
+                        {/* Step 6 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🔔 6. IPU Notices</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Tap the 🔔 bell icon on Dashboard to view official IPU notices. They auto-update regularly!
+                            </Text>
+                        </View>
+
+                        {/* Step 7 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🏆 7. Track Results</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Academy → Results → Tap ✏️ pencil → Add subject with credits, type (Theory/Practical/NUES) and marks (Internal + External) → Save with 💾.
+                            </Text>
+                        </View>
+
+                        {/* Step 8 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>📋 8. Assignments & Practicals</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Academy → Assignments → Use ➕/➖ buttons to track count. Customize counts in Subject Settings on Dashboard. Mark "Submitted" when done!
+                            </Text>
+                        </View>
+
+                        {/* Step 9 */}
+                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🎨 9. Customize</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                Settings → Switch 🌙/☀️ theme → Set minimum attendance % warning → Edit profile → Tap "Update Preferences" to save.
+                            </Text>
+                        </View>
+
+                        {/* Extras */}
+                        <View style={{ gap: 8, backgroundColor: theme.palette.purple + '20', padding: 14, borderRadius: 12 }}>
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>💡 Quick Tips</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                                • 📊 Analytics auto-updates with your data{'\n'}
+                                • 🎓 Skills & Courses - just add and use{'\n'}
+                                • 📜 View System Logs in Settings{'\n'}
+                                • 🔄 Check for app updates in Settings
+                            </Text>
+                        </View>
+
+                        <View style={{ height: 20 }} />
+                    </ScrollView>
+                </View>
+            </Modal>
         </View>
     );
 };

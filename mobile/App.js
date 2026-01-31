@@ -9,6 +9,7 @@ import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { LayoutDashboard, Calendar as CalendarIcon, Settings, BarChart2, GraduationCap } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -26,15 +27,19 @@ import TimetableSetupScreen from './src/screens/TimetableSetupScreen';
 import AssignmentsScreen from './src/screens/AssignmentsScreen';
 import CourseManagerScreen from './src/screens/CourseManagerScreen';
 import TimetableScreen from './src/screens/TimetableScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import useRealTimeSync from './src/hooks/useRealTimeSync';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { SemesterProvider } from './src/contexts/SemesterContext';
 import { UpdateProvider } from './src/contexts/UpdateContext';
 import NetInfo from '@react-native-community/netinfo';
 import OfflineOverlay from './src/components/OfflineOverlay';
+import ChangelogModal from './src/components/ChangelogModal';
 
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, clientPersister } from './src/lib/queryClient';
+import { performCacheSafetyCheck } from './src/utils/CacheSafetyManager';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -211,6 +216,7 @@ const AppNavigator = () => {
   const { user, loading: authLoading } = useAuth();
   const { isDark } = useTheme();
   const [isOffline, setIsOffline] = React.useState(false);
+  const [hasSeenOnboarding, setHasSeenOnboarding] = React.useState(null); // null = loading, true/false = checked
   const colors = isDark ? theme.dark : theme.light;
 
   React.useEffect(() => {
@@ -220,10 +226,35 @@ const AppNavigator = () => {
     return () => unsubscribe();
   }, []);
 
+  // Run cache safety check on app start
+  React.useEffect(() => {
+    performCacheSafetyCheck().then(result => {
+      if (result.migrated) {
+        console.log('📦 Cache migrated:', result);
+      }
+    });
+  }, []);
+
+  // Check if user has seen onboarding
+  React.useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const seen = await AsyncStorage.getItem('hasSeenOnboarding');
+        setHasSeenOnboarding(seen === 'true');
+      } catch (e) {
+        console.error('Error checking onboarding status:', e);
+        setHasSeenOnboarding(true); // Default to true on error
+      }
+    };
+    if (user) {
+      checkOnboarding();
+    }
+  }, [user]);
+
   // Initialize Real-time Sync
   useRealTimeSync();
 
-  if (authLoading) {
+  if (authLoading || (user && hasSeenOnboarding === null)) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: colors.onSurface }}>Loading...</Text>
@@ -238,6 +269,10 @@ const AppNavigator = () => {
         <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: colors.background } }}>
           {!user ? (
             <Stack.Screen name="Login" component={LoginScreen} />
+          ) : !hasSeenOnboarding ? (
+            <Stack.Screen name="Onboarding">
+              {(props) => <OnboardingScreen {...props} onComplete={() => setHasSeenOnboarding(true)} />}
+            </Stack.Screen>
           ) : (
             <>
               <Stack.Screen name="Main" component={MainTabs} />
@@ -255,25 +290,28 @@ const AppNavigator = () => {
         </Stack.Navigator>
       </NavigationContainer>
       <OfflineOverlay isVisible={isOffline} />
+      {hasSeenOnboarding && <ChangelogModal />}
     </View>
   );
 }
 
 export default function App() {
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{ persister: clientPersister }}
-    >
-      <AuthProvider>
-        <ThemeProvider>
-          <SemesterProvider>
-            <UpdateProvider>
-              <AppNavigator />
-            </UpdateProvider>
-          </SemesterProvider>
-        </ThemeProvider>
-      </AuthProvider>
-    </PersistQueryClientProvider>
+    <SafeAreaProvider>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{ persister: clientPersister }}
+      >
+        <AuthProvider>
+          <ThemeProvider>
+            <SemesterProvider>
+              <UpdateProvider>
+                <AppNavigator />
+              </UpdateProvider>
+            </SemesterProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </PersistQueryClientProvider>
+    </SafeAreaProvider>
   );
 }

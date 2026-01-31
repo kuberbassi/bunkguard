@@ -31,6 +31,16 @@
 - **University Notices**: Live-scraped official circulars
 - **Smart Filtering**: Only see what matters to you
 
+### 🎓 Onboarding & Help
+- **Interactive Tutorial**: 11-step onboarding flow with emojis
+- **How to Use Guide**: In-app guide accessible from Settings
+- **Theme Support**: Dark/Light mode with consistent styling
+
+### 🔒 Data Safety
+- **Cache Versioning**: Automatic migration on app updates
+- **Safe Updates**: No data loss when updating the app
+- **Offline Persistence**: Works without internet connection
+
 ### 🎯 Skills Tracker
 - **Progress Monitoring**: Track skill development across categories
 - **Visual Indicators**: Progress bars and level badges
