@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+    Plus, ExternalLink, Trash2, Edit2, Award, Calendar,
     TrendingUp, Book, Globe, Video
 } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
