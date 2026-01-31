@@ -91,6 +91,7 @@ export const theme = {
     royal: ['#AC67FF', '#007FFF'], // Purple to Blue
     ocean: ['#007FFF', '#2E9DFF'], // Blue variants
     success: ['#59A275', '#76B78F'],
+    orange: ['#FF8F3F', '#FFB870'],  // Orange gradient - was missing!
     danger: ['#E06260', '#EB794E'],
     glass: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)'],
     glassLight: ['rgba(255,255,255,0.92)', 'rgba(255,255,255,0.75)'],

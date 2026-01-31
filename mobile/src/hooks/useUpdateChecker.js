@@ -8,6 +8,18 @@ import Constants from 'expo-constants';
 const GITHUB_REPO = 'kuberbassi/acadhub';
 const CURRENT_VERSION = Constants.expoConfig?.version || '1.0.0';
 
+// Helper to compare semantic versions (returns true if v1 > v2)
+const compareVersions = (v1, v2) => {
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+
+    for (let i = 0; i < 3; i++) {
+        if (parts1[i] > parts2[i]) return true;
+        if (parts1[i] < parts2[i]) return false;
+    }
+    return false; // versions are equal
+};
+
 const useUpdateChecker = () => {
     const [updateStatus, setUpdateStatus] = useState('idle'); // idle, checking, available, up-to-date, downloading, error
     const [latestRelease, setLatestRelease] = useState(null);
@@ -21,8 +33,11 @@ const useUpdateChecker = () => {
             const latest = response.data;
             const latestVersion = latest.tag_name.replace('v', '');
 
-            if (latestVersion !== CURRENT_VERSION) {
-                console.log(`✨ New version available: v${latestVersion}`);
+            // Proper semantic version comparison
+            const isNewer = compareVersions(latestVersion, CURRENT_VERSION);
+
+            if (isNewer) {
+                console.log(`✨ New version available: v${latestVersion} (current: v${CURRENT_VERSION})`);
                 setLatestRelease(latest);
                 setUpdateStatus('available');
                 return true;

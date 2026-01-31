@@ -587,32 +587,50 @@ def get_reports_data():
 
         heatmap_data_lists = {date: list(statuses) for date, statuses in heatmap_data_sets.items()}
         
-        # --- NEW: Weekly Breakdown (Last 7 Days) for Analytics Chart ---
-        weekly_breakdown = {}
-        today = datetime.utcnow().date()
-        # Get last 7 days including today
-        last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
-        
-        # Fetch detailed logs for these days to count exactly
-        start_week = last_7_days[0]
+        # --- Weekly Breakdown: Cumulative Attendance by Day of Week (Mon-Sun) ---
+        # This shows average attendance for each day across the semester
+        # More meaningful than "last 7 days" which fluctuates randomly
         weekly_logs = list(attendance_log_collection.find(
-            {"owner_email": user_email, "timestamp": {'$gte': datetime.combine(start_week, datetime.min.time())}},
-            {'date': 1, 'status': 1, '_id': 0}
+            {
+                "owner_email": user_email, 
+                "semester": current_semester,
+                "status": {'$in': ['present', 'absent', 'late', 'approved_medical', 'approved_duty']}
+            },
+            {'date': 1, 'status': 1, 'timestamp': 1, '_id': 0}
         ))
         
-        # Initialize map
-        stats_map = {d.strftime("%Y-%m-%d"): {'attended': 0, 'total': 0} for d in last_7_days}
-        
+        # Group by day of week
+        day_stats = {}
         for log in weekly_logs:
-            d_str = log['date']
-            if d_str in stats_map:
-                status = log['status']
-                if status in ['present', 'absent', 'late', 'approved_medical']:
-                    stats_map[d_str]['total'] += 1
-                    if status in ['present', 'approved_medical']:
-                        stats_map[d_str]['attended'] += 1
+            # Get day of week from timestamp
+            if 'timestamp' in log and log['timestamp']:
+                day_name = log['timestamp'].strftime('%A')  # 'Monday', 'Tuesday', etc.
+                
+                if day_name not in day_stats:
+                    day_stats[day_name] = {'attended': 0, 'total': 0}
+                
+                day_stats[day_name]['total'] += 1
+                if log['status'] in ['present', 'approved_medical', 'approved_duty']:
+                    day_stats[day_name]['attended'] += 1
+        
+        # Convert to date format expected by frontend (using current week as reference)
+        today = datetime.utcnow().date()
+        # Find Monday of current week
+        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+        monday = today - timedelta(days=days_since_monday)
+        
+        stats_map = {}
+        day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        for i, day_name in enumerate(day_names):
+            date_str = (monday + timedelta(days=i)).strftime("%Y-%m-%d")
+            if day_name in day_stats:
+                stats_map[date_str] = day_stats[day_name]
+            else:
+                stats_map[date_str] = {'attended': 0, 'total': 0}
         
         streak = calculate_streak(user_email)
+        
+        print(f"📊 DEBUG: Weekly breakdown stats_map = {stats_map}")
 
         response_data = {
             "kpis": {
