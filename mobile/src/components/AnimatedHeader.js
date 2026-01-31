@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, Platform, TouchableOpacity } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
 import { ChevronLeft } from 'lucide-react-native';
+import NoiseTexture from './NoiseTexture';
 
 /**
  * Universal Animated Header Component
@@ -74,7 +75,6 @@ const AnimatedHeader = ({
 
     return (
         <Animated.View style={[styles.header, { height: headerHeight }]}>
-            {/* Glass Background */}
             <Animated.View
                 style={[
                     StyleSheet.absoluteFill,
@@ -86,6 +86,7 @@ const AnimatedHeader = ({
                     }
                 ]}
             />
+            <NoiseTexture opacity={0.2} />
 
             {/* Header Content */}
             <Animated.View style={[styles.headerContent, { transform: [{ translateY: headerTranslateY }] }]}>

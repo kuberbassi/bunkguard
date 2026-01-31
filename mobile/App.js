@@ -36,6 +36,7 @@ import { UpdateProvider } from './src/contexts/UpdateContext';
 import NetInfo from '@react-native-community/netinfo';
 import OfflineOverlay from './src/components/OfflineOverlay';
 import ChangelogModal from './src/components/ChangelogModal';
+import NoiseTexture from './src/components/NoiseTexture';
 
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, clientPersister } from './src/lib/queryClient';
@@ -291,6 +292,7 @@ const AppNavigator = () => {
       </NavigationContainer>
       <OfflineOverlay isVisible={isOffline} />
       {hasSeenOnboarding && <ChangelogModal />}
+      <NoiseTexture opacity={0.05} style={{ zIndex: 9999 }} />
     </View>
   );
 }

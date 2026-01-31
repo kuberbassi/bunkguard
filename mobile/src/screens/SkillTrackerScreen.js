@@ -42,13 +42,14 @@ const SkillTrackerScreen = ({ navigation }) => {
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
 
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.65)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.03)',
+        glassBgEnd: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.02)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
 
-        text: isDark ? '#FFFFFF' : '#000000',
+        text: isDark ? '#FFFFFF' : '#1A1A1A',
         subtext: isDark ? '#9CA3AF' : '#6B7280',
-        inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+        inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+        trackBg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
 
         primary: '#0A84FF',
     };
