@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import PressableScale from './PressableScale';
 import { theme } from '../theme';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from './LinearGradient';
 
 const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
     // Aquamorphic Palette
@@ -220,3 +220,4 @@ const getStyles = (c, isDark) => StyleSheet.create({
 });
 
 export default React.memo(EnhancedSubjectCard);
+

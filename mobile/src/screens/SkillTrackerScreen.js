@@ -10,7 +10,7 @@ import { theme, Layout } from '../theme';
 import {
     Plus, Edit2, Trash2, Zap, Palette, Globe, Briefcase, Heart, Grid, X, Save, TrendingUp
 } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { skillsService } from '../services';
 import AnimatedHeader from '../components/AnimatedHeader';
 import PressableScale from '../components/PressableScale';
@@ -229,7 +229,7 @@ const SkillTrackerScreen = ({ navigation }) => {
     return (
         <View style={{ flex: 1 }}>
             {/* BACKGROUND */}
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
 
@@ -327,7 +327,7 @@ const SkillTrackerScreen = ({ navigation }) => {
             {/* MODAL - Flush Bottom Sheet */}
             <Modal animationType="slide" visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
                 <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.75)', padding: 20 }}>
-                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
+                    <TouchableOpacity noTexture style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
                     <Animated.View style={[styles.modalRefined, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                         <LinearGradient colors={[isDark ? '#1a1a1a' : '#fff', isDark ? '#1a1a1a' : '#f0f0f0']} style={{ flexShrink: 1 }}>
                             <View style={[styles.modalHeader, { padding: 24, paddingBottom: 0 }]}>
@@ -487,3 +487,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default SkillTrackerScreen;
+
+
+

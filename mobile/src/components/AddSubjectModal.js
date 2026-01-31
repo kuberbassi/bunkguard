@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, ScrollView,
 import PressableScale from './PressableScale';
 import { theme } from '../theme';
 import { X, Save, BookOpen, User, MapPin, AlertTriangle, Target, Briefcase, Trash2, FileText } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from './LinearGradient';
 
 import { useSemester } from '../contexts/SemesterContext';
 
@@ -267,8 +267,14 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
 
                     {/* Footer - Sticky */}
                     <View style={styles.footer}>
-                        <PressableScale style={styles.saveBtn} onPress={handleSave}>
-                            <Text style={styles.saveText}>Save Details</Text>
+                        <PressableScale onPress={handleSave}>
+                            <LinearGradient
+                                colors={theme.gradients.primary}
+                                style={styles.saveBtn}
+                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                            >
+                                <Text style={styles.saveText}>Save Details</Text>
+                            </LinearGradient>
                         </PressableScale>
                     </View>
                 </Animated.View>
@@ -340,3 +346,4 @@ const getStyles = (c, isDark) => StyleSheet.create({
 });
 
 export default AddSubjectModal;
+

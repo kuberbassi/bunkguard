@@ -7,7 +7,7 @@ import { theme } from './src/theme';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { LayoutDashboard, Calendar as CalendarIcon, Settings, BarChart2, GraduationCap } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from './src/components/LinearGradient';
 import { BlurView } from 'expo-blur';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -36,7 +36,7 @@ import { UpdateProvider } from './src/contexts/UpdateContext';
 import NetInfo from '@react-native-community/netinfo';
 import OfflineOverlay from './src/components/OfflineOverlay';
 import ChangelogModal from './src/components/ChangelogModal';
-import NoiseTexture from './src/components/NoiseTexture';
+
 
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, clientPersister } from './src/lib/queryClient';
@@ -292,7 +292,6 @@ const AppNavigator = () => {
       </NavigationContainer>
       <OfflineOverlay isVisible={isOffline} />
       {hasSeenOnboarding && <ChangelogModal />}
-      <NoiseTexture opacity={0.05} style={{ zIndex: 9999 }} />
     </View>
   );
 }

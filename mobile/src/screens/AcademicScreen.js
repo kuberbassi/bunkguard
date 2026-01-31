@@ -8,7 +8,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
 import { GraduationCap, Zap, BookOpen, ChevronRight, Beaker, LayoutGrid, Clock } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import PressableScale from '../components/PressableScale';
 
@@ -33,25 +33,25 @@ const AcademicScreen = ({ navigation }) => {
             results: {
                 bg: isDark ? theme.gradients.vibrant : ['#FFF4E6', '#FFFAEB'],
                 icon: theme.gradients.vibrant,
-                text: '#FFFFFF',
+                text: isDark ? '#FFFFFF' : '#1E1F22',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#92400E'
             },
             assignments: {
                 bg: isDark ? theme.gradients.success : ['#ECFDF5', '#F0FDF4'],
                 icon: theme.gradients.success,
-                text: '#FFFFFF',
+                text: isDark ? '#FFFFFF' : '#1E1F22',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#065F46'
             },
             skills: {
                 bg: isDark ? theme.gradients.ocean : ['#FAF5FF', '#F3E8FF'],
                 icon: theme.gradients.ocean,
-                text: '#FFFFFF',
+                text: isDark ? '#FFFFFF' : '#1E1F22',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#6B21A8'
             },
             courses: {
                 bg: isDark ? theme.gradients.primary : ['#EFF6FF', '#DBEAFE'],
                 icon: theme.gradients.primary,
-                text: '#FFFFFF',
+                text: isDark ? '#FFFFFF' : '#1E1F22',
                 subtext: isDark ? 'rgba(255,255,255,0.8)' : '#1E40AF'
             }
         }
@@ -102,8 +102,9 @@ const AcademicScreen = ({ navigation }) => {
 
             {/* BACKGROUND GRADIENT */}
             <LinearGradient
+                noTexture
                 colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]}
-                style={StyleSheet.absoluteFillObject}
+                noTexture style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
@@ -282,3 +283,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default AcademicScreen;
+
+
+

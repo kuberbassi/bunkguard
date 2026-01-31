@@ -19,7 +19,7 @@ import SemesterSelector from '../components/SemesterSelector';
 import EnhancedSubjectCard from '../components/EnhancedSubjectCard';
 import AddSubjectModal from '../components/AddSubjectModal';
 import AnimatedHeader from '../components/AnimatedHeader';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { useSemester } from '../contexts/SemesterContext';
 const DashboardScreen = ({ navigation }) => {
     const { user } = useAuth();
@@ -197,8 +197,9 @@ const DashboardScreen = ({ navigation }) => {
 
             {/* FULL SCREEN FLUID GRADIENT BACKGROUND */}
             <LinearGradient
+                noTexture
                 colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']}
-                style={StyleSheet.absoluteFillObject}
+                noTexture style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
@@ -634,3 +635,6 @@ const getStyles = (c, isDark) => StyleSheet.create({
 });
 
 export default DashboardScreen;
+
+
+

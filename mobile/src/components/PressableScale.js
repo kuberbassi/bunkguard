@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet } from 'react-native';
-import NoiseTexture from './NoiseTexture';
 
 const PressableScale = ({ children, onPress, style, scaleTo = 0.95, friction = 8, tension = 45, activeOpacity = 0.9, ...props }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -45,7 +44,6 @@ const PressableScale = ({ children, onPress, style, scaleTo = 0.95, friction = 8
                 flatStyle.width ? { width: '100%' } : null,
                 flatStyle.height ? { height: '100%' } : null
             ]}>
-                <NoiseTexture opacity={0.3} />
                 {children}
             </Animated.View>
         </Pressable>
@@ -53,3 +51,4 @@ const PressableScale = ({ children, onPress, style, scaleTo = 0.95, friction = 8
 };
 
 export default PressableScale;
+

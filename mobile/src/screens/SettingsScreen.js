@@ -13,7 +13,7 @@ import {
     Download, Upload, Trash2, FileText, AlertTriangle, Camera,
     RefreshCw, CheckCircle2, ArrowDownCircle, HelpCircle, X
 } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { attendanceService } from '../services';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -343,7 +343,7 @@ const SettingsScreen = ({ navigation }) => {
             {/* BACKGROUND */}
             <LinearGradient
                 colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]}
-                style={StyleSheet.absoluteFillObject}
+                noTexture style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
             />
@@ -658,89 +658,43 @@ const SettingsScreen = ({ navigation }) => {
 
                     {/* Content */}
                     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
-
-                        {/* Step 1 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>📅 1. Pick Your Semester</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                On Dashboard, tap the semester dropdown at the top and select your current semester. This keeps all your data organized.
-                            </Text>
-                        </View>
-
-                        {/* Step 2 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>📚 2. Add Your Subjects</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Tap the ➕ button on Dashboard → Enter subject name → Select categories (Theory, Lab, Tutorial) → Save. Repeat for all courses!
-                            </Text>
-                        </View>
-
-                        {/* Step 3 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>⏰ 3. Setup Class Timings</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Go to Calendar tab → Tap "Manage" → Tap ⚙️ gear icon → Add each period with time and type (Class/Break) → Save & Close.
-                            </Text>
-                        </View>
-
-                        {/* Step 4 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🗓️ 4. Build Your Timetable</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Still in Manage, tap ➕ icon → Pick day & time slot → Choose subject (or Free/Break) → Fill all slots for your week!
-                            </Text>
-                        </View>
-
-                        {/* Step 5 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>✋ 5. Mark Attendance</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Tap any date in Calendar → Toggle ✅ Present or ❌ Absent for each class. For substitution, medical leave, or notes, tap the ⋯ three-dot menu.
-                            </Text>
-                        </View>
-
-                        {/* Step 6 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🔔 6. IPU Notices</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Tap the 🔔 bell icon on Dashboard to view official IPU notices. They auto-update regularly!
-                            </Text>
-                        </View>
-
-                        {/* Step 7 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🏆 7. Track Results</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Academy → Results → Tap ✏️ pencil → Add subject with credits, type (Theory/Practical/NUES) and marks (Internal + External) → Save with 💾.
-                            </Text>
-                        </View>
-
-                        {/* Step 8 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>📋 8. Assignments & Practicals</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Academy → Assignments → Use ➕/➖ buttons to track count. Customize counts in Subject Settings on Dashboard. Mark "Submitted" when done!
-                            </Text>
-                        </View>
-
-                        {/* Step 9 */}
-                        <View style={{ gap: 8, backgroundColor: isDark ? '#1A1A1A' : '#F5F5F7', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>🎨 9. Customize</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
-                                Settings → Switch 🌙/☀️ theme → Set minimum attendance % warning → Edit profile → Tap "Update Preferences" to save.
-                            </Text>
-                        </View>
+                        {/* HELPER FOR STEPS */}
+                        {[
+                            { t: '📅 1. Pick Your Semester', d: 'On Dashboard, tap the semester dropdown at the top and select your current semester. This keeps all your data organized.' },
+                            { t: '📚 2. Add Your Subjects', d: 'Tap the ➕ button on Dashboard → Enter subject name → Select categories (Theory, Lab, Tutorial) → Save. Repeat for all courses!' },
+                            { t: '⏰ 3. Setup Class Timings', d: 'Go to Calendar tab → Tap "Manage" → Tap ⚙️ gear icon → Add each period with time and type (Class/Break) → Save & Close.' },
+                            { t: '🗓️ 4. Build Your Timetable', d: 'Still in Manage, tap ➕ icon → Pick day & time slot → Choose subject (or Free/Break) → Fill all slots for your week!' },
+                            { t: '✋ 5. Mark Attendance', d: 'Tap any date in Calendar → Toggle ✅ Present or ❌ Absent for each class. For substitution, medical leave, or notes, tap the ⋯ three-dot menu.' },
+                            { t: '🔔 6. IPU Notices', d: 'Tap the 🔔 bell icon on Dashboard to view official IPU notices. They auto-update regularly!' },
+                            { t: '🏆 7. Track Results', d: 'Academy → Results → Tap ✏️ pencil → Add subject with credits, type (Theory/Practical/NUES) and marks (Internal + External) → Save with 💾.' },
+                            { t: '📋 8. Assignments & Practicals', d: 'Academy → Assignments → Use ➕/➖ buttons to track count. Customize counts in Subject Settings on Dashboard. Mark "Submitted" when done!' },
+                            { t: '🎨 9. Customize', d: 'Settings → Switch 🌙/☀️ theme → Set minimum attendance % warning → Edit profile → Tap "Update Preferences" to save.' }
+                        ].map((step, i) => (
+                            <LinearGradient
+                                key={i}
+                                colors={[c.glassBgStart, c.glassBgEnd]}
+                                style={{ gap: 8, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder }}
+                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                            >
+                                <Text style={{ color: c.primary, fontSize: 16, fontWeight: '800' }}>{step.t}</Text>
+                                <Text style={{ color: c.text, fontSize: 14, lineHeight: 22, fontWeight: '500' }}>{step.d}</Text>
+                            </LinearGradient>
+                        ))}
 
                         {/* Extras */}
-                        <View style={{ gap: 8, backgroundColor: theme.palette.purple + '20', padding: 14, borderRadius: 12 }}>
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '700' }}>💡 Quick Tips</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22 }}>
+                        <LinearGradient
+                            colors={[theme.palette.purple + '15', theme.palette.purple + '05']}
+                            style={{ gap: 8, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: theme.palette.purple + '30' }}
+                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        >
+                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '800' }}>💡 Quick Tips</Text>
+                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22, fontWeight: '500' }}>
                                 • 📊 Analytics auto-updates with your data{'\n'}
                                 • 🎓 Skills & Courses - just add and use{'\n'}
                                 • 📜 View System Logs in Settings{'\n'}
                                 • 🔄 Check for app updates in Settings
                             </Text>
-                        </View>
+                        </LinearGradient>
 
                         <View style={{ height: 20 }} />
                     </ScrollView>
@@ -1004,3 +958,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default SettingsScreen;
+
+
+

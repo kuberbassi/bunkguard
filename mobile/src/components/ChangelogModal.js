@@ -3,7 +3,7 @@ import {
     Modal, View, Text, StyleSheet, TouchableOpacity,
     ScrollView, Dimensions, ActivityIndicator
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from './LinearGradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { X, Sparkles, Gift } from 'lucide-react-native';
@@ -306,3 +306,4 @@ const styles = StyleSheet.create({
 });
 
 export default ChangelogModal;
+

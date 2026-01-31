@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SectionList, Modal, TextInput, Alert, Animated, Platform, RefreshControl, Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { theme } from '../theme';
 import { Plus, X, Globe, Video, Clock, Trash2, Edit2, ExternalLink, Save, CheckCircle2 } from 'lucide-react-native';
 import api from '../services/api';
@@ -131,55 +131,67 @@ const CourseManagerScreen = ({ navigation }) => {
                 style={[
                     styles.card,
                     {
-                        backgroundColor: isCompleted ? c.completionGreenBg : c.card,
-                        borderColor: isCompleted ? c.completionGreenBorder : c.border,
-                        borderWidth: isCompleted ? 1.5 : 1
+                        borderWidth: 0, // Border moved to Gradient
+                        padding: 0 // Padding moved to Gradient
                     }
                 ]}
             >
-                <View style={styles.cardHeader}>
-                    <View style={[styles.badge, { backgroundColor: isCompleted ? 'rgba(16, 185, 129, 0.15)' : platform.bg }]}>
-                        <Icon size={12} color={isCompleted ? c.completionGreen : platform.color} />
-                        <Text style={[styles.badgeText, { color: isCompleted ? c.completionGreen : platform.color }]}>
-                            {isCompleted ? 'COMPLETED' : platform.label}
-                        </Text>
+                <LinearGradient
+                    colors={isCompleted ? [c.completionGreenBg, c.completionGreenBg] : [c.glassBgStart, c.glassBgEnd]}
+                    style={{
+                        padding: 18,
+                        width: '100%',
+                        borderRadius: 22,
+                        borderWidth: isCompleted ? 1.5 : 1,
+                        borderColor: isCompleted ? c.completionGreenBorder : c.border
+                    }}
+                    start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                >
+                    <View style={styles.cardHeader}>
+                        <View style={[styles.badge, { backgroundColor: isCompleted ? 'rgba(16, 185, 129, 0.15)' : platform.bg }]}>
+                            <Icon size={12} color={isCompleted ? c.completionGreen : platform.color} />
+                            <Text style={[styles.badgeText, { color: isCompleted ? c.completionGreen : platform.color }]}>
+                                {isCompleted ? 'COMPLETED' : platform.label}
+                            </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            {isCompleted && <CheckCircle2 size={18} color={c.completionGreen} strokeWidth={2.5} />}
+                            {item.url ? (
+                                <PressableScale onPress={() => Linking.openURL(item.url).catch(() => { })} style={{ padding: 4 }}>
+                                    <ExternalLink size={16} color={c.subtext} />
+                                </PressableScale>
+                            ) : null}
+                        </View>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        {isCompleted && <CheckCircle2 size={18} color={c.completionGreen} strokeWidth={2.5} />}
-                        {item.url ? (
-                            <PressableScale onPress={() => Linking.openURL(item.url).catch(() => { })} style={{ padding: 4 }}>
-                                <ExternalLink size={16} color={c.subtext} />
-                            </PressableScale>
-                        ) : null}
-                    </View>
-                </View>
 
-                <Text style={[styles.title, { color: c.text, fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
-                {item.instructor ? <Text style={[styles.instructor, { color: c.subtext, fontSize: 13 }]}>by {item.instructor}</Text> : null}
+                    <Text style={[styles.title, { color: c.text, fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
+                    {item.instructor ? <Text style={[styles.instructor, { color: c.subtext, fontSize: 13 }]}>by {item.instructor}</Text> : null}
 
-                <View style={{ marginTop: 14 }}>
-                    <View style={styles.progressRow}>
-                        <Text style={[styles.progressLabel, { color: c.subtext }]}>Progress</Text>
-                        <Text style={[styles.progressVal, { color: isCompleted ? c.completionGreen : c.text, fontWeight: isCompleted ? '800' : '700' }]}>
-                            {item.progress}%
-                        </Text>
+                    <View style={{ marginTop: 14 }}>
+                        <View style={styles.progressRow}>
+                            <Text style={[styles.progressLabel, { color: c.subtext }]}>Progress</Text>
+                            <Text style={[styles.progressVal, { color: isCompleted ? c.completionGreen : c.text, fontWeight: isCompleted ? '800' : '700' }]}>
+                                {item.progress}%
+                            </Text>
+                        </View>
+                        <View style={[styles.track, { height: 8, backgroundColor: isDark ? '#2C2C2E' : '#E5E7EB' }]}>
+                            <LinearGradient
+                                colors={isCompleted ? [c.completionGreen, '#34D399'] : [progressColor, progressColor]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ width: `${item.progress}%`, height: '100%', borderRadius: 4 }}
+                                noTexture // Progress bar needs no texture
+                            />
+                        </View>
                     </View>
-                    <View style={[styles.track, { height: 8, backgroundColor: isDark ? '#2C2C2E' : '#E5E7EB' }]}>
-                        <LinearGradient
-                            colors={isCompleted ? [c.completionGreen, '#34D399'] : [progressColor, progressColor]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={{ width: `${item.progress}%`, height: '100%', borderRadius: 4 }}
-                        />
-                    </View>
-                </View>
 
-                {item.targetCompletionDate ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 }}>
-                        <Clock size={11} color={c.subtext} />
-                        <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>Target: {item.targetCompletionDate}</Text>
-                    </View>
-                ) : null}
+                    {item.targetCompletionDate ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 }}>
+                            <Clock size={11} color={c.subtext} />
+                            <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>Target: {item.targetCompletionDate}</Text>
+                        </View>
+                    ) : null}
+                </LinearGradient>
             </PressableScale>
         );
     };
@@ -254,7 +266,7 @@ const CourseManagerScreen = ({ navigation }) => {
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgStart, c.bgEnd]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={[c.bgStart, c.bgEnd]} noTexture style={StyleSheet.absoluteFill} />
             <AnimatedHeader
                 title="My Courses"
                 subtitle="ONLINE LEARNING"
@@ -315,7 +327,7 @@ const CourseManagerScreen = ({ navigation }) => {
             {/* MODAL - Flush Bottom Sheet */}
             <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
+                    <TouchableOpacity noTexture style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
                     <Animated.View style={[styles.modalRefined, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                         <LinearGradient colors={[isDark ? '#000000' : '#FFFFFF', isDark ? '#000000' : '#F2F2F7']} style={{ flexShrink: 1 }}>
                             <View style={{ padding: 24, paddingBottom: 0, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -389,3 +401,6 @@ const CourseManagerScreen = ({ navigation }) => {
 };
 
 export default CourseManagerScreen;
+
+
+

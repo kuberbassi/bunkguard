@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
 import { attendanceService } from '../services';
 import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, CheckCircle2, XCircle, Settings, Calendar, GripVertical, X } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSemester } from '../contexts/SemesterContext';
 import PressableScale from '../components/PressableScale';
@@ -374,30 +374,36 @@ const TimetableScreen = ({ navigation }) => {
                 <View style={styles.timelineContentWrapper}>
                     <PressableScale
                         onPress={() => item.subject_id && !isStructureBreak && !isFree && handleEditStart(item)}
-                        style={[styles.timelineCard, { borderColor: isBreak ? 'transparent' : c.glassBorder }]}
+                        style={{ flex: 1 }}
                     >
-                        <View style={styles.cardHeader}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                {infoIcon}
-                                <Text style={[styles.timelineSubject, isBreak && { color: theme.palette.orange }]} numberOfLines={1}>{displaySubject}</Text>
-                            </View>
-
-                            {/* Status Indicators */}
-                            {!isBreak && !isFree && (
-                                <View style={{ flexDirection: 'row', gap: 6 }}>
-                                    {status === 'present' && <View style={[styles.statusBadge, { backgroundColor: theme.palette.green + '20' }]}><CheckCircle2 size={12} color={theme.palette.green} /></View>}
-                                    {status === 'absent' && <View style={[styles.statusBadge, { backgroundColor: theme.palette.red + '20' }]}><XCircle size={12} color={theme.palette.red} /></View>}
+                        <LinearGradient
+                            colors={isDark ? ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)'] : ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.4)']}
+                            style={[styles.timelineCard, { borderColor: isBreak ? 'transparent' : c.glassBorder }]}
+                            start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                        >
+                            <View style={styles.cardHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                    {infoIcon}
+                                    <Text style={[styles.timelineSubject, isBreak && { color: theme.palette.orange }]} numberOfLines={1}>{displaySubject}</Text>
                                 </View>
-                            )}
-                        </View>
 
-                        {/* Location / Details */}
-                        {item.classroom ? (
-                            <View style={styles.cardDetailRow}>
-                                <MapPin size={12} color={c.subtext} />
-                                <Text style={styles.cardDetailText}>{item.classroom}</Text>
+                                {/* Status Indicators */}
+                                {!isBreak && !isFree && (
+                                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                                        {status === 'present' && <View style={[styles.statusBadge, { backgroundColor: theme.palette.green + '20' }]}><CheckCircle2 size={12} color={theme.palette.green} /></View>}
+                                        {status === 'absent' && <View style={[styles.statusBadge, { backgroundColor: theme.palette.red + '20' }]}><XCircle size={12} color={theme.palette.red} /></View>}
+                                    </View>
+                                )}
                             </View>
-                        ) : null}
+
+                            {/* Location / Details */}
+                            {item.classroom ? (
+                                <View style={styles.cardDetailRow}>
+                                    <MapPin size={12} color={c.subtext} />
+                                    <Text style={styles.cardDetailText}>{item.classroom}</Text>
+                                </View>
+                            ) : null}
+                        </LinearGradient>
 
                         {/* Quick Actions (Today Only) */}
                         {isToday && item.subject_id && !isStructureBreak && !isFree && (
@@ -482,7 +488,7 @@ const TimetableScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
 
@@ -557,7 +563,7 @@ const TimetableScreen = ({ navigation }) => {
             {/* ADD SLOT MODAL */}
             <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', padding: 20 }}>
-                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
+                    <TouchableOpacity noTexture style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
                     <Animated.View style={[styles.modalContent, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                         <Text style={styles.modalTitle}>{editingSlot ? 'Edit Class' : 'Add Class'} ({selectedDay})</Text>
 
@@ -678,7 +684,7 @@ const TimetableScreen = ({ navigation }) => {
             {/* STRUCTURE MODAL */}
             <Modal animationType="fade" transparent visible={structureModalVisible} onRequestClose={() => setStructureModalVisible(false)}>
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                    <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setStructureModalVisible(false)} activeOpacity={1} />
+                    <TouchableOpacity noTexture style={StyleSheet.absoluteFill} onPress={() => setStructureModalVisible(false)} activeOpacity={1} />
                     <Animated.View style={[styles.modalContent, { transform: [{ scale: structureScale }], opacity: structureOpacity }]}>
                         <View style={styles.modalHeader}>
                             <View>
@@ -693,7 +699,12 @@ const TimetableScreen = ({ navigation }) => {
                         <View style={{ flexShrink: 1 }}>
                             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, paddingTop: 4 }} style={{ flexGrow: 0 }}>
                                 {tempPeriods.map((p, idx) => (
-                                    <View key={idx} style={styles.structureCard}>
+                                    <LinearGradient
+                                        key={idx}
+                                        colors={[c.glassBgStart, c.glassBgEnd]}
+                                        style={[styles.structureCard, { backgroundColor: 'transparent', borderWidth: 1, borderColor: c.glassBorder }]}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                                    >
                                         <View style={{ width: 4, height: '60%', backgroundColor: c.primary, borderRadius: 2, marginRight: 8 }} />
                                         <View style={{ flex: 1, flexDirection: 'row', gap: 10 }}>
                                             <TextInput
@@ -722,7 +733,7 @@ const TimetableScreen = ({ navigation }) => {
                                         <PressableScale onPress={() => setTempPeriods(tempPeriods.filter((_, i) => i !== idx))} style={styles.deleteIconBox}>
                                             <Trash2 size={16} color={c.danger} />
                                         </PressableScale>
-                                    </View>
+                                    </LinearGradient>
                                 ))}
 
                                 <PressableScale
@@ -968,3 +979,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default TimetableScreen;
+
+
+

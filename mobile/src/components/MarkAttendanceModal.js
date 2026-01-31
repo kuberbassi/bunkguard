@@ -4,7 +4,7 @@ import PressableScale from './PressableScale';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme';
 import { X, Check, X as XIcon, MoreHorizontal, Calendar as CalendarIcon, Trash2, Edit2, AlertCircle, Ban, Activity, RefreshCw, Save } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from './LinearGradient';
 import { useSemester } from '../contexts/SemesterContext';
 import { attendanceService } from '../services';
 
@@ -452,3 +452,4 @@ const getStyles = (c, isDark) => StyleSheet.create({
 });
 
 export default MarkAttendanceModal;
+

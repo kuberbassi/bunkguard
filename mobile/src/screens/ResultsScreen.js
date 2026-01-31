@@ -13,7 +13,7 @@ import {
     Award, TrendingUp, BookOpen, GraduationCap
 } from 'lucide-react-native';
 import AnimatedHeader from '../components/AnimatedHeader';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import SemesterSelector from '../components/SemesterSelector';
 import PressableScale from '../components/PressableScale';
 
@@ -438,7 +438,7 @@ const ResultsScreen = ({ navigation }) => {
         <View style={{ flex: 1 }}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             {/* BACKGROUND */}
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* UNIVERSAL ANIMATED HEADER */}
             <AnimatedHeader
@@ -672,3 +672,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default ResultsScreen;
+
+
+

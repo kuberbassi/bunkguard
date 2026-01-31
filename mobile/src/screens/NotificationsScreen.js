@@ -4,7 +4,7 @@ import { theme, Layout } from '../theme';
 import api from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 import { Bell, Info, Megaphone, ExternalLink, FileText } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PressableScale from '../components/PressableScale';
@@ -74,13 +74,19 @@ const NotificationsScreen = ({ navigation }) => {
                 onPress={() => displayLink && handleOpenLink(displayLink)}
                 style={styles.cardWrapper}
             >
-                <View style={styles.card}>
+                <LinearGradient
+                    colors={isDark ? ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)'] : ['#FFFFFF', '#F8F9FA']}
+                    style={styles.card}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                >
                     {/* Vertical Marker */}
                     <LinearGradient
                         colors={theme.gradients.vibrant}
                         style={styles.marker}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0, y: 1 }}
+                        noTexture // sub-gradient doesn't need shine
                     />
 
                     <View style={styles.cardContent}>
@@ -101,14 +107,14 @@ const NotificationsScreen = ({ navigation }) => {
                             </View>
                         )}
                     </View>
-                </View>
+                </LinearGradient>
             </PressableScale>
         );
     };
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* UNIVERSAL ANIMATED HEADER */}
             <AnimatedHeader
@@ -196,3 +202,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default NotificationsScreen;
+
+
+

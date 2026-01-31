@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { theme } from '../theme';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from './LinearGradient';
 
 import { useSemester } from '../contexts/SemesterContext';
 
@@ -91,3 +91,4 @@ const styles = StyleSheet.create({
 });
 
 export default SemesterSelector;
+

@@ -5,7 +5,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { BarChart2, TrendingDown, Activity, Zap, CheckCircle, AlertTriangle } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useTheme } from '../contexts/ThemeContext';
@@ -129,7 +129,7 @@ const AnalyticsScreen = () => {
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* UNIVERSAL ANIMATED HEADER */}
             <AnimatedHeader
@@ -282,3 +282,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default AnalyticsScreen;
+
+
+

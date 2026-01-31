@@ -6,7 +6,7 @@ import { Calendar } from 'react-native-calendars';
 import { attendanceService } from '../services';
 import MarkAttendanceModal from '../components/MarkAttendanceModal';
 import { ChevronLeft, ChevronRight, Calendar as CalIcon } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSemester } from '../contexts/SemesterContext';
 import { theme, Layout } from '../theme';
@@ -275,7 +275,7 @@ const CalendarScreen = ({ navigation }) => {
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
 
@@ -442,3 +442,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default CalendarScreen;
+
+
+

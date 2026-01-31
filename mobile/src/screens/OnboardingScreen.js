@@ -3,7 +3,7 @@ import {
     View, Text, StyleSheet, Dimensions, TouchableOpacity,
     FlatList, Animated, StatusBar
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -467,3 +467,6 @@ const styles = StyleSheet.create({
 });
 
 export default OnboardingScreen;
+
+
+

@@ -6,7 +6,7 @@ import {
 import { theme } from '../theme';
 import api from '../services/api';
 import { ChevronLeft, Edit2, Calendar, CheckCircle, XCircle, X, Trash2, Clock, AlertCircle, Shield } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { useTheme } from '../contexts/ThemeContext';
 
 const SubjectDetailScreen = ({ route, navigation }) => {
@@ -200,7 +200,7 @@ const SubjectDetailScreen = ({ route, navigation }) => {
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} />
 
             {/* FLUID HEADER */}
             <Animated.View style={[styles.header, { height: headerHeight }]}>
@@ -376,3 +376,6 @@ const getStyles = (c, isDark) => StyleSheet.create({
 });
 
 export default SubjectDetailScreen;
+
+
+

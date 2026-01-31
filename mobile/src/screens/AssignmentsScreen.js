@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal, TextInput, A
 import { useTheme } from '../contexts/ThemeContext';
 import { useSemester } from '../contexts/SemesterContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { theme } from '../theme';
 import { Plus, Minus, CheckCircle, Beaker, FileText, Filter } from 'lucide-react-native';
 import api from '../services/api';
@@ -120,7 +120,7 @@ const AssignmentsScreen = ({ navigation }) => {
 
         return (
             <View style={styles.card}>
-                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} noTexture style={StyleSheet.absoluteFill} />
                 {/* Progress Bar Top */}
                 <View style={{ height: 4, backgroundColor: c.glassBorder, width: '100%', position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' }}>
                     <LinearGradient colors={theme.gradients.success} style={{ height: '100%', width: `${progress}%` }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
@@ -254,7 +254,7 @@ const AssignmentsScreen = ({ navigation }) => {
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFill} />
             <AnimatedHeader
                 title="Assignments"
                 subtitle="TRACK YOUR WORK"
@@ -339,3 +339,6 @@ const AssignmentsScreen = ({ navigation }) => {
 };
 
 export default AssignmentsScreen;
+
+
+

@@ -6,7 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSemester } from '../contexts/SemesterContext';
 import { theme, Layout } from '../theme';
 import { ChevronLeft, Plus, Trash2, Clock, MapPin, Book, Edit2, Coffee, LayoutDashboard, Settings, X, Save } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceService } from '../services';
@@ -341,21 +341,27 @@ const TimetableSetupScreen = ({ navigation }) => {
 
                 {/* Right: Content */}
                 <View style={styles.timelineContentWrapper}>
-                    <Pressable onPress={onEdit} style={[styles.timelineCard, { borderColor: isBreak ? 'transparent' : c.glassBorder }]}>
-                        <View style={styles.cardHeader}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                {infoIcon}
-                                <Text style={[styles.timelineSubject, isBreak && { color: theme.palette.orange }]} numberOfLines={1}>{displaySubject}</Text>
+                    <Pressable onPress={onEdit} style={{ flex: 1 }}>
+                        <LinearGradient
+                            colors={isDark ? ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)'] : ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.4)']}
+                            style={[styles.timelineCard, { borderColor: isBreak ? 'transparent' : c.glassBorder }]}
+                            start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+                        >
+                            <View style={styles.cardHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                    {infoIcon}
+                                    <Text style={[styles.timelineSubject, isBreak && { color: theme.palette.orange }]} numberOfLines={1}>{displaySubject}</Text>
+                                </View>
                             </View>
-                        </View>
 
-                        {/* Location / Details */}
-                        {item.classroom ? (
-                            <View style={styles.cardDetailRow}>
-                                <MapPin size={12} color={c.subtext} />
-                                <Text style={styles.cardDetailText}>{item.classroom}</Text>
-                            </View>
-                        ) : null}
+                            {/* Location / Details */}
+                            {item.classroom ? (
+                                <View style={styles.cardDetailRow}>
+                                    <MapPin size={12} color={c.subtext} />
+                                    <Text style={styles.cardDetailText}>{item.classroom}</Text>
+                                </View>
+                            ) : null}
+                        </LinearGradient>
                     </Pressable>
 
                     {/* Delete Action - Outside card */}
@@ -422,7 +428,7 @@ const TimetableSetupScreen = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* UNIVERSAL ANIMATED HEADER */}
             {/* Content placeholder - AnimatedHeader moved to bottom for layering */}
@@ -517,7 +523,12 @@ const TimetableSetupScreen = ({ navigation }) => {
                                 bounces={true}
                             >
                                 {tempPeriods.map((p, index) => (
-                                    <View key={index} style={styles.structRow}>
+                                    <LinearGradient
+                                        key={index}
+                                        colors={[c.glassBgStart, c.glassBgEnd]}
+                                        style={[styles.structRow, { backgroundColor: 'transparent' }]}
+                                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                                    >
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                                 <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>
@@ -566,7 +577,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                                                 <Text style={{ color: c.text, fontWeight: '600', fontSize: 12 }}>{p.endTime}</Text>
                                             </TouchableOpacity>
                                         </View>
-                                    </View>
+                                    </LinearGradient>
                                 ))}
                             </ScrollView>
 
@@ -759,32 +770,37 @@ const TimetableSetupScreen = ({ navigation }) => {
             {/* TIME PICKER MODAL */}
             <Modal transparent visible={timePickerVisible} animationType="fade" onRequestClose={() => setTimePickerVisible(false)}>
                 <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setTimePickerVisible(false)}>
-                    <View style={[styles.pickerContainer, { backgroundColor: c.modalBg }]}>
-                        <Text style={styles.pickerTitle}>Select Time</Text>
-                        <View style={styles.pickerRow}>
-                            <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                                    <TouchableOpacity key={`h_${h}`} style={[styles.pickerItem, tempTime.hour === h && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, hour: h }))}>
-                                        <Text style={[styles.pickerText, tempTime.hour === h && styles.pickerSelectedText]}>{h.toString().padStart(2, '0')}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                            <Text style={styles.colon}>:</Text>
-                            <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-                                {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
-                                    <TouchableOpacity key={`m_${m}`} style={[styles.pickerItem, tempTime.minute === m && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, minute: m }))}>
-                                        <Text style={[styles.pickerText, tempTime.minute === m && styles.pickerSelectedText]}>{m.toString().padStart(2, '0')}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                            <View style={styles.ampmColumn}>
-                                {['AM', 'PM'].map(p => (
-                                    <TouchableOpacity key={p} style={[styles.pickerItem, tempTime.period === p && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, period: p }))}>
-                                        <Text style={[styles.pickerText, tempTime.period === p && styles.pickerSelectedText]}>{p}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                    <View style={[styles.pickerContainer, { backgroundColor: 'transparent', padding: 0 }]}>
+                        <LinearGradient
+                            colors={isDark ? theme.gradients.cardDark : theme.gradients.cardLight}
+                            style={{ padding: 20, borderRadius: 24, width: '100%', borderWidth: 1, borderColor: c.glassBorder }}
+                        >
+                            <Text style={styles.pickerTitle}>Select Time</Text>
+                            <View style={styles.pickerRow}>
+                                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                                        <TouchableOpacity key={`h_${h}`} style={[styles.pickerItem, tempTime.hour === h && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, hour: h }))}>
+                                            <Text style={[styles.pickerText, tempTime.hour === h && styles.pickerSelectedText]}>{h.toString().padStart(2, '0')}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                <Text style={styles.colon}>:</Text>
+                                <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
+                                    {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
+                                        <TouchableOpacity key={`m_${m}`} style={[styles.pickerItem, tempTime.minute === m && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, minute: m }))}>
+                                            <Text style={[styles.pickerText, tempTime.minute === m && styles.pickerSelectedText]}>{m.toString().padStart(2, '0')}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                                <View style={styles.ampmColumn}>
+                                    {['AM', 'PM'].map(p => (
+                                        <TouchableOpacity key={p} style={[styles.pickerItem, tempTime.period === p && styles.pickerSelected]} onPress={() => setTempTime(prev => ({ ...prev, period: p }))}>
+                                            <Text style={[styles.pickerText, tempTime.period === p && styles.pickerSelectedText]}>{p}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </View>
-                        </View>
+                        </LinearGradient>
                         <View style={{ borderRadius: 14, overflow: 'hidden', marginTop: 10 }}>
                             <Pressable onPress={handleTimeConfirm}>
                                 <LinearGradient
@@ -1038,3 +1054,6 @@ const getStyles = (c, isDark) => StyleSheet.create({
 });
 
 export default TimetableSetupScreen;
+
+
+

@@ -8,7 +8,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { GoogleSignin, statusCodes } from '../utils/GoogleSigninSafe';
 import api from '../services/api';
 import { LogIn, GraduationCap, ArrowRight, ShieldCheck } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 
 const LoginScreen = () => {
     const { isDark } = useTheme();
@@ -104,7 +104,7 @@ const LoginScreen = () => {
 
     return (
         <View style={styles.container}>
-            <LinearGradient colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             {/* AMBIENT GLOW */}
             <LinearGradient colors={[isDark ? 'rgba(10, 132, 255, 0.25)' : 'rgba(10, 132, 255, 0.15)', 'transparent']} style={styles.glowOrb} />
@@ -207,3 +207,6 @@ const getStyles = (c) => StyleSheet.create({
 });
 
 export default LoginScreen;
+
+
+

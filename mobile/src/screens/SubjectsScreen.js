@@ -6,7 +6,7 @@ import { useSemester } from '../contexts/SemesterContext';
 import { useTheme } from '../contexts/ThemeContext';
 import api from '../services/api';
 import { ChevronRight, Percent, Book, Beaker, Calculator, Atom, Code, FlaskConical } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from '../components/LinearGradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimatedHeader from '../components/AnimatedHeader';
 import PressableScale from '../components/PressableScale';
@@ -123,7 +123,7 @@ const SubjectsScreen = ({ navigation }) => {
 
     return (
         <View style={{ flex: 1 }}>
-            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+            <LinearGradient colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]} noTexture style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
             <AnimatedHeader
                 scrollY={scrollY}
@@ -265,3 +265,6 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
 });
 
 export default SubjectsScreen;
+
+
+
