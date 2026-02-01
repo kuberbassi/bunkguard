@@ -59,9 +59,9 @@ const CourseManagerScreen = ({ navigation }) => {
         border: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
         primary: '#0A84FF',
         accent: '#64D2FF',
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.8)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.5)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,1)',
+        glassBgStart: 'rgba(255,255,255,0.12)',
+        glassBgEnd: 'rgba(255,255,255,0.05)',
+        glassBorder: 'rgba(255,255,255,0.15)',
         completionGreen: '#10B981',
         completionGreenBg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
         completionGreenBorder: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)',
@@ -201,10 +201,10 @@ const CourseManagerScreen = ({ navigation }) => {
         card: {
             padding: 18, borderRadius: 22, marginBottom: 14, borderWidth: 0,
             shadowColor: "#000",
-            shadowOffset: { height: 2, width: 0 },
-            shadowOpacity: isDark ? 0.15 : 0.04,
+            shadowOffset: { height: 4, width: 0 },
+            shadowOpacity: 0.1,
             shadowRadius: 15,
-            elevation: 2
+            elevation: 3
         },
         cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
         badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
