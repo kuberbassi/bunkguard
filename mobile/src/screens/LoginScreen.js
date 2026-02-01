@@ -37,7 +37,7 @@ const LoginScreen = () => {
 
     useEffect(() => {
         GoogleSignin.configure({
-            webClientId: '86874505738-oqcc86179571k0bds6rsorsfj9rbq6e2.apps.googleusercontent.com', // Project 868 (AcadHub Mobile Kuber)
+            webClientId: '86874505738-k1263riddtq0sctihj5divb550d93pg0.apps.googleusercontent.com', // Project 868 (AcadHub Mobile Kuber)
             offlineAccess: true,
             scopes: [],
         });
