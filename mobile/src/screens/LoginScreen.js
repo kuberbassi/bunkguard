@@ -37,8 +37,7 @@ const LoginScreen = () => {
 
     useEffect(() => {
         GoogleSignin.configure({
-            webClientId: '977241229787-o6enc2sdef4gq5gitl5lgitp1qec0r0r.apps.googleusercontent.com', // Verified Web Client
-
+            webClientId: '86874505738-k1263riddtq0sctihj5divb550d93pg0.apps.googleusercontent.com', // Project 868 (AcadHub Mobile Kuber)
             offlineAccess: true,
             scopes: [],
         });
@@ -47,19 +46,21 @@ const LoginScreen = () => {
     const handleGoogleSignIn = async () => {
         setLoading(true);
         try {
-            // Check for Expo Go via the Mock property or catching error
-            // Actually, we can check Constants.appOwnership or if GoogleSignin.signIn throws specific error
-
+            // NATIVE SIGN-IN FLOW (Industry Standard)
             try {
                 await GoogleSignin.hasPlayServices();
                 const userInfo = await GoogleSignin.signIn();
-                // ... rest of logic
-                const code = userInfo.data.serverAuthCode;
-                if (!code) throw new Error('No server auth code received');
+
+                // Get the Server Auth Code (Required for Backend)
+                const { serverAuthCode, user: googleUser } = userInfo.data || userInfo;
+
+                if (!serverAuthCode) throw new Error('No authorization code received');
 
                 const backendResponse = await api.post('/api/auth/google', {
-                    code,
-                    redirect_uri: ""
+                    code: serverAuthCode, // Send 'code' to match backend expectation
+                    email: googleUser.email,
+                    name: googleUser.name,
+                    photo: googleUser.photo
                 });
 
                 const { user, token } = backendResponse.data;
@@ -69,25 +70,27 @@ const LoginScreen = () => {
                     throw new Error('Invalid response from server');
                 }
             } catch (googleError) {
-                // If mocked or not supported (Expo Go), fallback to Dev Login
-                if (googleError.message.includes("Expo Go")) {
+                if (googleError.message?.includes("Expo Go")) {
                     Alert.alert("Expo Go Detected", "Google Sign-In is not supported in Expo Go. Signing in as Developer...");
                     await handleDevLogin();
                     return;
                 }
-                throw googleError;
+
+                // Robust Error Handling
+                if (googleError.code === statusCodes.SIGN_IN_CANCELLED) {
+                    // Silent
+                } else if (googleError.code === statusCodes.IN_PROGRESS) {
+                    // Silent
+                } else if (googleError.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+                    Alert.alert('System Error', 'Google Play Services outdated.');
+                } else {
+                    console.error('Google Sign-In Fail:', googleError);
+                    Alert.alert('Login Failed', `Code: ${googleError.code || 'Unknown'}`);
+                }
             }
         } catch (error) {
-            if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-                // User cancelled
-            } else if (error.code === statusCodes.IN_PROGRESS) {
-                // Operation in progress
-            } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-                Alert.alert('Error', 'Google Play Services not available');
-            } else {
-                console.error('Google Sign-In Error:', error);
-                Alert.alert('Login Failed', `Google Sign-In failed: ${error.message}`);
-            }
+            console.error('Auth Error:', error);
+            Alert.alert('Authentication Failed', error.message);
         } finally {
             setLoading(false);
         }

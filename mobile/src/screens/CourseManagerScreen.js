@@ -60,6 +60,7 @@ const CourseManagerScreen = ({ navigation }) => {
         primary: '#0A84FF',
         accent: '#64D2FF',
         glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
+        glassBgEnd: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.5)',
         glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
         completionGreen: '#10B981',
         completionGreenBg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',

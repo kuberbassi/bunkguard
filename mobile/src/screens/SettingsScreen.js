@@ -752,7 +752,7 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 20,
-        paddingBottom: 40 + insets.bottom
+        paddingBottom: 70 + insets.bottom
     },
     card: {
         borderRadius: 26,

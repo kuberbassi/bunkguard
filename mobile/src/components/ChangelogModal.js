@@ -35,21 +35,28 @@ const ChangelogModal = () => {
             const lastSeenVersion = await AsyncStorage.getItem(LAST_SEEN_VERSION_KEY);
 
             // If this is a new version the user hasn't seen
-            if (lastSeenVersion && lastSeenVersion !== currentVersion) {
+            if (!lastSeenVersion || lastSeenVersion !== currentVersion) {
                 // Fetch changelog from GitHub
                 const response = await axios.get(GITHUB_RELEASES_URL, {
                     headers: { Accept: 'application/vnd.github.v3+json' }
                 });
 
                 const release = response.data;
-                if (release && release.tag_name) {
+                const releaseVersion = release.tag_name.replace('v', '');
+
+                // STRICT CHECK: Only show if the GitHub Release matches the Current App Version
+                // AND we haven't seen this version before.
+                // This prevents showing v1.0.0 notes to a v2.0.0 user.
+                if (release && releaseVersion === currentVersion) {
                     setChangelog({
-                        version: release.tag_name.replace('v', ''),
+                        version: releaseVersion,
                         name: release.name || `Version ${release.tag_name}`,
                         body: release.body || 'Bug fixes and improvements.',
                         publishedAt: new Date(release.published_at).toLocaleDateString()
                     });
                     setVisible(true);
+                } else {
+                    console.log(`Changelog skipped: Release v${releaseVersion} != Current v${currentVersion}`);
                 }
             }
 
@@ -64,6 +71,27 @@ const ChangelogModal = () => {
 
     const handleClose = () => {
         setVisible(false);
+    };
+
+    // Helper to render text with BOLD support
+    const renderStyledText = (text, style) => {
+        // Split by **bold** markers
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+        return (
+            <Text style={style}>
+                {parts.map((part, index) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        // Bold content
+                        return (
+                            <Text key={index} style={{ fontWeight: 'bold', color: isDark ? '#FFF' : '#000' }}>
+                                {part.slice(2, -2)}
+                            </Text>
+                        );
+                    }
+                    return <Text key={index}>{part}</Text>;
+                })}
+            </Text>
+        );
     };
 
     // Format markdown-ish changelog text
@@ -86,6 +114,11 @@ const ChangelogModal = () => {
             if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
                 return { type: 'bullet', text: trimmed.slice(2), key: index };
             }
+            // Key-Value style bullets (e.g. "**Feature:** Description")
+            if (trimmed.startsWith('**') && trimmed.includes(':')) {
+                return { type: 'bullet', text: trimmed, key: index };
+            }
+
             // Regular text
             return { type: 'text', text: trimmed, key: index };
         }).filter(Boolean);
@@ -148,14 +181,14 @@ const ChangelogModal = () => {
                                 if (item.type === 'header') {
                                     return (
                                         <Text key={item.key} style={[styles.sectionHeader, { color: c.primary }]}>
-                                            {item.text}
+                                            {renderStyledText(item.text, {})}
                                         </Text>
                                     );
                                 }
                                 if (item.type === 'subheader') {
                                     return (
                                         <Text key={item.key} style={[styles.subHeader, { color: c.onSurface }]}>
-                                            {item.text}
+                                            {renderStyledText(item.text, {})}
                                         </Text>
                                     );
                                 }
@@ -163,15 +196,13 @@ const ChangelogModal = () => {
                                     return (
                                         <View key={item.key} style={styles.bulletRow}>
                                             <View style={[styles.bulletDot, { backgroundColor: c.primary }]} />
-                                            <Text style={[styles.bulletText, { color: c.onSurface }]}>
-                                                {item.text}
-                                            </Text>
+                                            {renderStyledText(item.text, [styles.bulletText, { color: c.onSurface }])}
                                         </View>
                                     );
                                 }
                                 return (
                                     <Text key={item.key} style={[styles.bodyText, { color: c.onSurfaceVariant }]}>
-                                        {item.text}
+                                        {renderStyledText(item.text, {})}
                                     </Text>
                                 );
                             })}

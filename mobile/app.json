@@ -26,10 +26,11 @@
         "backgroundColor": "#0A84FF"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.kuberbassi.acadhub",
+      "package": "com.kuberbassi.acadhubmobilekuber",
       "versionCode": 200,
       "usesCleartextTraffic": true,
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,11 +40,20 @@
       "expo-secure-store",
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
+      "./plugins/withGradleWrapper",
       [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
           "color": "#0A84FF"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
         }
       ]
     ],
