@@ -116,7 +116,11 @@ const LoginScreen = () => {
                 {/* LOGO AREA */}
                 <View style={styles.logoSection}>
                     <LinearGradient colors={theme.gradients.primary} style={styles.iconCircle}>
-                        <GraduationCap size={48} color="#FFF" />
+                        <Image
+                            source={require('../../assets/icon-trans.png')}
+                            style={{ width: 125, height: 125 }}
+                            resizeMode="contain"
+                        />
                     </LinearGradient>
                     <Text style={styles.title}>AcadHub</Text>
                     <Text style={styles.subtitle}>Your Academic Companion</Text>
@@ -168,9 +172,10 @@ const getStyles = (c) => StyleSheet.create({
 
     logoSection: { alignItems: 'center', marginBottom: 40 },
     iconCircle: {
-        width: 96, height: 96, borderRadius: 32, alignItems: 'center', justifyContent: 'center',
-        shadowColor: c.primary, shadowOpacity: 0.5, shadowRadius: 20, elevation: 10,
-        transform: [{ rotate: '-10deg' }], marginBottom: 20
+        width: 120, height: 120, borderRadius: 40, alignItems: 'center', justifyContent: 'center',
+        shadowColor: c.primary, shadowOpacity: 0.5, shadowRadius: 30, elevation: 15,
+        transform: [{ rotate: '-10deg' }], marginBottom: 24,
+        overflow: 'hidden'
     },
     title: { fontSize: 42, fontWeight: '900', color: c.text, letterSpacing: -1 },
     subtitle: { fontSize: 16, color: c.subtext, fontWeight: '500', marginTop: 4 },

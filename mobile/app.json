@@ -27,17 +27,14 @@
       "edgeToEdgeEnabled": true,
       "package": "com.kuberbassi.acadhubmobilekuber",
       "versionCode": 200,
-      "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "scheme": "acadhub",
     "plugins": [
-      "expo-secure-store",
-      "expo-web-browser",
       "@react-native-google-signin/google-signin",
       "./plugins/withGradleWrapper",
       [
