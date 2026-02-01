@@ -94,6 +94,19 @@ npx expo start
 
 Scan QR code with Expo Go app or press `i` for iOS simulator / `a` for Android
 
+### 🐳 Running with Docker
+
+Run the entire stack (Frontend + Backend + Database) with a single command:
+
+```bash
+# Build and start services
+docker-compose up --build
+```
+    
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **Backend API**: [http://localhost:5000](http://localhost:5000)
+- **MongoDB**: `localhost:27017`
+
 ---
 
 ## 🛠️ Tech Stack
