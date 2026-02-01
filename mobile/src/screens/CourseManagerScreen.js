@@ -59,152 +59,24 @@ const CourseManagerScreen = ({ navigation }) => {
         border: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
         primary: '#0A84FF',
         accent: '#64D2FF',
-        glassBgStart: 'rgba(255,255,255,0.12)',
-        glassBgEnd: 'rgba(255,255,255,0.05)',
-        glassBorder: 'rgba(255,255,255,0.15)',
+        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)',
+        glassBgEnd: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
         completionGreen: '#10B981',
         completionGreenBg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
         completionGreenBorder: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)',
     };
 
-    useEffect(() => { fetchCourses(); }, []);
-
-    const fetchCourses = async () => {
-        try {
-            const res = await api.get('/api/courses/manual');
-            setCourses(res.data);
-        } catch (e) { console.error(e); }
-        finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
-
-    const onRefresh = () => {
-        setRefreshing(true);
-        fetchCourses();
-    };
-
-    const handleSave = async () => {
-        if (!formData.title) return Alert.alert("Required", "Please enter a course title");
-        try {
-            const payload = {
-                ...formData,
-                progress: parseInt(formData.progress) || 0,
-            };
-
-            if (editingItem) {
-                const id = editingItem._id?.$oid || editingItem._id;
-                await api.put(`/api/courses/manual/${id}`, payload);
-            } else {
-                await api.post('/api/courses/manual', payload);
-            }
-            setModalVisible(false);
-            fetchCourses();
-        } catch (e) { Alert.alert("Error", "Failed to save"); }
-    };
-
-    const handleDelete = async (id) => {
-        Alert.alert("Delete", "Are you sure?", [
-            { text: "Cancel" },
-            {
-                text: "Delete", style: 'destructive', onPress: async () => {
-                    const oid = id.$oid || id;
-                    await api.delete(`/api/courses/manual/${oid}`);
-                    fetchCourses();
-                }
-            }
-        ]);
-    };
-
-    const getPlatformConfig = (val) => PLATFORMS.find(p => p.value === val) || PLATFORMS[6];
-
-    const renderItem = ({ item }) => {
-        const platform = getPlatformConfig(item.platform);
-        const Icon = platform.icon;
-        const isCompleted = item.progress >= 100;
-        const progressColor = isCompleted ? c.completionGreen : platform.color;
-
-        return (
-            <PressableScale
-                activeOpacity={0.9}
-                onPress={() => { setEditingItem(item); setFormData({ ...item, progress: String(item.progress || 0) }); setModalVisible(true); }}
-                style={[
-                    styles.card,
-                    {
-                        borderWidth: 0, // Border moved to Gradient
-                        padding: 0 // Padding moved to Gradient
-                    }
-                ]}
-            >
-                <LinearGradient
-                    colors={isCompleted ? [c.completionGreenBg, c.completionGreenBg] : [c.glassBgStart, c.glassBgEnd]}
-                    style={{
-                        padding: 18,
-                        width: '100%',
-                        borderRadius: 22,
-                        borderWidth: isCompleted ? 1.5 : 1,
-                        borderColor: isCompleted ? c.completionGreenBorder : c.glassBorder
-                    }}
-                    start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-                >
-                    <View style={styles.cardHeader}>
-                        <View style={[styles.badge, { backgroundColor: isCompleted ? 'rgba(16, 185, 129, 0.15)' : platform.bg }]}>
-                            <Icon size={12} color={isCompleted ? c.completionGreen : platform.color} />
-                            <Text style={[styles.badgeText, { color: isCompleted ? c.completionGreen : platform.color }]}>
-                                {isCompleted ? 'COMPLETED' : platform.label}
-                            </Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            {isCompleted && <CheckCircle2 size={18} color={c.completionGreen} strokeWidth={2.5} />}
-                            {item.url ? (
-                                <PressableScale onPress={() => Linking.openURL(item.url).catch(() => { })} style={{ padding: 4 }}>
-                                    <ExternalLink size={16} color={c.subtext} />
-                                </PressableScale>
-                            ) : null}
-                        </View>
-                    </View>
-
-                    <Text style={[styles.title, { color: c.text, fontSize: 18 }]} numberOfLines={2}>{item.title}</Text>
-                    {item.instructor ? <Text style={[styles.instructor, { color: c.subtext, fontSize: 13 }]}>by {item.instructor}</Text> : null}
-
-                    <View style={{ marginTop: 14 }}>
-                        <View style={styles.progressRow}>
-                            <Text style={[styles.progressLabel, { color: c.subtext }]}>Progress</Text>
-                            <Text style={[styles.progressVal, { color: isCompleted ? c.completionGreen : c.text, fontWeight: isCompleted ? '800' : '700' }]}>
-                                {item.progress}%
-                            </Text>
-                        </View>
-                        <View style={[styles.track, { height: 8, backgroundColor: isDark ? '#2C2C2E' : '#E5E7EB' }]}>
-                            <LinearGradient
-                                colors={isCompleted ? [c.completionGreen, '#34D399'] : [progressColor, progressColor]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={{ width: `${item.progress}%`, height: '100%', borderRadius: 4 }}
-                                noTexture // Progress bar needs no texture
-                            />
-                        </View>
-                    </View>
-
-                    {item.targetCompletionDate ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 }}>
-                            <Clock size={11} color={c.subtext} />
-                            <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '600' }}>Target: {item.targetCompletionDate}</Text>
-                        </View>
-                    ) : null}
-                </LinearGradient>
-            </PressableScale>
-        );
-    };
+    // ...
 
     const styles = StyleSheet.create({
         card: {
             padding: 18, borderRadius: 22, marginBottom: 14, borderWidth: 0,
-            shadowColor: "#000",
-            shadowOffset: { height: 4, width: 0 },
-            shadowOpacity: 0.1,
-            shadowRadius: 15,
-            elevation: 3
+            shadowColor: "transparent",
+            shadowOffset: { height: 0, width: 0 },
+            shadowOpacity: 0,
+            shadowRadius: 0,
+            elevation: 0
         },
         cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
         badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
