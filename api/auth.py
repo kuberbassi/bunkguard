@@ -46,8 +46,13 @@ def google_auth():
         token_resp = requests.post(token_url, data=token_data)
         
         if token_resp.status_code != 200:
-            print(f"❌ Token exchange failed: {token_resp.text}")
-            return jsonify({"error": "Failed to exchange token"}), 401
+            error_details = token_resp.json() if token_resp.headers.get('content-type') == 'application/json' else token_resp.text
+            print(f"❌ Token exchange failed for client {os.getenv('GOOGLE_CLIENT_ID')[:10]}...: {error_details}")
+            return jsonify({
+                "error": "Failed to exchange token",
+                "details": error_details,
+                "client_id_used": os.getenv("GOOGLE_CLIENT_ID")[:15] + "..."
+            }), 401
             
         tokens = token_resp.json()
         access_token = tokens.get("access_token")
