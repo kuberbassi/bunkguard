@@ -59,9 +59,9 @@ const CourseManagerScreen = ({ navigation }) => {
         border: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
         primary: '#0A84FF',
         accent: '#64D2FF',
-        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.85)',
-        glassBgEnd: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.5)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+        glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.95)',
+        glassBgEnd: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.8)',
+        glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)',
         completionGreen: '#10B981',
         completionGreenBg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)',
         completionGreenBorder: isDark ? 'rgba(16, 185, 129, 0.35)' : 'rgba(16, 185, 129, 0.25)',
@@ -200,7 +200,11 @@ const CourseManagerScreen = ({ navigation }) => {
     const styles = StyleSheet.create({
         card: {
             padding: 18, borderRadius: 22, marginBottom: 14, borderWidth: 1,
-            shadowColor: "#000", shadowOffset: { height: 3 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3
+            shadowColor: isDark ? "#000" : "#0A84FF",
+            shadowOffset: { height: 4 },
+            shadowOpacity: isDark ? 0.08 : 0.12,
+            shadowRadius: 10,
+            elevation: 4
         },
         cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
         badge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
