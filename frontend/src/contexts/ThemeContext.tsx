@@ -75,7 +75,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
 
     const [accentColor, setAccentColorState] = useState<string>(() => {
-        return localStorage.getItem('acadhub_accent_color') || '#6750A4';
+        return localStorage.getItem('acadhub_accent_color') || '#EC4899';
     });
 
     // Apply theme class

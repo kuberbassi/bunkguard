@@ -9,7 +9,7 @@
 @layer base {
   :root {
     /* M3 System Colors - Light (High Contrast) */
-    --md-sys-color-primary: #6750A4;
+    --md-sys-color-primary: #EC4899;
     --md-sys-color-on-primary: #FFFFFF;
     --md-sys-color-primary-container: #EADDFF;
     --md-sys-color-on-primary-container: #21005D;
@@ -103,7 +103,7 @@
 
   /* Dark Theme Tokens (Deep OLED Black) */
   .dark {
-    --md-sys-color-primary: #D0BCFF;
+    --md-sys-color-primary: #EC4899;
     --md-sys-color-on-primary: #381E72;
     --md-sys-color-primary-container: #4F378B;
     --md-sys-color-on-primary-container: #EADDFF;

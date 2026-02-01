@@ -117,7 +117,7 @@ const Settings: React.FC = () => {
         min_attendance: 76,
         counting_mode: 'percentage',
 
-        accent_color: accentColor || '#6750A4'
+        accent_color: accentColor || '#EC4899'
     });
 
     const [name, setName] = useState(user?.name || '');
