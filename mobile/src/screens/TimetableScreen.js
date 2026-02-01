@@ -358,8 +358,8 @@ const TimetableScreen = ({ navigation }) => {
             <View style={styles.timelineRow}>
                 {/* Left: Time */}
                 <View style={styles.timelineLeft}>
-                    <Text style={styles.timeStart}>{startTime}</Text>
-                    <Text style={styles.timeEnd}>{endTime}</Text>
+                    <Text style={styles.timeStart} numberOfLines={1} adjustsFontSizeToFit>{startTime}</Text>
+                    <Text style={styles.timeEnd} numberOfLines={1}>{endTime}</Text>
                 </View>
 
                 {/* Middle: Line & Dot */}
@@ -789,16 +789,16 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     timelineRow: {
         flexDirection: 'row',
         marginBottom: 0,
-        height: 70, // Fixed height for alignment
+        minHeight: 70, // Changed fixed height to minHeight for better scaling if text grows
     },
     timelineLeft: {
-        width: 50,
+        width: 68, // Increased from 50 to 68 to fit "08:30 AM"
         alignItems: 'flex-end',
-        paddingRight: 12,
+        paddingRight: 10,
         paddingTop: 8,
     },
     timeStart: {
-        fontSize: 13,
+        fontSize: 12.5, // Slight reduction
         fontWeight: '800',
         color: c.text,
         letterSpacing: -0.2,
