@@ -1,7 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /api/
-Disallow: /login
-Disallow: /callback
-
-Sitemap: https://acadhubkb.vercel.app/sitemap.xml

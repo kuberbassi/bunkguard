@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { GraduationCap, Bell } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -48,8 +48,8 @@ const AppLayout: React.FC = () => {
                 {/* Mobile Header */}
                 <div className="lg:hidden sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant/10 px-4 py-3 flex justify-between items-center">
                     <Link to="/" className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                            <GraduationCap className="w-5 h-5" />
+                        <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center">
+                            <img src="/icon-trans.png" alt="AcadHub" className="w-full h-full object-contain scale-150" />
                         </div>
                         <span className="font-bold text-lg font-display text-on-surface">AcadHub</span>
                     </Link>

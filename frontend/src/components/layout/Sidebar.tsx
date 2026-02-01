@@ -78,8 +78,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
         <div className="flex flex-col h-full bg-surface-container-low text-on-surface transition-all duration-300">
             {/* Logo */}
             <div className={`flex items-center gap-3 px-6 py-5 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary shrink-0">
-                    <GraduationCap size={24} />
+                <div className="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden shrink-0">
+                    <img src="/icon-trans.png" alt="AcadHub" className="w-full h-full object-contain scale-150" />
                 </div>
                 {!isCollapsed && (
                     <div>

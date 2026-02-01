@@ -45,8 +45,8 @@ const Login: React.FC = () => {
                 <Card variant="elevated" className="text-center p-8 m3-card !rounded-3xl shadow-elevation-3 bg-surface/90 backdrop-blur-sm dark:bg-dark-surface-container dark:text-dark-surface-on">
                     {/* Icon */}
                     <div className="mb-6 flex justify-center">
-                        <div className="w-16 h-16 rounded-2xl bg-primary-container text-primary flex items-center justify-center">
-                            <span className="material-icons text-4xl">inventory_2</span>
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center">
+                            <img src="/icon-trans.png" alt="AcadHub" className="w-full h-full object-contain scale-[2.2]" />
                         </div>
                     </div>
 

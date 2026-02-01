@@ -17,16 +17,7 @@ load_dotenv()
 from api.database import db
 
 def create_app():
-    # Get current directory (api/)
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    template_folder = os.path.join(current_dir, 'templates')
-    static_folder = os.path.join(current_dir, 'static')
-    
-    app = Flask(__name__,
-                template_folder=template_folder,
-                static_folder=static_folder,
-                static_url_path='/static')
+    app = Flask(__name__)
     
     app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-in-production")
     

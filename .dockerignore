@@ -1,0 +1,11 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+frontend/node_modules
+mobile/node_modules
+mobile/android
+mobile/ios
+.DS_Store

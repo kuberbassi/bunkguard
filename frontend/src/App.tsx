@@ -216,7 +216,7 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+    <GoogleOAuthProvider clientId="86874505738-k1263riddtq0sctihj5divb550d93pg0.apps.googleusercontent.com">
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <ThemeProvider>
