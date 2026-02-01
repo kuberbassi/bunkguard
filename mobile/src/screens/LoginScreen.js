@@ -57,7 +57,8 @@ const LoginScreen = () => {
                 if (!serverAuthCode) throw new Error('No authorization code received');
 
                 const backendResponse = await api.post('/api/auth/google', {
-                    code: serverAuthCode, // Send 'code' to match backend expectation
+                    code: serverAuthCode,
+                    redirect_uri: "", // Essential for Native Android code exchange
                     email: googleUser.email,
                     name: googleUser.name,
                     photo: googleUser.photo
