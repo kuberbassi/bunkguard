@@ -4,7 +4,8 @@ services:
   # Python Backend
   backend:
     build:
-      context: ./api
+      context: .
+      dockerfile: api/Dockerfile
     ports:
       - "5000:5000"
     environment:
@@ -13,7 +14,7 @@ services:
     depends_on:
       - mongo
     volumes:
-      - ./api:/app # Hot reload for dev
+      - .:/app # Hot reload for dev (mounting root to access run.py and api/)
 
   # React Frontend
   frontend:
