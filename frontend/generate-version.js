@@ -5,11 +5,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Generate a unique version hash based on timestamp
-const version = `build-${Date.now()}`;
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'));
+
+// Use version from package.json and add build identifier
+const version = `${packageJson.version}-build-${Date.now()}`;
 
 const versionData = {
     version: version,
+    baseVersion: packageJson.version,
     timestamp: new Date().toISOString()
 };
 
