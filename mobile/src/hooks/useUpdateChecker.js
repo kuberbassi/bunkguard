@@ -73,9 +73,12 @@ const useUpdateChecker = () => {
 
         try {
             // "Industry Standard" Path: Use Cache Directory (guaranteed to be writable)
-            const cacheDir = FileSystem.cacheDirectory;
+            let cacheDir = FileSystem.cacheDirectory;
+
             if (!cacheDir) {
-                throw new Error("Device cache directory is inaccessible");
+                console.warn("FileSystem.cacheDirectory is null. Attempting hardcoded fallback.");
+                // Hardcoded fallback for Android (Standard path)
+                cacheDir = 'file:///data/user/0/com.kuberbassi.acadhubmobilekuber/cache/';
             }
 
             // Ensure directory exists (defensive)
