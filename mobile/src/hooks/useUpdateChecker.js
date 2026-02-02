@@ -72,22 +72,41 @@ const useUpdateChecker = () => {
         setDownloadProgress(0);
 
         try {
-            const downloadDest = FileSystem.documentDirectory + apkAsset.name;
+            // Ensure path has a trailing slash for safety
+            const dir = FileSystem.documentDirectory.endsWith('/')
+                ? FileSystem.documentDirectory
+                : `${FileSystem.documentDirectory}/`;
+
+            const downloadDest = `${dir}${apkAsset.name}`;
+
+            console.log('📡 Starting download from:', apkAsset.browser_download_url);
+            console.log('💾 Saving to:', downloadDest);
+
             const downloadResumable = FileSystem.createDownloadResumable(
                 apkAsset.browser_download_url,
                 downloadDest,
-                {},
+                {
+                    headers: {
+                        'User-Agent': 'AcadHub-Mobile-Update-Checker'
+                    }
+                },
                 (progress) => {
                     const pct = progress.totalBytesWritten / progress.totalBytesExpectedToWrite;
                     setDownloadProgress(pct);
                 }
             );
 
-            const { uri } = await downloadResumable.downloadAsync();
-            console.log('📦 Update downloaded to:', uri);
+            const result = await downloadResumable.downloadAsync();
+            if (!result || !result.uri) {
+                throw new Error("Download returned empty result");
+            }
+
+            console.log('📦 Update successfully downloaded to:', result.uri);
 
             // Trigger Installation
-            const contentUri = await FileSystem.getContentUriAsync(uri);
+            const contentUri = await FileSystem.getContentUriAsync(result.uri);
+            console.log('🎬 Launching package installer at:', contentUri);
+
             await IntentLauncher.startActivityAsync('android.intent.action.INSTALL_PACKAGE', {
                 data: contentUri,
                 flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
@@ -95,8 +114,11 @@ const useUpdateChecker = () => {
 
             setUpdateStatus('idle');
         } catch (error) {
-            console.error("Download failed", error);
-            Alert.alert("Error", "Failed to download update.");
+            console.error("❌ Update Download/Install Error:", error);
+            Alert.alert(
+                "Update Failed",
+                `Failed to download update: ${error.message || 'Unknown error'}`
+            );
             setUpdateStatus('available');
         }
     }, [latestRelease]);
