@@ -72,26 +72,29 @@ const useUpdateChecker = () => {
         setDownloadProgress(0);
 
         try {
-            // Defensive path construction
-            const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
-
-            if (!baseDir) {
-                throw new Error("No storage directory available on this device.");
+            // "Industry Standard" Path: Use Cache Directory (guaranteed to be writable)
+            const cacheDir = FileSystem.cacheDirectory;
+            if (!cacheDir) {
+                throw new Error("Device cache directory is inaccessible");
             }
 
-            const dir = baseDir.endsWith('/') ? baseDir : `${baseDir}/`;
-            const downloadDest = `${dir}${apkAsset.name}`;
+            // Ensure directory exists (defensive)
+            const dirInfo = await FileSystem.getInfoAsync(cacheDir);
+            if (!dirInfo.exists) {
+                await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+            }
 
-            console.log('📡 Starting download from:', apkAsset.browser_download_url);
-            console.log('💾 Saving to:', downloadDest);
+            // Standardize path: remove trailing slash if present, then add one
+            const safeDir = cacheDir.endsWith('/') ? cacheDir : `${cacheDir}/`;
+            const downloadDest = `${safeDir}update.apk`; // Fixed name avoids filesystem encoding issues
+
+            console.log('📡 Downloading to:', downloadDest);
 
             const downloadResumable = FileSystem.createDownloadResumable(
                 apkAsset.browser_download_url,
                 downloadDest,
                 {
-                    headers: {
-                        'User-Agent': 'AcadHub-Mobile-Update-Checker'
-                    }
+                    headers: { 'User-Agent': 'AcadHub-Mobile/1.0' } // Standard User-Agent
                 },
                 (progress) => {
                     const pct = progress.totalBytesWritten / progress.totalBytesExpectedToWrite;
@@ -101,26 +104,35 @@ const useUpdateChecker = () => {
 
             const result = await downloadResumable.downloadAsync();
             if (!result || !result.uri) {
-                throw new Error("Download returned empty result");
+                throw new Error("Download completed but returned no URI");
             }
 
-            console.log('📦 Update successfully downloaded to:', result.uri);
+            console.log('📦 APK Downloaded. Preparing to install...');
 
-            // Trigger Installation
-            const contentUri = await FileSystem.getContentUriAsync(result.uri);
-            console.log('🎬 Launching package installer at:', contentUri);
+            // CONTENT URI RESOLUTION (Critical for Android 7+)
+            let contentUri;
+            try {
+                contentUri = await FileSystem.getContentUriAsync(result.uri);
+                console.log('🔗 Resolved Content URI:', contentUri);
+            } catch (uriError) {
+                console.warn('SAF Resolution failed, trying fallback:', uriError);
+                contentUri = result.uri; // Fallback to raw path (works on some older OS)
+            }
 
+            // INSTALL INTENT with explicit flags (Industry Standard)
             await IntentLauncher.startActivityAsync('android.intent.action.INSTALL_PACKAGE', {
                 data: contentUri,
-                flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+                flags: 1, // FLAG_GRANT_READ_URI_PERMISSION (Critical)
+                type: 'application/vnd.android.package-archive' // Explicit MIME type
             });
 
             setUpdateStatus('idle');
+
         } catch (error) {
-            console.error("❌ Update Download/Install Error:", error);
+            console.error("❌ Update Error:", error);
             Alert.alert(
                 "Update Failed",
-                `Failed to download update: ${error.message || 'Unknown error'}`
+                `System Error: ${error.message}\n\nPlease update manually from GitHub.`
             );
             setUpdateStatus('available');
         }
