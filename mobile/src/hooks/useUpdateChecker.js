@@ -72,11 +72,14 @@ const useUpdateChecker = () => {
         setDownloadProgress(0);
 
         try {
-            // Ensure path has a trailing slash for safety
-            const dir = FileSystem.documentDirectory.endsWith('/')
-                ? FileSystem.documentDirectory
-                : `${FileSystem.documentDirectory}/`;
+            // Defensive path construction
+            const baseDir = FileSystem.cacheDirectory || FileSystem.documentDirectory;
 
+            if (!baseDir) {
+                throw new Error("No storage directory available on this device.");
+            }
+
+            const dir = baseDir.endsWith('/') ? baseDir : `${baseDir}/`;
             const downloadDest = `${dir}${apkAsset.name}`;
 
             console.log('📡 Starting download from:', apkAsset.browser_download_url);
