@@ -44,13 +44,16 @@ const AnalyticsScreen = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [reportData, setReportData] = useState(null);
+    const [weeklyRawData, setWeeklyRawData] = useState(null);
 
     const fetchData = async () => {
         try {
-            const response = await api.get(`/api/reports_data?semester=${selectedSemester}`);
-            console.log('📊 Analytics Data Received:', JSON.stringify(response.data, null, 2));
-            console.log('📊 Weekly Breakdown:', response.data?.weekly_breakdown);
-            setReportData(response.data);
+            const [reportRes, weeklyRes] = await Promise.all([
+                api.get(`/api/reports_data?semester=${selectedSemester}`),
+                api.get(`/api/analytics/day_of_week?semester=${selectedSemester}`)
+            ]);
+            setReportData(reportRes.data);
+            setWeeklyRawData(weeklyRes.data);
         } catch (error) {
             console.error("Analytics Fetch Error:", error);
         } finally {
@@ -65,42 +68,20 @@ const AnalyticsScreen = () => {
 
     // Data Processing
     const getWeeklyData = () => {
-        if (!reportData?.weekly_breakdown) return [];
-        const breakdown = reportData.weekly_breakdown;
+        if (!weeklyRawData?.days) return [];
 
-        // Ensure breakdown is an object
-        if (typeof breakdown !== 'object' || breakdown === null || Array.isArray(breakdown)) {
-            console.warn('⚠️ Invalid weekly_breakdown format:', breakdown);
-            return [];
-        }
-
-        // Convert to array and Sort Mon-Sun
         const dayOrder = { 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7 };
 
-        try {
-            return Object.keys(breakdown).map(dateStr => {
-                const dayStats = breakdown[dateStr];
-                const dateObj = new Date(dateStr);
-                const dayLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-
-                return {
-                    day: dayLabel.charAt(0), // 'M', 'T', 'W'...
-                    fullDay: dayLabel,       // 'Mon', 'Tue'...
-                    count: dayStats.total > 0 ? (dayStats.attended / dayStats.total) * 100 : 0,
-                    total: dayStats.total,
-                    sortKey: dayOrder[dayLabel] || 8
-                };
-            })
-                .filter(item => {
-                    // Hide Sat (6) and Sun (7) unless they have data
-                    if (item.sortKey >= 6) return item.total > 0;
-                    return true;
-                })
-                .sort((a, b) => a.sortKey - b.sortKey);
-        } catch (error) {
-            console.error('❌ Error processing weekly data:', error);
-            return [];
-        }
+        return weeklyRawData.days
+            .map(d => ({
+                day: d.day.charAt(0),
+                fullDay: d.day,
+                count: d.percentage || 0,
+                total: d.total || 0,
+                sortKey: dayOrder[d.day] || 8
+            }))
+            .filter(d => d.sortKey <= 5) // Mon-Fri Only
+            .sort((a, b) => a.sortKey - b.sortKey);
     };
 
     const getFocusSubjects = () => {

@@ -209,7 +209,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-background text-on-background font-sans transition-colors duration-300 selection:bg-primary-container selection:text-primary">
       <AppRoutes />
-      <VercelAnalytics />
+      {import.meta.env.PROD && !['localhost', '127.0.0.1'].includes(window.location.hostname) && <VercelAnalytics />}
     </div>
   );
 };

@@ -40,6 +40,42 @@ def set_cached(key, value):
     CACHE_TTL[key] = time()
 
 
+# --- Logging Helper ---
+def create_system_log(user_email, action, description):
+    """
+    Creates a system log entry for user actions.
+    Filters out duplicate logs that occur within 5 seconds.
+    """
+    try:
+        if not user_email: return
+        
+        # Debounce: Check if identical log exists in last 5 seconds
+        five_seconds_ago = datetime.utcnow() - timedelta(seconds=5)
+        
+        if db is None: return
+        logs_col = db.get_collection('system_logs')
+
+        exists = logs_col.find_one({
+            'owner_email': user_email,
+            'action': action,
+            'description': description,
+            'timestamp': {'$gte': five_seconds_ago}
+        })
+        
+        if not exists:
+            logs_col.insert_one({
+                'owner_email': user_email,
+                'action': action,
+                'description': description,
+                'timestamp': datetime.utcnow()
+            })
+    except Exception as e:
+        print(f"⚠️ Failed to create system log: {e}")
+
+# Alias for compatibility
+log_user_action = create_system_log
+
+
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 # Global Collection Definitions
@@ -278,16 +314,7 @@ def upload_pfp():
 
 
 # --- Helper Functions ---
-def create_system_log(user_email, action, description):
-    """Logs a system event to the database."""
-    system_logs_collection.insert_one({
-        "owner_email": user_email,
-        "action": action,
-        "description": description,
-        "timestamp": datetime.utcnow()
-    })
 
-log_user_action = create_system_log
 
 def calculate_percent(attended, total):
     """Calculates the attendance percentage."""
@@ -808,6 +835,10 @@ def mark_attendance():
     from api import socketio
     socketio.emit('attendance_updated', {'email': session['user']['email'], 'date': date_str}, room=session['user']['email'])
     
+    # Log to System Logs
+    log_desc = f"Marked '{subject.get('name')}' as {status} for {date_str}."
+    create_system_log(session['user']['email'], "Attendance Marked", log_desc)
+
     return jsonify({"success": True})
 
 
@@ -1569,6 +1600,7 @@ def manage_manual_course(id):
     
     if request.method == 'DELETE':
         manual_courses_collection.delete_one({'_id': ObjectId(id), 'owner_email': session['user']['email']})
+        create_system_log(session['user']['email'], "Course Deleted", f"Deleted manual course {id}")
         return jsonify({"success": True})
 
     if request.method == 'PUT':
@@ -1581,6 +1613,7 @@ def manage_manual_course(id):
             {'_id': ObjectId(id), 'owner_email': session['user']['email']},
             {'$set': update_fields}
         )
+        create_system_log(session['user']['email'], "Course Updated", f"Updated manual course {id}")
         return jsonify({"success": True})
 
 # Assignments uses 'subjects' collection via update_assignments/update_practicals (see above)
@@ -1948,6 +1981,7 @@ def update_subject_details():
         {'_id': subject_id, 'owner_email': session['user']['email']},
         {'$set': details}
     )
+    create_system_log(session['user']['email'], "Subject Updated", f"Updated details for subject ID {subject_id}.")
     return jsonify({"success": True})
 
 
@@ -2687,6 +2721,7 @@ def analytics_day_of_week():
     try:
         user_email = session['user']['email']
         semester = int(request.args.get('semester', 1))
+        scope = request.args.get('scope', 'all') # 'all' or 'current_week'
         
         # Get subject IDs for this semester
         semester_subjects = list(subjects_collection.find(
@@ -2705,9 +2740,27 @@ def analytics_day_of_week():
                 })
             return Response(json_util.dumps(analytics), mimetype='application/json')
         
+        match_stage = {'owner_email': user_email, 'subject_id': {'$in': subject_ids}}
+        
+        if scope == 'current_week':
+            today = datetime.utcnow()
+            start_of_week = today - timedelta(days=today.weekday())
+            # Convert to string format YYYY-MM-DD for comparison with 'date' field
+            start_str = start_of_week.strftime("%Y-%m-%d")
+            end_of_week = start_of_week + timedelta(days=7)
+            end_str = end_of_week.strftime("%Y-%m-%d")
+            match_stage['date'] = {'$gte': start_str, '$lt': end_str}
+
         pipeline = [
-            {'$match': {'owner_email': user_email, 'subject_id': {'$in': subject_ids}}},
-            {'$project': {'dayOfWeek': {'$dayOfWeek': '$timestamp'}, 'status': '$status'}},
+            {'$match': match_stage},
+            # Convert 'date' string (YYYY-MM-DD) to Date Object for dayOfWeek extraction
+            {'$project': {
+                'dateObj': {
+                    '$dateFromString': {'dateString': '$date', 'format': '%Y-%m-%d'}
+                },
+                'status': '$status'
+            }},
+            {'$project': {'dayOfWeek': {'$dayOfWeek': '$dateObj'}, 'status': '$status'}},
             {'$group': {'_id': {'dayOfWeek': '$dayOfWeek', 'status': '$status'}, 'count': {'$sum': 1}}},
             {'$group': {'_id': '$_id.dayOfWeek', 'counts': {'$push': {'status': '$_id.status', 'count': '$count'}}}},
             {'$sort': {'_id': 1}}

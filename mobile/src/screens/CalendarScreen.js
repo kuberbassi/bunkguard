@@ -198,7 +198,8 @@ const CalendarScreen = ({ navigation }) => {
 
         } catch (error) {
             console.error("Mark error", error);
-            Alert.alert("Error", "Failed to mark attendance.");
+            const msg = error.response?.data?.error || "Failed to mark attendance.";
+            Alert.alert("Error", msg);
             // Revert on error: Refresh BOTH list and dots to remove ghosts
             if (!skipRefresh) {
                 fetchClassesForDate(selectedDate);

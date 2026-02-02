@@ -2,7 +2,7 @@
 /// <reference lib="webworker" />
 
 // Cache version
-const CACHE_VERSION = 'acadhub-v1';
+const CACHE_VERSION = 'acadhub-v2';
 const CACHE_ASSETS = [
     '/',
     '/index.html',
@@ -46,8 +46,8 @@ self.addEventListener('push', (event) => {
     let data = {
         title: 'AcadHub Notification',
         body: 'New update available',
-        icon: '/icon.svg',
-        badge: '/icon.svg',
+        icon: '/acadhub-brand-v3.png',
+        badge: '/acadhub-brand-v3.png',
         tag: 'default',
         data: {}
     };
@@ -63,8 +63,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: data.body,
-        icon: data.icon || '/icon.svg',
-        badge: data.badge || '/icon.svg',
+        icon: data.icon || '/acadhub-brand-v3.png',
+        badge: data.badge || '/acadhub-brand-v3.png',
         tag: data.tag,
         data: data.data,
         vibrate: [200, 100, 200],
@@ -73,7 +73,7 @@ self.addEventListener('push', (event) => {
             {
                 action: 'open',
                 title: 'View',
-                icon: '/icon.svg'
+                icon: '/acadhub-brand-v3.png'
             }
         ]
     };

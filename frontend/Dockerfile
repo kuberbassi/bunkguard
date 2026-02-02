@@ -27,16 +27,26 @@ COPY --from=build /app/dist /usr/share/nginx/html
 RUN echo 'server { \
     listen 80; \
     client_max_body_size 20M; \
-    location / { \
     root /usr/share/nginx/html; \
     index index.html index.htm; \
-    try_files $uri $uri/ /index.html; \
+    \
+    location /assets/ { \
+        try_files $uri =404; \
     } \
+    \
+    location ~ \.(js|css|png|jpg|jpeg|gif|ico|svg|json)$ { \
+        try_files $uri =404; \
+    } \
+    \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
     location /api/ { \
-    proxy_pass http://backend:5000; \
-    proxy_set_header Host $host; \
-    proxy_set_header X-Real-IP $remote_addr; \
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+        proxy_pass http://backend:5000; \
+        proxy_set_header Host $host; \
+        proxy_set_header X-Real-IP $remote_addr; \
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
     } \
     }' > /etc/nginx/conf.d/default.conf
 
