@@ -15,6 +15,7 @@ export default defineConfig({
         name: 'AcadHub',
         short_name: 'AcadHub',
         description: 'Smart Attendance Tracker',
+        version: '3.0.0',
         theme_color: '#000000',
         background_color: '#000000',
         icons: [
