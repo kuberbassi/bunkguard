@@ -6,7 +6,7 @@ const TermsOfService: React.FC = () => {
         <div className="min-h-screen bg-surface-container p-4 md:p-8 flex justify-center">
             <Card className="max-w-4xl w-full p-8 shadow-elevation-1">
                 <h1 className="text-3xl font-bold mb-6 text-on-surface">Terms of Service</h1>
-                <p className="mb-4 text-on-surface-variant">Last updated: December 26, 2025</p>
+                <p className="mb-4 text-on-surface-variant">Last updated: February 4, 2026 • v3.0.0</p>
 
                 <div className="space-y-6 text-on-surface">
                     <section>

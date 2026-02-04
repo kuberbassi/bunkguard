@@ -102,28 +102,6 @@ AcadHub is a full-stack academic management platform built for college students 
 
 ---
 
-## 🖼️ Screenshots
-
-<details>
-<summary><strong>🖥️ Web Interface</strong></summary>
-
-| Dashboard | Timetable | Analytics |
-|-----------|-----------|-----------|
-| Smart subject cards with quick actions | Customizable weekly schedule | Visual attendance insights |
-
-</details>
-
-<details>
-<summary><strong>📱 Mobile App</strong></summary>
-
-| Home | Calendar | Settings |
-|------|----------|----------|
-| Beautiful dark mode UI | Attendance heatmap | Theme customization |
-
-</details>
-
----
-
 ## 🏗️ Architecture
 
 ```
