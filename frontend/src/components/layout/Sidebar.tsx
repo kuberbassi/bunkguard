@@ -74,199 +74,208 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
 
 
 
-    const SidebarContent = () => (
-        <div className="flex flex-col h-full bg-surface-container-low text-on-surface transition-all duration-300">
-            {/* Logo */}
-            <div className={`flex items-center gap-3 px-6 py-5 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden shrink-0">
-                    <img src="/icon-trans.png" alt="AcadHub" className="w-full h-full object-contain scale-150" />
-                </div>
-                {!isCollapsed && (
-                    <div>
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
-                            AcadHub
-                        </h1>
-                        <p className="text-[10px] font-bold tracking-widest text-primary/80 uppercase">
-                            Student Center
-                        </p>
+    const SidebarContent = React.useCallback(() => {
+        const [imgError, setImgError] = useState(false);
+        const userAvatar = !imgError && user?.picture
+            ? user.picture
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=random`;
+
+        return (
+            <div className="flex flex-col h-full bg-surface-container-low text-on-surface transition-all duration-300">
+                {/* Logo */}
+                <div className={`flex items-center gap-3 px-6 py-5 ${isCollapsed ? 'justify-center px-0' : ''}`}>
+                    <div className="flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden shrink-0">
+                        <img src="/icon-trans.png" alt="AcadHub" className="w-full h-full object-contain scale-150" />
                     </div>
-                )}
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1 px-4 space-y-6 overflow-y-auto no-scrollbar pb-4">
-                {navigationGroups.map((group) => {
-                    const isExpanded = expandedGroups.includes(group.name);
-
-                    return (
-                        <div key={group.name} className="mb-2">
-                            <div
-                                className="flex items-center justify-between w-full mb-3 px-2 cursor-pointer group"
-                                onClick={() => toggleGroup(group.name)}
-                            >
-                                {!isCollapsed && (
-                                    <h3 className="text-xs font-bold leading-6 text-primary uppercase tracking-wider">
-                                        {group.name}
-                                    </h3>
-                                )}
-                                {!isCollapsed && (
-                                    <ChevronDown
-                                        size={14}
-                                        className={`text-primary/60 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                                    />
-                                )}
-                            </div>
-
-                            <AnimatePresence initial={false}>
-                                {(isExpanded || isCollapsed) && (
-                                    <motion.div
-                                        initial={isCollapsed ? false : { height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={isCollapsed ? undefined : { height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className={`${isCollapsed ? '' : 'ml-2 border-l border-outline-variant/20 pl-2'} space-y-1 mt-1`}>
-                                            {group.items.map((item) => {
-                                                const isActive = location.pathname === item.href;
-                                                return (
-                                                    <Link
-                                                        key={item.name}
-                                                        to={item.href}
-                                                        onClick={() => setIsMobileOpen(false)}
-                                                        className="block"
-                                                    >
-                                                        <div
-                                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
-                                                                ? 'bg-primary/10 text-primary font-bold'
-                                                                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                                                                } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
-                                                        >
-                                                            <item.icon
-                                                                className={`w-5 h-5 shrink-0 ${isActive
-                                                                    ? 'text-primary'
-                                                                    : 'text-on-surface-variant group-hover:text-primary transition-colors'
-                                                                    }`}
-                                                                strokeWidth={isActive ? 2.5 : 2}
-                                                            />
-                                                            {!isCollapsed && (
-                                                                <span className="text-sm">{item.name}</span>
-                                                            )}
-                                                        </div>
-                                                    </Link>
-                                                );
-                                            })}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                    {!isCollapsed && (
+                        <div>
+                            <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-tertiary bg-clip-text text-transparent">
+                                AcadHub
+                            </h1>
+                            <p className="text-[10px] font-bold tracking-widest text-primary/80 uppercase">
+                                Student Center
+                            </p>
                         </div>
-                    );
-                })}
-
-                {/* Settings - Standalone */}
-                <div className={`mt-4 pt-4 border-t border-outline-variant/10 ${isCollapsed ? 'border-0' : ''} `}>
-                    <Link
-                        to="/settings"
-                        onClick={() => setIsMobileOpen(false)}
-                        className="block"
-                    >
-                        <div
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${location.pathname === '/settings'
-                                ? 'bg-primary/10 text-primary font-bold'
-                                : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                                } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''} `}
-                        >
-                            <Settings
-                                className={`w-5 h-5 shrink-0 ${location.pathname === '/settings'
-                                    ? 'text-primary'
-                                    : 'text-on-surface-variant group-hover:text-primary transition-colors'
-                                    } `}
-                                strokeWidth={location.pathname === '/settings' ? 2.5 : 2}
-                            />
-                            {!isCollapsed && <span className="text-sm">Settings</span>}
-                        </div>
-                    </Link>
+                    )}
                 </div>
-            </nav>
 
-            {/* User & Settings Area */}
-            <div className="p-4 mt-auto border-t border-outline-variant/10">
-                {!isCollapsed ? (
-                    <div className="bg-surface-container p-3 rounded-2xl border border-outline-variant/20 shadow-sm">
-                        <div className="flex items-center gap-3 mb-3">
-                            <img
-                                src={user?.picture || `https://ui-avatars.com/api/?name=${user?.name}&background=random`}
-                                alt={user?.name}
-                                className="w-9 h-9 rounded-full border-2 border-surface shrink-0"
-                            />
-                            <div className="min-w-0 overflow-hidden">
-                                <p className="text-sm font-bold text-on-surface truncate leading-tight">{user?.name}</p>
-                                <p className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant truncate">Student</p>
+                {/* Navigation */}
+                <nav className="flex-1 px-4 space-y-6 overflow-y-auto no-scrollbar pb-4">
+                    {navigationGroups.map((group) => {
+                        const isExpanded = expandedGroups.includes(group.name);
+
+                        return (
+                            <div key={group.name} className="mb-2">
+                                <div
+                                    className="flex items-center justify-between w-full mb-3 px-2 cursor-pointer group"
+                                    onClick={() => toggleGroup(group.name)}
+                                >
+                                    {!isCollapsed && (
+                                        <h3 className="text-xs font-bold leading-6 text-primary uppercase tracking-wider">
+                                            {group.name}
+                                        </h3>
+                                    )}
+                                    {!isCollapsed && (
+                                        <ChevronDown
+                                            size={14}
+                                            className={`text-primary/60 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                        />
+                                    )}
+                                </div>
+
+                                <AnimatePresence initial={false}>
+                                    {(isExpanded || isCollapsed) && (
+                                        <motion.div
+                                            initial={isCollapsed ? false : { height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={isCollapsed ? undefined : { height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className={`${isCollapsed ? '' : 'ml-2 border-l border-outline-variant/20 pl-2'} space-y-1 mt-1`}>
+                                                {group.items.map((item) => {
+                                                    const isActive = location.pathname === item.href;
+                                                    return (
+                                                        <Link
+                                                            key={item.name}
+                                                            to={item.href}
+                                                            onClick={() => setIsMobileOpen(false)}
+                                                            className="block"
+                                                        >
+                                                            <div
+                                                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${isActive
+                                                                    ? 'bg-primary/10 text-primary font-bold'
+                                                                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                                                                    } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''}`}
+                                                            >
+                                                                <item.icon
+                                                                    className={`w-5 h-5 shrink-0 ${isActive
+                                                                        ? 'text-primary'
+                                                                        : 'text-on-surface-variant group-hover:text-primary transition-colors'
+                                                                        }`}
+                                                                    strokeWidth={isActive ? 2.5 : 2}
+                                                                />
+                                                                {!isCollapsed && (
+                                                                    <span className="text-sm">{item.name}</span>
+                                                                )}
+                                                            </div>
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        );
+                    })}
+
+                    {/* Settings - Standalone */}
+                    <div className={`mt-4 pt-4 border-t border-outline-variant/10 ${isCollapsed ? 'border-0' : ''} `}>
+                        <Link
+                            to="/settings"
+                            onClick={() => setIsMobileOpen(false)}
+                            className="block"
+                        >
+                            <div
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${location.pathname === '/settings'
+                                    ? 'bg-primary/10 text-primary font-bold'
+                                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+                                    } ${isCollapsed ? 'justify-center w-12 h-12 mx-auto px-0' : ''} `}
+                            >
+                                <Settings
+                                    className={`w-5 h-5 shrink-0 ${location.pathname === '/settings'
+                                        ? 'text-primary'
+                                        : 'text-on-surface-variant group-hover:text-primary transition-colors'
+                                        } `}
+                                    strokeWidth={location.pathname === '/settings' ? 2.5 : 2}
+                                />
+                                {!isCollapsed && <span className="text-sm">Settings</span>}
+                            </div>
+                        </Link>
+                    </div>
+                </nav>
+
+                {/* User & Settings Area */}
+                <div className="p-4 mt-auto border-t border-outline-variant/10">
+                    {!isCollapsed ? (
+                        <div className="bg-surface-container p-3 rounded-2xl border border-outline-variant/20 shadow-sm">
+                            <div className="flex items-center gap-3 mb-3">
+                                <img
+                                    src={userAvatar}
+                                    alt={user?.name}
+                                    className="w-9 h-9 rounded-full border-2 border-surface shrink-0 object-cover"
+                                    onError={() => setImgError(true)}
+                                />
+                                <div className="min-w-0 overflow-hidden">
+                                    <p className="text-sm font-bold text-on-surface truncate leading-tight">{user?.name}</p>
+                                    <p className="text-[10px] uppercase font-bold tracking-wider text-on-surface-variant truncate">Student</p>
+                                </div>
+                            </div >
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={toggleTheme}
+                                    className="flex items-center justify-center gap-2 h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-xs font-medium text-on-surface-variant hover:text-on-surface"
+                                >
+                                    {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+                                    <span>Mode</span>
+                                </button>
+                                <button
+                                    onClick={logout}
+                                    className="flex items-center justify-center gap-2 h-9 rounded-lg bg-error-container/20 text-error hover:bg-error-container hover:text-on-error-container transition-all text-xs font-medium"
+                                >
+                                    <LogOut size={14} />
+                                    <span>Sign Out</span>
+                                </button>
                             </div>
                         </div >
 
-                        <div className="grid grid-cols-2 gap-2">
+                    ) : (
+                        <div className="flex flex-col gap-3 items-center">
                             <button
                                 onClick={toggleTheme}
-                                className="flex items-center justify-center gap-2 h-9 rounded-lg bg-surface-container-high hover:bg-surface-container-highest transition-colors text-xs font-medium text-on-surface-variant hover:text-on-surface"
+                                className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-high hover:bg-surface-container-highest transition-colors text-on-surface-variant"
+                                title="Toggle Theme"
                             >
-                                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-                                <span>Mode</span>
+                                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                             </button>
                             <button
                                 onClick={logout}
-                                className="flex items-center justify-center gap-2 h-9 rounded-lg bg-error-container/20 text-error hover:bg-error-container hover:text-on-error-container transition-all text-xs font-medium"
+                                className="w-10 h-10 rounded-full flex items-center justify-center bg-error-container/20 text-error hover:bg-error-container hover:text-on-error-container transition-colors"
+                                title="Sign Out"
                             >
-                                <LogOut size={14} />
-                                <span>Sign Out</span>
+                                <LogOut size={18} />
                             </button>
+                            <div className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+                                <img
+                                    src={userAvatar}
+                                    alt={user?.name}
+                                    className="w-full h-full object-cover"
+                                    onError={() => setImgError(true)}
+                                />
+                            </div>
                         </div>
-                    </div >
+                    )}
 
-                ) : (
-                    <div className="flex flex-col gap-3 items-center">
-                        <button
-                            onClick={toggleTheme}
-                            className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-high hover:bg-surface-container-highest transition-colors text-on-surface-variant"
-                            title="Toggle Theme"
-                        >
-                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                        </button>
-                        <button
-                            onClick={logout}
-                            className="w-10 h-10 rounded-full flex items-center justify-center bg-error-container/20 text-error hover:bg-error-container hover:text-on-error-container transition-colors"
-                            title="Sign Out"
-                        >
-                            <LogOut size={18} />
-                        </button>
-                        <div className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
-                            <img
-                                src={user?.picture || `https://ui-avatars.com/api/?name=${user?.name}&background=random`}
-                                alt={user?.name}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
+                    {/* App Version Label */}
+                    <div className={`mt-2 flex justify-center ${isCollapsed ? 'px-0' : 'px-2'}`}>
+                        <p className="text-[10px] font-bold tracking-tighter text-on-surface-variant/40 uppercase">
+                            {isCollapsed ? 'v4.1' : 'Web App Version 4.1.0'}
+                        </p>
                     </div>
-                )}
+                </div >
 
-                {/* App Version Label */}
-                <div className={`mt-2 flex justify-center ${isCollapsed ? 'px-0' : 'px-2'}`}>
-                    <p className="text-[10px] font-bold tracking-tighter text-on-surface-variant/40 uppercase">
-                        {isCollapsed ? 'v4.1' : 'Web App Version 4.1.0'}
-                    </p>
-                </div>
+                {/* Collapse Toggle for Desktop */}
+                < button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-surface border border-outline-variant items-center justify-center rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors z-50"
+                >
+                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                </button >
             </div >
-
-            {/* Collapse Toggle for Desktop */}
-            < button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 bg-surface border border-outline-variant items-center justify-center rounded-full shadow-sm text-on-surface-variant hover:text-primary transition-colors z-50"
-            >
-                {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-            </button >
-        </div >
-    );
+        );
+    }, [isCollapsed, user, theme, navigationGroups, expandedGroups, location.pathname, toggleTheme, logout, setIsMobileOpen, setIsCollapsed]);
 
     return (
         <>

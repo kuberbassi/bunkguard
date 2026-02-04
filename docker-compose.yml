@@ -8,30 +8,18 @@ services:
       dockerfile: api/Dockerfile
     ports:
       - "5000:5000"
+    env_file: .env
     environment:
       - FLASK_ENV=development
-      - MONGODB_URI=mongodb://mongo:27017/acadhub
-    depends_on:
-      - mongo
-    volumes:
-      - .:/app # Hot reload for dev (mounting root to access run.py and api/)
+      - MONGO_URI=${MONGO_URI}
 
   # React Frontend
   frontend:
     build:
       context: ./frontend
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
     ports:
       - "3000:80"
     depends_on:
       - backend
-
-  # Local MongoDB (Optional, for local dev)
-  mongo:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
-volumes:
-  mongo_data:

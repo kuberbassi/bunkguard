@@ -100,7 +100,7 @@ const LoginScreen = () => {
     const handleDevLogin = async () => {
         setLoading(true);
         try {
-            const response = await api.post('/api/auth/dev_login', { email: 'kuberbassi2007@gmail.com' });
+            const response = await api.post('/api/auth/dev_login', { email: 'kuber@hmritm.ac.in' });
             await login(response.data.user, response.data.token);
         } catch (error) { Alert.alert("Error", "Dev login failed"); }
         finally { setLoading(false); }

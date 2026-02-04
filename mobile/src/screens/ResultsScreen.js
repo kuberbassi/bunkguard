@@ -10,8 +10,10 @@ import { attendanceService } from '../services';
 import { useTheme } from '../contexts/ThemeContext';
 import {
     ChevronDown, ChevronUp, Info, Edit3, Save, X, Trash2, Plus,
-    Award, TrendingUp, BookOpen, GraduationCap
+    Award, TrendingUp, BookOpen, GraduationCap, Download, BarChart2
 } from 'lucide-react-native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { LinearGradient } from '../components/LinearGradient';
 import SemesterSelector from '../components/SemesterSelector';
@@ -27,7 +29,7 @@ if (Platform.OS === 'android') {
 import { useSemester } from '../contexts/SemesterContext';
 
 const ResultsScreen = ({ navigation }) => {
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const insets = useSafeAreaInsets();
     const { selectedSemester } = useSemester();
 
@@ -44,7 +46,7 @@ const ResultsScreen = ({ navigation }) => {
         text: isDark ? '#FFFFFF' : '#1E1F22',
         subtext: isDark ? '#BABBBD' : '#6B7280',
 
-        primary: theme.palette.purple,
+        primary: themeColors.primary, // Dynamic accent
         accent: theme.palette.magenta,
         success: theme.palette.green,
         warning: theme.palette.orange,
@@ -52,6 +54,7 @@ const ResultsScreen = ({ navigation }) => {
         surface: isDark ? '#121212' : '#FFFFFF',
 
         inputBg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+        gradients: themeColors.gradients, // Dynamic gradients
     };
 
 
@@ -105,7 +108,7 @@ const ResultsScreen = ({ navigation }) => {
         let totalCredits = 0;
         let weightedSum = 0;
 
-        data.forEach(r => {
+        (Array.isArray(data) ? data : []).forEach(r => {
             const credits = r.total_credits || 0;
             const sgpa = r.sgpa || 0;
             if (credits > 0) {
@@ -118,11 +121,11 @@ const ResultsScreen = ({ navigation }) => {
         setStats({ cgpa, totalCredits });
     };
 
-    const calculateSemesterStats = (subjects) => {
+    const calculateSemesterStats = (subjects = []) => {
         let totalCredits = 0;
         let weightedSum = 0;
 
-        const processed = subjects.map(sub => {
+        const processed = (subjects || []).map(sub => {
             const cr = parseInt(sub.credits) || 0;
             const type = sub.type || 'theory';
             let total = 0;
@@ -173,7 +176,7 @@ const ResultsScreen = ({ navigation }) => {
 
     const handleEditStart = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        const current = results.find(r => r.semester === selectedSemester);
+        const current = (Array.isArray(results) ? results : []).find(r => r.semester === selectedSemester);
         if (current) {
             setEditData(JSON.parse(JSON.stringify(current)));
         } else {
@@ -264,20 +267,16 @@ const ResultsScreen = ({ navigation }) => {
         const gradeColor = getGradeColor(sub.grade);
         const type = sub.type || 'theory';
 
-        // Ensure total is visible even if not explicitly stored in payload
-        let displayTotal = sub.total;
-        if (displayTotal === undefined) {
-            if (type === 'nues') {
-                displayTotal = parseInt(sub.internal_theory) || 0;
-            } else {
-                let t = 0;
-                if (type === 'theory') {
-                    t += (parseInt(sub.internal_theory) || 0) + (parseInt(sub.external_theory) || 0);
-                }
-                if (type === 'practical') {
-                    t += (parseInt(sub.internal_practical) || 0) + (parseInt(sub.external_practical) || 0);
-                }
-                displayTotal = t;
+        // Always recalculate total from individual marks for accuracy
+        let displayTotal = 0;
+        if (type === 'nues') {
+            displayTotal = parseInt(sub.internal_theory) || 0;
+        } else {
+            if (type === 'theory' || type === 'both') {
+                displayTotal += (parseInt(sub.internal_theory) || 0) + (parseInt(sub.external_theory) || 0);
+            }
+            if (type === 'practical' || type === 'both') {
+                displayTotal += (parseInt(sub.internal_practical) || 0) + (parseInt(sub.external_practical) || 0);
             }
         }
 
@@ -430,7 +429,7 @@ const ResultsScreen = ({ navigation }) => {
         </LinearGradient>
     );
 
-    const currentResult = results.find(r => r.semester === selectedSemester);
+    const currentResult = (Array.isArray(results) ? results : []).find(r => r.semester === selectedSemester);
 
     // Header Animation
 
@@ -455,7 +454,7 @@ const ResultsScreen = ({ navigation }) => {
 
             <Animated.ScrollView
                 contentContainerStyle={styles.scrollContent}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchResults(); }} tintColor={c.text} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchResults(); }} tintColor={c.text} progressViewOffset={Layout.header.maxHeight + insets.top} />}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 scrollEventThrottle={16}
             >
@@ -510,23 +509,158 @@ const ResultsScreen = ({ navigation }) => {
                 {/* ACTIONS */}
                 <View style={styles.actionRow}>
                     <Text style={styles.sectionTitle}>{isEditing ? `Editing Sem ${selectedSemester}` : 'Subjects'}</Text>
-                    {!isEditing ? (
-                        <PressableScale style={styles.iconBtn} onPress={handleEditStart}>
-                            <Edit3 size={20} color={c.primary} />
-                        </PressableScale>
-                    ) : (
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <PressableScale onPress={handleDeleteSemester} style={{ marginRight: 8 }}>
-                                <Trash2 size={24} color={c.danger} />
-                            </PressableScale>
-                            <PressableScale onPress={() => { setIsEditing(false); setEditData(null); }}>
-                                <X size={24} color={c.subtext} />
-                            </PressableScale>
-                            <PressableScale onPress={handleSave}>
-                                {saving ? <ActivityIndicator color={c.success} /> : <Save size={24} color={c.success} />}
-                            </PressableScale>
-                        </View>
-                    )}
+
+                    {/* Right Side Actions Container */}
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                        {!isEditing ? (
+                            <>
+                                <PressableScale style={styles.iconBtn} onPress={handleEditStart}>
+                                    <Edit3 size={20} color={c.primary} />
+                                </PressableScale>
+
+                                <PressableScale style={styles.iconBtn} onPress={() => {
+                                    // Mock Report Download
+                                    const generatePDF = async () => {
+                                        try {
+                                            setLoading(true);
+
+                                            const current = (Array.isArray(results) ? results : []).find(r => r.semester === selectedSemester);
+                                            if (!current) {
+                                                Alert.alert("Error", "No data to export for this semester.");
+                                                setLoading(false);
+                                                return;
+                                            }
+                                            // ... func body continues ...
+
+                                            const htmlContent = `
+                                        <!DOCTYPE html>
+                                        <html>
+                                            <head>
+                                                <style>
+                                                    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+                                                    .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid ${theme.palette.purple}; padding-bottom: 20px; }
+                                                    .brand { color: ${theme.palette.purple}; font-size: 24px; font-weight: bold; }
+                                                    .title { font-size: 20px; font-weight: bold; margin-top: 10px; }
+                                                    .subtitle { color: #666; font-size: 14px; margin-top: 5px; }
+                                                    
+                                                    .stats-grid { display: flex; justify-content: space-between; margin-bottom: 30px; background: #f8f9fa; padding: 20px; border-radius: 12px; }
+                                                    .stat-item { text-align: center; flex: 1; }
+                                                    .stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+                                                    .stat-value { font-size: 24px; font-weight: bold; color: ${theme.palette.purple}; margin-top: 5px; }
+                                                    
+                                                    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 12px; }
+                                                    th { text-align: left; padding: 12px; border-bottom: 2px solid #eee; color: #666; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+                                                    td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+                                                    .grade-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; color: white; font-weight: bold; font-size: 12px; }
+                                                    
+                                                    .footer { margin-top: 50px; text-align: center; color: #999; font-size: 10px; border-top: 1px solid #eee; padding-top: 20px; }
+                                                </style>
+                                            </head>
+                                            <body>
+                                                <div class="header">
+                                                    <div class="brand">AcadHzub</div>
+                                                    <div class="title">Semester ${selectedSemester} Report</div>
+                                                    <div class="subtitle">Generated on ${new Date().toLocaleDateString()}</div>
+                                                </div>
+
+                                                <div class="stats-grid">
+                                                    <div class="stat-item">
+                                                        <div class="stat-label">SGPA</div>
+                                                        <div class="stat-value">${current.sgpa}</div>
+                                                    </div>
+                                                    <div class="stat-item">
+                                                        <div class="stat-label">CGPA</div>
+                                                        <div class="stat-value">${stats.cgpa}</div>
+                                                    </div>
+                                                    <div class="stat-item">
+                                                        <div class="stat-label">Credits</div>
+                                                        <div class="stat-value">${current.total_credits}</div>
+                                                    </div>
+                                                </div>
+
+                                                <table>
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 40%">Subject</th>
+                                                            <th style="width: 15%">Type</th>
+                                                            <th style="width: 15%">Credits</th>
+                                                            <th style="width: 15%">Score</th>
+                                                            <th style="width: 15%">Grade</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        ${(current.subjects || []).map(sub => {
+                                                let total = sub.total;
+                                                // Recalculate if generic logic was used in display
+                                                if (total === undefined) {
+                                                    if (sub.type?.toLowerCase() === 'nues') total = sub.internal_theory;
+                                                    else total = (parseInt(sub.internal_theory || 0) + parseInt(sub.external_theory || 0) + parseInt(sub.internal_practical || 0) + parseInt(sub.external_practical || 0));
+                                                }
+
+                                                let gradeColor = '#666';
+                                                const g = (sub.grade || '').toUpperCase();
+                                                if (g === 'O') gradeColor = theme.palette.green;
+                                                else if (g === 'A+' || g === 'A') gradeColor = theme.palette.purple;
+                                                else if (g === 'F') gradeColor = theme.palette.red;
+                                                else gradeColor = theme.palette.orange;
+
+                                                return `
+                                                                <tr>
+                                                                    <td><b>${sub.name}</b><br/><span style="color:#999;font-size:10px">${sub.code || ''}</span></td>
+                                                                    <td style="text-transform:uppercase;font-size:10px">${sub.type}</td>
+                                                                    <td>${sub.credits}</td>
+                                                                    <td>${total}</td>
+                                                                    <td><span class="grade-badge" style="background-color: ${gradeColor}">${sub.grade}</span></td>
+                                                                </tr>
+                                                            `;
+                                            }).join('')}
+                                                    </tbody>
+                                                </table>
+
+                                                <div class="footer">
+                                                    This report was generated via AcadHzub Mobile App.
+                                                </div>
+                                            </body>
+                                        </html>
+                                    `;
+
+                                            const { uri } = await Print.printToFileAsync({ html: htmlContent });
+                                            await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+
+                                        } catch (error) {
+                                            console.error(error);
+                                            Alert.alert("Error", "Failed to generate PDF. Please try again.");
+                                        } finally {
+                                            setLoading(false);
+                                        }
+                                    };
+
+                                    Alert.alert(
+                                        "Download Report",
+                                        `Generate PDF report for Semester ${selectedSemester}?`,
+                                        [
+                                            { text: "Cancel", style: "cancel" },
+                                            { text: "Generate PDF", onPress: generatePDF }
+                                        ]
+                                    );
+                                }}>
+                                    <Download size={20} color={c.primary} />
+                                </PressableScale>
+                            </>
+                        ) : (
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <PressableScale onPress={handleDeleteSemester} style={{ marginRight: 8 }}>
+                                    <Trash2 size={24} color={c.danger} />
+                                </PressableScale>
+                                <PressableScale onPress={() => { setIsEditing(false); setEditData(null); }}>
+                                    <X size={24} color={c.subtext} />
+                                </PressableScale>
+                                <PressableScale onPress={handleSave}>
+                                    {saving ? <ActivityIndicator color={c.success} /> : <Save size={24} color={c.success} />}
+                                </PressableScale>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
                 {/* LIST */}

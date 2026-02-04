@@ -54,7 +54,7 @@ export interface SubjectResult {
     name: string;
     code?: string;
     credits: number;
-    type: 'theory' | 'practical' | 'both' | 'nues';
+    type: 'theory' | 'practical' | 'nues';
     internal_theory?: number;
     external_theory?: number;
     internal_practical?: number;
@@ -121,7 +121,6 @@ export interface ReportsKPI {
     worst_subject_name: string;
     worst_subject_percent: string;
     total_absences: number;
-    streak: number;
 }
 
 export interface ReportsData {

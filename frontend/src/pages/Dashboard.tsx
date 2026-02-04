@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDashboard, useMarkAttendance } from '@/hooks/useDashboard';
 import { AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
@@ -15,7 +16,7 @@ import AttendanceModal from '@/components/modals/AttendanceModal';
 import NoticesWidget from '@/components/dashboard/NoticesWidget';
 import { useToast } from '@/components/ui/Toast';
 import { attendanceService } from '@/services/attendance.service';
-import type { DashboardData, Subject, SubjectOverview } from '@/types';
+import type { Subject, SubjectOverview } from '@/types';
 import { useSemester } from '@/contexts/SemesterContext';
 import Skeleton from '@/components/ui/Skeleton';
 
@@ -39,24 +40,43 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string }
 
 const Dashboard: React.FC = () => {
     const { showToast } = useToast();
-    const [loading, setLoading] = useState(true);
-    const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+    const { currentSemester, setCurrentSemester } = useSemester();
+
+    // Using React Query Hook for caching and instant loads
+    const { data: dashboardData, isLoading: loading, refetch: loadDashboard } = useDashboard();
+    const { mutate: markAttendance } = useMarkAttendance();
+
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingSubject, setEditingSubject] = useState<Subject | SubjectOverview | null>(null);
     const [markingSubjectId, setMarkingSubjectId] = useState<string | null>(null);
-    const { currentSemester, setCurrentSemester } = useSemester();
 
     const [availableSemesters, setAvailableSemesters] = useState<number[]>([]);
     const [cgpa, setCgpa] = useState<number | null>(null);
     const [targetThreshold, setTargetThreshold] = useState<number>(75);
 
     useEffect(() => {
-        loadDashboard();
+        // loadDashboard(); // handled by hook
         loadCGPA();
         loadPreferences();
-    }, [currentSemester]);
+        checkOtherSemesters();
+    }, [currentSemester]); // dependents still needed for other bits
+
+    const checkOtherSemesters = async () => {
+        if (!dashboardData?.subjects || dashboardData.subjects.length === 0) {
+            try {
+                const overview = await attendanceService.getAllSemestersOverview();
+                const sems = overview.map((o: any) => o.semester).filter((s: number) => s !== currentSemester);
+                setAvailableSemesters(sems);
+            } catch (e) {
+                // quiet fail
+            }
+        } else {
+            setAvailableSemesters([]);
+        }
+    };
 
     const loadPreferences = async () => {
+
         try {
             const prefs = await attendanceService.getPreferences();
             if (prefs?.attendance_threshold) {
@@ -64,33 +84,6 @@ const Dashboard: React.FC = () => {
             }
         } catch (e) {
             // Use default
-        }
-    };
-
-    const loadDashboard = async () => {
-        try {
-            setLoading(true);
-            const data = await attendanceService.getDashboardData(currentSemester);
-            setDashboardData(data);
-
-            if (!data.subjects || data.subjects.length === 0) {
-                try {
-                    const overview = await attendanceService.getAllSemestersOverview();
-                    // overview is array of {semester: number, ...}
-                    const sems = overview.map((o: any) => o.semester).filter((s: number) => s !== currentSemester);
-                    setAvailableSemesters(sems);
-                } catch (e) {
-                    console.error("Failed to check other semesters", e);
-                }
-            } else {
-                setAvailableSemesters([]);
-            }
-
-        } catch (error) {
-            console.error('Error in loadDashboard:', error);
-            showToast('error', 'Failed to load dashboard');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -109,14 +102,15 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    const handleQuickLog = async (subjectId: string, status: 'present' | 'absent') => {
-        try {
-            await attendanceService.markAttendance(subjectId, status, new Date().toISOString().split('T')[0]);
-            showToast('success', `Marked ${status}`);
-            loadDashboard();
-        } catch (error) {
-            showToast('error', 'Failed to mark attendance');
-        }
+    const handleQuickLog = (subjectId: string, status: 'present' | 'absent') => {
+        markAttendance({ subjectId, status }, {
+            onSuccess: () => {
+                showToast('success', `Marked ${status}`);
+            },
+            onError: () => {
+                showToast('error', 'Failed to mark attendance');
+            }
+        });
     };
 
     const handleDeleteSubject = async (subjectId: string, subjectName: string) => {
@@ -130,6 +124,21 @@ const Dashboard: React.FC = () => {
         } catch (error) {
             showToast('error', 'Failed to delete subject');
         }
+    };
+
+    // Default sort: Theory first, then Lab, then uncategorized
+    const sortSubjectsByCategory = (subjects: any[]) => {
+        if (!subjects) return [];
+        return [...subjects].sort((a, b) => {
+            const getCategoryPriority = (sub: any) => {
+                const cats = sub.categories || [];
+                if (cats.includes('Theory')) return 0;
+                if (cats.includes('Lab')) return 1;
+                if (cats.length === 0) return 2;
+                return 1; // Other categories treated as Lab-level priority
+            };
+            return getCategoryPriority(a) - getCategoryPriority(b);
+        });
     };
 
     // Helper to get emoji based on subject name
@@ -349,7 +358,7 @@ const Dashboard: React.FC = () => {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                         <AnimatePresence>
-                            {dashboardData?.subjects?.map((subject) => {
+                            {sortSubjectsByCategory(dashboardData?.subjects || []).map((subject) => {
                                 const percentage = subject.attendance_percentage;
                                 const status = percentage >= targetThreshold ? 'safe' : 'danger';
                                 const config = STATUS_CONFIG[status];

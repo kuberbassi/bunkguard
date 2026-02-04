@@ -34,7 +34,7 @@ export const authService = {
     getCurrentUser: async (): Promise<User | null> => {
         try {
             const response = await api.get('/api/current_user');
-            return response.data;
+            return response.data.data;
         } catch (error) {
             return null;
         }
@@ -43,7 +43,7 @@ export const authService = {
     // Logout
     logout: async (): Promise<void> => {
         try {
-            await api.post('/logout');
+            await api.post('/api/auth/logout');
         } catch (error) {
             console.error('Logout error:', error);
         } finally {

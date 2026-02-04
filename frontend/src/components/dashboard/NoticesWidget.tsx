@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, ExternalLink, RefreshCw } from 'lucide-react';
 import GlassCard from '@/components/ui/GlassCard';
-import { attendanceService } from '@/services/attendance.service';
+import { useNotices } from '@/hooks/useNotices';
 
 interface Notice {
     title: string;
@@ -11,25 +11,11 @@ interface Notice {
 }
 
 const NoticesWidget: React.FC = () => {
-    const [notices, setNotices] = useState<Notice[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: noticesData, isLoading: loading, refetch } = useNotices();
+    const notices = (noticesData as Notice[]) || [];
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    useEffect(() => {
-        loadNotices();
-    }, []);
-
-    const loadNotices = async () => {
-        setLoading(true);
-        try {
-            const data = await attendanceService.getNotices();
-            setNotices(data);
-        } catch (error) {
-            console.error("Failed to load notices", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Removed manual loadNotices/useEffect as React Query handles it
 
     return (
         <>
@@ -49,7 +35,7 @@ const NoticesWidget: React.FC = () => {
                             View All
                         </button>
                         <button
-                            onClick={loadNotices}
+                            onClick={() => refetch()}
                             className={`p-2 rounded-full hover:bg-surface-container ${loading ? 'animate-spin' : ''}`}
                         >
                             <RefreshCw size={16} className="text-on-surface-variant" />

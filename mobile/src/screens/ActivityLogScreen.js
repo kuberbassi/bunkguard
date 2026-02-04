@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Animated, RefreshControl, TouchableOpacity } from 'react-native';
-import api from '../services/api';
+import { attendanceService } from '../services/attendance.service';
 import { useFocusEffect } from '@react-navigation/native';
 import { CheckCircle, XCircle, Trash2, Edit, AlertCircle, ArrowLeft } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { LinearGradient } from '../components/LinearGradient';
@@ -44,9 +45,9 @@ const ActivityLogScreen = ({ navigation }) => {
 
     const fetchLogs = async () => {
         try {
-            // Updated to fetch SYSTEM logs as requested
-            const response = await api.get('/api/system_logs');
-            setLogs(response.data);
+            // Updated to fetch SYSTEM logs via service
+            const data = await attendanceService.getSystemLogs();
+            setLogs(data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -143,7 +144,11 @@ const ActivityLogScreen = ({ navigation }) => {
                 contentContainerStyle={styles.listContent}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                 ListEmptyComponent={!loading && <Text style={{ textAlign: 'center', color: c.subtext, marginTop: 40 }}>No logs found.</Text>}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchLogs() }} tintColor={c.primary} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setRefreshing(true);
+                    fetchLogs();
+                }} tintColor={c.primary} />}
             />
         </View>
     );

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
+import offlineStorage from '../lib/offlineStorage';
 
 const SemesterContext = createContext();
 
@@ -9,7 +10,16 @@ export const SemesterProvider = ({ children }) => {
     const [selectedSemester, setSelectedSemester] = useState(1);
     const [loading, setLoading] = useState(true);
 
-    // Initial fetch from backend preferences
+    // Initial load from local storage
+    useEffect(() => {
+        const loadLocal = async () => {
+            const saved = await offlineStorage.getData('selected_semester');
+            if (saved) setSelectedSemester(Number(saved));
+        };
+        loadLocal();
+    }, []);
+
+    // Fetch from backend to sync
     useEffect(() => {
         if (user) {
             fetchSemesterPreference();
@@ -20,7 +30,9 @@ export const SemesterProvider = ({ children }) => {
         try {
             const res = await api.get('/api/preferences');
             if (res.data && res.data.selected_semester) {
-                setSelectedSemester(Number(res.data.selected_semester));
+                const serverSem = Number(res.data.selected_semester);
+                setSelectedSemester(serverSem);
+                offlineStorage.saveData('selected_semester', serverSem);
             } else if (user?.semester) {
                 // Fallback to user's profile semester
                 setSelectedSemester(Number(user.semester));
@@ -35,6 +47,7 @@ export const SemesterProvider = ({ children }) => {
     const updateSemester = async (sem) => {
         const semesterNum = Number(sem);
         setSelectedSemester(semesterNum);
+        offlineStorage.saveData('selected_semester', semesterNum);
         try {
             // Save to backend
             await api.post('/api/preferences', {

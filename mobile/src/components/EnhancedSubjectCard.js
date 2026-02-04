@@ -4,7 +4,7 @@ import PressableScale from './PressableScale';
 import { theme } from '../theme';
 import { LinearGradient } from './LinearGradient';
 
-const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
+const EnhancedSubjectCard = ({ subject, onPress, isDark, threshold: propThreshold }) => {
     // Aquamorphic Palette
     const c = {
         glassBgStart: isDark ? 'rgba(43, 45, 48, 0.9)' : 'rgba(255, 255, 255, 0.9)',
@@ -27,7 +27,7 @@ const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
     const attended = subject.attended || subject.attended_classes || 0;
     const total = subject.total || subject.total_classes || 0;
 
-    const threshold = 0.75;
+    const threshold = propThreshold || 0.75;
     let statsValue = '0';
     let statsLabel = 'SKIPS';
     let statsColor = c.success;
@@ -65,7 +65,7 @@ const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
 
                     {/* Fluid Ring Badge */}
                     <LinearGradient
-                        colors={pct < 75 ? theme.gradients.danger : theme.gradients.success}
+                        colors={pct < (threshold * 100) ? theme.gradients.danger : theme.gradients.success}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                         style={styles.percentBadge}
                     >
@@ -80,8 +80,8 @@ const EnhancedSubjectCard = ({ subject, onPress, isDark }) => {
 
                 {/* Status Message (Bunk Guard) */}
                 <View style={styles.statusFooter}>
-                    <Text style={[styles.statusMsg, { color: pct < 75 ? c.danger : c.success }]}>
-                        {subject.status_message || (pct < 75 ? `Attend next class` : 'Safe to bunk')}
+                    <Text style={[styles.statusMsg, { color: pct < (threshold * 100) ? c.danger : c.success }]}>
+                        {subject.status_message || (pct < (threshold * 100) ? `Attend next class` : 'Safe to bunk')}
                     </Text>
                 </View>
 
@@ -114,11 +114,13 @@ const getStyles = (c, isDark) => StyleSheet.create({
         marginBottom: 20,
         borderWidth: 1,
         borderColor: c.glassBorder,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: isDark ? 0.4 : 0.08,
-        shadowRadius: 12,
-        elevation: 5,
+        // Stronger Shadow for Visibility
+        shadowColor: isDark ? '#000' : '#4A5568',
+        shadowOffset: { width: 0, height: 12 }, // Deeper offset
+        shadowOpacity: isDark ? 0.6 : 0.25,     // Much higher opacity for light mode
+        shadowRadius: 24,                       // Softer spread
+        elevation: 12,                          // Higher android elevation
+        backgroundColor: isDark ? '#2B2D30' : '#FFFFFF' // Ensure solid background for shadow
     },
     headerRow: {
         flexDirection: 'row',

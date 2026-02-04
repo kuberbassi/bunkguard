@@ -47,11 +47,13 @@ api.interceptors.response.use(
             window.location.href = '/login';
         }
 
-        if (!config._retry && shouldRetry(error)) {
+        if (shouldRetry(error)) {
             config._retry = (config._retry || 0) + 1;
-            if (config._retry <= 2) {
-                const delay = Math.pow(2, config._retry - 1) * 1000;
-                console.log(`Retrying request (attempt ${config._retry}/2) after ${delay}ms...`);
+            const maxRetries = 3;
+            if (config._retry <= maxRetries) {
+                // Exponential backoff: 1s, 2s, 4s...
+                const delay = Math.pow(2, config._retry - 1) * 1000 + Math.random() * 500;
+                console.warn(`Request failed (${error.response?.status}). Retrying in ${Math.round(delay)}ms... (Attempt ${config._retry}/${maxRetries})`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 return api.request(config);
             }
@@ -61,9 +63,9 @@ api.interceptors.response.use(
 );
 
 function shouldRetry(error: AxiosError): boolean {
-    if (!error.response) return true;
+    if (!error.response) return true; // Network errors
     const status = error.response.status;
-    return status >= 500 && status < 600;
+    return (status >= 500 && status < 600) || status === 429;
 }
 
 export default api;

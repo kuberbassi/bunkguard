@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 // import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/components/ui/Toast';
 import api from '@/services/api';
+import { attendanceService } from '@/services/attendance.service';
 
 interface Course {
     _id?: { $oid: string };
@@ -54,9 +55,9 @@ const Courses: React.FC = () => {
     const loadCourses = async () => {
         try {
             // setLoading(true);
-            const response = await api.get('/api/courses/manual');
-            if (response.data) {
-                setCourses(response.data);
+            const data = await attendanceService.getManualCourses();
+            if (data) {
+                setCourses(data);
             }
         } catch (error) {
             console.error('Failed to load courses', error);
@@ -370,7 +371,7 @@ const Courses: React.FC = () => {
                         </label>
                         <input
                             type="text"
-                            value={formData.title}
+                            value={formData.title || ''}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface"
                             placeholder="e.g., Machine Learning Specialization"
@@ -383,7 +384,7 @@ const Courses: React.FC = () => {
                             Platform *
                         </label>
                         <select
-                            value={formData.platform}
+                            value={formData.platform || 'coursera'}
                             onChange={(e) => setFormData({ ...formData, platform: e.target.value as any })}
                             className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface"
                             required
@@ -400,7 +401,7 @@ const Courses: React.FC = () => {
                         </label>
                         <input
                             type="url"
-                            value={formData.url}
+                            value={formData.url || ''}
                             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                             className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface"
                             placeholder="https://..."
@@ -417,7 +418,7 @@ const Courses: React.FC = () => {
                                 type="number"
                                 min="0"
                                 max="100"
-                                value={formData.progress}
+                                value={formData.progress || 0}
                                 onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
                                 className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface"
                             />
@@ -428,7 +429,7 @@ const Courses: React.FC = () => {
                             </label>
                             <input
                                 type="date"
-                                value={formData.targetCompletionDate}
+                                value={formData.targetCompletionDate || ''}
                                 onChange={(e) => setFormData({ ...formData, targetCompletionDate: e.target.value })}
                                 className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface"
                             />
@@ -441,7 +442,7 @@ const Courses: React.FC = () => {
                         </label>
                         <input
                             type="text"
-                            value={formData.instructor}
+                            value={formData.instructor || ''}
                             onChange={(e) => setFormData({ ...formData, instructor: e.target.value })}
                             className="w-full px-4 py-2 rounded-lg border border-outline bg-surface text-on-surface"
                             placeholder="e.g., Andrew Ng"

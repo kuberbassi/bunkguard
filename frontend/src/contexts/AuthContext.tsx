@@ -52,20 +52,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // CRITICAL: Refetch user data when returning to the tab (Cross-Device Sync)
     // If user updates PFP on mobile, focusing the web tab will now update the header instantly.
+    const lastFetchRef = React.useRef<number>(0);
+    const FETCH_COOLDOWN = 60000; // 60 seconds
+
     useEffect(() => {
         const handleFocus = async () => {
-            // Only fetch if tab is visible and we think we are logged in
-            if (document.visibilityState === 'visible') {
+            const now = Date.now();
+            // Only fetch if tab is visible, we are logged in, and cooldown has passed
+            if (document.visibilityState === 'visible' && user && (now - lastFetchRef.current > FETCH_COOLDOWN)) {
                 try {
+                    lastFetchRef.current = now;
                     const freshUser = await authService.getCurrentUser();
                     if (freshUser) {
-                        // Only update if something changed (optional optimization, but React handles diffing)
                         setUser(freshUser);
-                        // Keep LocalStorage fresh so next reload is correct
                         authService.storeUser(freshUser);
                     }
                 } catch (e) {
-                    // Ignore errors (don't logout on background fetch failure)
+                    // Ignore errors on background check
                 }
             }
         };
@@ -77,7 +80,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             window.removeEventListener('focus', handleFocus);
             document.removeEventListener('visibilitychange', handleFocus);
         };
-    }, []);
+    }, [user]); // Add user to dependency to ensure check happens when logged in
 
     const login = () => {
         // Legacy login (redirect) - largely unused now

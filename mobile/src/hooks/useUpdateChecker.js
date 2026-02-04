@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import axios from 'axios';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import Constants from 'expo-constants';
 
 const GITHUB_REPO = 'kuberbassi/acadhub';
-const CURRENT_VERSION = Constants.expoConfig?.version || '1.0.0';
+const CURRENT_VERSION = require('../../package.json').version;
 
 // Helper to compare semantic versions (returns true if v1 > v2)
 const compareVersions = (v1, v2) => {
@@ -76,15 +76,15 @@ const useUpdateChecker = () => {
             let cacheDir = FileSystem.cacheDirectory;
 
             if (!cacheDir) {
-                console.warn("FileSystem.cacheDirectory is null. Attempting hardcoded fallback.");
-                // Hardcoded fallback for Android (Standard path)
-                cacheDir = 'file:///data/user/0/com.kuberbassi.acadhubmobilekuber/cache/';
+                throw new Error("Device storage not available.");
             }
 
             // Ensure directory exists (defensive)
-            const dirInfo = await FileSystem.getInfoAsync(cacheDir);
-            if (!dirInfo.exists) {
+            // Ensure directory exists (safe to call even if exists with intermediates: true)
+            try {
                 await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
+            } catch (e) {
+                // Ignore error if it exists (though intermediates: true handles it)
             }
 
             // Standardize path: remove trailing slash if present, then add one
@@ -125,7 +125,7 @@ const useUpdateChecker = () => {
             // INSTALL INTENT with explicit flags (Industry Standard)
             await IntentLauncher.startActivityAsync('android.intent.action.INSTALL_PACKAGE', {
                 data: contentUri,
-                flags: 1, // FLAG_GRANT_READ_URI_PERMISSION (Critical)
+                flags: 268435457, // FLAG_ACTIVITY_NEW_TASK | FLAG_GRANT_READ_URI_PERMISSION
                 type: 'application/vnd.android.package-archive' // Explicit MIME type
             });
 

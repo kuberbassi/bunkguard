@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated, RefreshControl, Linking } from 'react-native';
 import { theme, Layout } from '../theme';
-import api from '../services/api';
+import { attendanceService } from '../services/attendance.service';
 import { useTheme } from '../contexts/ThemeContext';
 import { Bell, Info, Megaphone, ExternalLink, FileText } from 'lucide-react-native';
 import { LinearGradient } from '../components/LinearGradient';
+import * as Haptics from 'expo-haptics';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PressableScale from '../components/PressableScale';
@@ -41,10 +42,10 @@ const NotificationsScreen = ({ navigation }) => {
 
     useEffect(() => { fetchData(); }, []);
 
-    const fetchData = async () => {
+    const fetchData = async (force = false) => {
         try {
-            const noticesRes = await api.get('/api/notices');
-            setUniNotices(noticesRes.data || []);
+            const data = await attendanceService.getNotices(force);
+            setUniNotices(data || []);
         } catch (error) { console.error(error); }
         finally { setRefreshing(false); }
     };
@@ -139,7 +140,20 @@ const NotificationsScreen = ({ navigation }) => {
                         <Text style={{ color: c.subtext, marginTop: 16, fontWeight: '600' }}>No new notices</Text>
                     </View>
                 }
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor={c.primary} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setRefreshing(true);
+                            fetchData(true);
+                        }}
+                        tintColor={c.primary}
+                        colors={[c.primary]}
+                        progressBackgroundColor={c.surface}
+                        progressViewOffset={Layout.header.minHeight + (insets.top || 20) + 15}
+                    />
+                }
             />
         </View>
     );

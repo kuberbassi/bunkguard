@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 import { LinearGradient } from './LinearGradient';
+import * as Haptics from 'expo-haptics';
 
 import { useSemester } from '../contexts/SemesterContext';
 
@@ -38,7 +39,10 @@ const SemesterSelector = ({ selectedSemester: propSem, onSelect: propOnSelect, i
                         return (
                             <TouchableOpacity
                                 key={sem}
-                                onPress={() => handleSelect(sem)}
+                                onPress={() => {
+                                    if (currentSem !== sem) Haptics.selectionAsync();
+                                    handleSelect(sem);
+                                }}
                                 activeOpacity={0.7}
                             >
                                 {isSelected ? (
@@ -79,7 +83,7 @@ const styles = StyleSheet.create({
     chip: {
         paddingHorizontal: 14,
         paddingVertical: 8,
-        borderRadius: 16,
+        borderRadius: 20,
         minWidth: 60,
         alignItems: 'center',
         justifyContent: 'center'

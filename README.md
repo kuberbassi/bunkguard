@@ -1,90 +1,187 @@
-# 🎓 AcadHub - Smart Academic Companion
+<p align="center">
+  <img src="frontend/public/acadhub-brand-v3.png" alt="AcadHub Logo" width="120" height="120" style="border-radius: 24px"/>
+</p>
 
-> **Your all-in-one platform for tracking attendance, managing schedules, and staying organized throughout college.**
+<h1 align="center">🎓 AcadHub</h1>
 
-[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://acadhub.kuberbassi.com)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Made with AI](https://img.shields.io/badge/built%20with-agentic%20AI-orange)](https://github.com/google/agentic)
+<p align="center">
+  <strong>Your Smart Academic Companion</strong>
+</p>
 
+<p align="center">
+  <a href="https://acadhub.kuberbassi.com">
+    <img src="https://img.shields.io/badge/🌐_Live-acadhub.kuberbassi.com-6366f1?style=for-the-badge" alt="Live Demo"/>
+  </a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react" alt="React"/>
+  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript" alt="TypeScript"/>
+  <img src="https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask" alt="Flask"/>
+  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb" alt="MongoDB"/>
+  <img src="https://img.shields.io/badge/React_Native-Expo-000020?style=flat-square&logo=expo" alt="Expo"/>
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License"/>
+</p>
 
 ---
 
-## ✨ Features
+## ⚡ What is AcadHub?
 
-### 📊 Smart Attendance Tracking
-- **Real-time Analytics**: Visual charts showing attendance trends
-- **Bunk Calculator**: Know exactly when you can (or can't) skip class
-- **Multi-Semester Support**: Isolated data for each semester
-- **Medical Leave Tracking**: Separate medical attendance calculations
-- **Calendar View**: See your complete attendance history at a glance
-- **v2.0.0** 🚀: Automated version checking and in-app updates
-- **Real-time Sync**: Changes on web instantly reflect on mobile via Socket.IO
+> **Track attendance. Manage schedules. Stay organized. All in one place.**
 
-### 📅 Dynamic Timetable
-- **Customizable Structure**: Define your own periods and breaks
-- **Quick Attendance**: Mark attendance directly from timetable
-- **Today's Classes**: Highlighted view of current day schedule
-- **Subject Management**: Full CRUD operations for subjects
+AcadHub is a full-stack academic management platform built for college students to effortlessly track their attendance, manage timetables, monitor skills, and stay on top of their academic life.
 
-### 🔔 Unified Notifications
-- **Google Classroom Integration**: Automatic sync with assignments and announcements
-- **University Notices**: Live-scraped official circulars
-- **Smart Filtering**: Only see what matters to you
+---
 
-### 🎓 Onboarding & Help
-- **Interactive Tutorial**: 11-step onboarding flow with emojis
-- **How to Use Guide**: In-app guide accessible from Settings
-- **Theme Support**: Dark/Light mode with consistent styling
+## 🎯 Features at a Glance
 
-### 🔒 Data Safety
-- **Cache Versioning**: Automatic migration on app updates
-- **Safe Updates**: No data loss when updating the app
-- **Offline Persistence**: Works without internet connection
+<table>
+<tr>
+<td width="50%">
+
+### 📊 Attendance Tracking
+- Real-time percentage calculations
+- **Bunk Calculator** - Know when you can skip
+- Medical leave tracking
+- Multi-semester isolation
+- Beautiful calendar heatmaps
+
+</td>
+<td width="50%">
+
+### 📅 Smart Timetable
+- Customizable periods & breaks
+- Quick attendance from schedule
+- Today's classes highlighted
+- Subject color coding
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📈 Analytics Dashboard
+- Weekly attendance trends
+- Subject-wise breakdowns
+- Streak tracking
+- Performance insights
+
+</td>
+<td width="50%">
+
+### 🎓 Results Management
+- SGPA/CGPA calculator
+- Grade tracking per subject
+- Credit-weighted calculations
+- Grading key reference
+
+</td>
+</tr>
+<tr>
+<td width="50%">
 
 ### 🎯 Skills Tracker
-- **Progress Monitoring**: Track skill development across categories
-- **Visual Indicators**: Progress bars and level badges
-- **Categories**: Programming, Design, Languages, Business, Creative & more
+- Track skill development
+- Progress visualization
+- Multiple categories
+- Level badges
 
-### 📱 Progressive Web App (PWA)
-- **Install Anywhere**: Works on mobile, tablet, and desktop
-- **Offline Support**: Core functionality works without internet
-- **Push Notifications**: Get alerted even when browser is closed
-- **Update System**: Checks GitHub for new APK releases automatically
+</td>
+<td width="50%">
 
-### 📲 Native Mobile App
-- **React Native**: Smooth 120fps performance on iOS/Android
-- **Dark Mode**: Automatic theme switching
-- **Haptic Feedback**: Premium tactile interactions
-- **Optimized UI**: Material Design 3 components
+### ⌨️ Keyboard Shortcuts
+- `Ctrl+N` → Notifications
+- `Ctrl+D` → Dashboard
+- `Ctrl+T` → Timetable
+- `Esc` → Close modals
+- Arrow keys → Scroll modals
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🖼️ Screenshots
+
+<details>
+<summary><strong>🖥️ Web Interface</strong></summary>
+
+| Dashboard | Timetable | Analytics |
+|-----------|-----------|-----------|
+| Smart subject cards with quick actions | Customizable weekly schedule | Visual attendance insights |
+
+</details>
+
+<details>
+<summary><strong>📱 Mobile App</strong></summary>
+
+| Home | Calendar | Settings |
+|------|----------|----------|
+| Beautiful dark mode UI | Attendance heatmap | Theme customization |
+
+</details>
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         AcadHub                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │   Frontend   │  │    Mobile    │  │       Backend        │   │
+│  │   (React)    │  │  (RN/Expo)   │  │      (Flask)         │   │
+│  │              │  │              │  │                      │   │
+│  │ • TypeScript │  │ • JavaScript │  │ • Python 3.8+        │   │
+│  │ • Tailwind   │  │ • Native UI  │  │ • MongoDB Atlas      │   │
+│  │ • Framer     │  │ • MMKV Cache │  │ • Google OAuth       │   │
+│  │ • PWA Ready  │  │ • 120fps     │  │ • Socket.IO          │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
+│         │                 │                      │               │
+│         └─────────────────┴──────────────────────┘               │
+│                           │                                      │
+│                    ┌──────┴──────┐                               │
+│                    │  MongoDB    │                               │
+│                    │   Atlas     │                               │
+│                    └─────────────┘                               │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 🚀 Quick Start
 
-### Web Application
+### Prerequisites
 
 ```bash
-# Clone repository
+Node.js 18+  │  Python 3.8+  │  MongoDB URI  │  Google OAuth Credentials
+```
+
+### 🖥️ Web Development
+
+```bash
+# Clone & Setup
 git clone https://github.com/kuberbassi/acadhub.git
 cd acadhub
 
-# Backend setup
-cd api
+# Backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+.\venv\Scripts\Activate.ps1  # Windows
 pip install -r requirements.txt
 python run.py
 
-# Frontend setup (new terminal)
+# Frontend (new terminal)
 cd frontend
 npm install
 npm run dev
 ```
 
-Access at: **http://localhost:5173**
+**Access:** http://localhost:5173
 
-### Mobile Application
+### 📱 Mobile Development
 
 ```bash
 cd mobile
@@ -92,53 +189,17 @@ npm install
 npx expo start
 ```
 
-Scan QR code with Expo Go app or press `i` for iOS simulator / `a` for Android
-
-### 🐳 Running with Docker
-
-Run the entire stack (Frontend + Backend + Database) with a single command:
+### 🐳 Docker (Full Stack)
 
 ```bash
-# Build and start services
 docker-compose up --build
 ```
-    
-- **Frontend**: [http://localhost:3000](http://localhost:3000)
-- **Backend API**: [http://localhost:5000](http://localhost:5000)
-- **MongoDB**: `localhost:27017`
 
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **React 18** with Vite - Lightning-fast dev server
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first styling
-- **Framer Motion** - Beautiful animations
-- **Recharts** - Data visualization
-
-### Mobile
-- **React Native (Expo)** - Managed workflow
-- **Expo Go** - Quick testing
-- **Hermes Engine** - Optimized JS performance
-- **120fps Support** - ProMotion displays
-
-### Backend
-- **Flask** - Python web framework
-- **MongoDB Atlas** - Cloud database
-- **Google OAuth 2.0** - Secure authentication
-- **Google Classroom API** - Automatic sync
-- **Beautiful Soup** - Web scraping
-
----
-
-## 📋 Prerequisites
-
-- **Node.js** 18+ & npm
-- **Python** 3.8+
-- **MongoDB** connection string
-- **Google Cloud** project with OAuth credentials
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:5000 |
+| MongoDB | localhost:27017 |
 
 ---
 
@@ -146,214 +207,228 @@ docker-compose up --build
 
 ### Environment Variables
 
-**Backend** (`api/.env`):
+<details>
+<summary><strong>Backend (.env)</strong></summary>
+
 ```env
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/
-FLASK_SECRET_KEY=your-secret-key-here
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/acadhub
+FLASK_SECRET_KEY=your-super-secret-key
+FLASK_ENV=development
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
 GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/callback
 ```
 
-**Frontend** (`frontend/.env`):
+</details>
+
+<details>
+<summary><strong>Frontend (.env)</strong></summary>
+
 ```env
 VITE_API_BASE_URL=http://localhost:5000
-VITE_GOOGLE_CLIENT_ID=your-google-client-id
+VITE_GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
 ```
 
-**Mobile** (`mobile/app.json`):
-Already configured - just update API endpoint in `mobile/src/services/api.js`
+</details>
 
 ---
 
-##Google OAuth Setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create new project or select existing
-3. Enable APIs:
-   - Google Classroom API
-   - Google Calendar API (optional)
-4. Create OAuth 2.0 credentials
-5. Add authorized origins:
-   - `http://localhost:5173`
-   - `http://localhost:5000`
-6. Add redirect URIs:
-   - `http://localhost:5000/api/auth/callback`
-7. Copy credentials to `.env` files
-
----
-
-## 📱 Mobile App Setup
-
-### Development Build (Recommended)
-
-```bash
-# Install EAS CLI
-npm install -g eas-cli
-
-# Login to Expo
-eas login
-
-# Build for Android
-eas build --platform android --profile preview
-
-# Build for iOS (macOS only)
-eas build --platform ios --profile preview
-```
-
-### Testing with Expo Go
-
-```bash
-npx expo start
-```
-
-**Limitations in Expo Go:**
-- Push notifications don't work (use development build)
-- Some native modules limited
-
----
-
-## 🗂️ Project Structure
+## 📁 Project Structure
 
 ```
 acadhub/
-├── frontend/          # React web app
+├── 🌐 frontend/              # React + TypeScript + Tailwind
 │   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   └── types/
-│   └── public/
-├── mobile/            # React Native app
+│   │   ├── components/       # Reusable UI components
+│   │   ├── pages/            # Route pages
+│   │   ├── hooks/            # Custom React hooks
+│   │   ├── services/         # API service layer
+│   │   └── contexts/         # React contexts
+│   └── public/               # Static assets
+│
+├── 📱 mobile/                # React Native + Expo
 │   ├── src/
-│   │   ├── screens/
-│   │   ├── components/
-│   │   ├── services/  # 90+ API endpoints
-│   │   └── contexts/
-│   └── app.json
-├── api/               # Flask backend
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── auth.py
-│   │   └── ...
-│   └── run.py
-└── README.md
+│   │   ├── screens/          # Navigation screens
+│   │   ├── components/       # Native components
+│   │   ├── services/         # API + caching
+│   │   └── contexts/         # Theme, Auth contexts
+│   └── android/              # Android build files
+│
+├── 🔧 api/                   # Flask + MongoDB
+│   ├── routes/               # API route handlers
+│   ├── middleware/           # Security, logging
+│   └── utils/                # Helper functions
+│
+├── 📄 vercel.json            # Deployment config
+├── 🐳 docker-compose.yml     # Container orchestration
+└── 📖 README.md              # You are here!
 ```
 
 ---
 
-## 🎯 Key Features Explained
+## 🔑 API Endpoints
 
-### Semester Management
-Switch between semesters seamlessly. Each semester has:
-- Isolated timetable
-- Separate attendance logs
-- Individual subject list
-- Independent analytics
+<details>
+<summary><strong>Authentication</strong></summary>
 
-### Attendance Calculator
-Smart algorithm that calculates:
-- Current attendance percentage
-- Classes needed to reach target %
-- Maximum safe skips remaining
-- Impact of each attendance mark
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/auth/google` | Initiate Google OAuth |
+| GET | `/api/auth/callback` | OAuth callback |
+| POST | `/api/auth/logout` | End session |
+| GET | `/api/current_user` | Get logged-in user |
 
-### Google Classroom Sync
-Automatically fetches:
-- Course announcements
-- Assignments with due dates
-- Materials and resources
-- All in one unified feed
+</details>
+
+<details>
+<summary><strong>Subjects & Attendance</strong></summary>
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/subjects` | List all subjects |
+| POST | `/api/subjects` | Create subject |
+| PUT | `/api/subjects/:id` | Update subject |
+| DELETE | `/api/subjects/:id` | Delete subject |
+| POST | `/api/mark_attendance` | Mark attendance |
+| GET | `/api/attendance_logs` | Get logs by date |
+
+</details>
+
+<details>
+<summary><strong>Dashboard & Analytics</strong></summary>
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/dashboard_data` | Dashboard overview |
+| GET | `/api/reports_data` | Analytics data |
+| GET | `/api/calendar_data` | Calendar heatmap |
+
+</details>
+
+---
+
+## 🎨 Theming
+
+AcadHub supports **12 accent colors** with automatic dark/light mode:
+
+| Color | Hex |
+|-------|-----|
+| 🔵 Blue | `#0A84FF` |
+| 💜 Purple | `#BF5AF2` |
+| 🟢 Green | `#30D158` |
+| 🟠 Orange | `#FF9F0A` |
+| 🔴 Red | `#FF453A` |
+| 🌸 Pink | `#FF375F` |
+| 🟡 Yellow | `#FFD60A` |
+| 🩵 Teal | `#64D2FF` |
+| 🟤 Brown | `#AC8E68` |
+| 🟣 Indigo | `#5E5CE6` |
+| ⚪ Mint | `#66D4CF` |
+| 🩶 Graphite | `#8E8E93` |
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl + N` | Open Notifications |
+| `Ctrl + D` | Go to Dashboard |
+| `Ctrl + T` | Open Timetable |
+| `Ctrl + A` | Open Analytics |
+| `Ctrl + Shift + C` | Open Calendar |
+| `Ctrl + Shift + S` | Open Settings |
+| `Escape` | Close any modal |
+| `↑ / ↓` | Scroll in modals |
+| `Page Up/Down` | Fast scroll |
 
 ---
 
 ## 🚢 Deployment
 
-### Frontend (Vercel/Netlify)
+### Vercel (Recommended)
+
+1. Connect GitHub repo to Vercel
+2. Configure environment variables
+3. Deploy automatically on push
+
+**Live at:** [acadhub.kuberbassi.com](https://acadhub.kuberbassi.com)
+
+### Mobile Release
 
 ```bash
-cd frontend
-npm run build
-# Deploy 'dist' folder
-```
+# Build APK
+cd mobile
+npx expo prebuild --platform android --clean
+cd android && ./gradlew assembleRelease
 
-### Backend (Railway/Render)
-
-```bash
-# Deploy via Git integration
-# Set environment variables in dashboard
-```
-
-### Mobile (App Store / Play Store)
-
-```bash
-# Build production
-eas build --platform all --profile production
-
-# Submit to stores
-eas submit
+# APK location: android/app/build/outputs/apk/release/
 ```
 
 ---
 
-## 🧪 Testing
+## 📊 Performance
 
-### Web
-```bash
-cd frontend
-npm run test           # Unit tests
-npm run test:e2e       # E2E tests
-```
-
-### Backend
-```bash
-cd api
-python -m pytest       # Run all tests
-```
-
-### Mobile
-Use the [Testing Checklist](docs/testing_checklist.md) for manual testing
+| Metric | Score |
+|--------|-------|
+| Lighthouse | 95+ |
+| Mobile FPS | 120fps (ProMotion) |
+| API Response | <100ms |
+| Bundle Size | ~250KB gzipped |
 
 ---
 
-## 📈 Performance
+## 🛡️ Security
 
-- **Web**: Lighthouse score 95+
-- **Mobile**: 120fps on ProMotion displays
-- **Backend**: Sub-100ms API response times
-- **PWA**: Instant load with service worker
+- ✅ Google OAuth 2.0 authentication
+- ✅ JWT token validation
+- ✅ Rate limiting on API endpoints
+- ✅ CORS protection
+- ✅ XSS protection headers
+- ✅ Secure session management
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open Pull Request
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
+## 👨‍💻 Author
 
-- Built entirely through **Agentic AI** prompt engineering
-- Demonstrates modern full-stack development practices
-- Showcases human-AI collaboration in software engineering
+<p align="center">
+  <strong>Kuber Bassi</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/kuberbassi">
+    <img src="https://img.shields.io/badge/GitHub-kuberbassi-181717?style=for-the-badge&logo=github" alt="GitHub"/>
+  </a>
+  <a href="https://kuberbassi.com">
+    <img src="https://img.shields.io/badge/Website-kuberbassi.com-6366f1?style=for-the-badge&logo=safari" alt="Website"/>
+  </a>
+  <a href="mailto:kuberbassi2007@gmail.com">
+    <img src="https://img.shields.io/badge/Email-Contact-EA4335?style=for-the-badge&logo=gmail" alt="Email"/>
+  </a>
+</p>
 
 ---
 
-## 📞 Contact
+<p align="center">
+  <sub>Built with ❤️ and ☕ using Agentic AI</sub>
+</p>
 
-**Kuber Bassi**  
-- GitHub: [@kuberbassi](https://github.com/kuberbassi)
-- Email: kuberbassi2007@gmail.com
-- Website: [kuberbassi.com](https://kuberbassi.com)
-
----
-
-<div align="center">
-  <sub>Built with ❤️ using Agentic AI</sub>
-</div>
+<p align="center">
+  <sub>© 2024-2026 AcadHub. All rights reserved.</sub>
+</p>

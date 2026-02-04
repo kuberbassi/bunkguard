@@ -3,6 +3,7 @@ import {
     View, Text, StyleSheet, TouchableOpacity, RefreshControl,
     Platform, StatusBar, Animated, Dimensions, Alert, ScrollView as RNScrollView
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import PressableScale from '../components/PressableScale';
 
 const ScrollView = RNScrollView;
@@ -12,37 +13,26 @@ import { theme, Layout } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { attendanceService } from '../services';
 import { NotificationService } from '../services/NotificationService';
-import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell, Clock, CheckCircle2, XCircle, MinusCircle } from 'lucide-react-native';
+import { TrendingUp, Plus, Book, Calendar, ChevronRight, Bell, Clock, CheckCircle2, XCircle, MinusCircle, Settings } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import SemesterSelector from '../components/SemesterSelector';
 import EnhancedSubjectCard from '../components/EnhancedSubjectCard';
 import AddSubjectModal from '../components/AddSubjectModal';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { LinearGradient } from '../components/LinearGradient';
 import { useSemester } from '../contexts/SemesterContext';
+import UserAvatar from '../components/UserAvatar';
+
 const DashboardScreen = ({ navigation }) => {
     const { user } = useAuth();
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const { selectedSemester, updateSemester } = useSemester();
     const insets = useSafeAreaInsets();
+    const nav = useNavigation(); // Added useNavigation hook
 
-    // AMOLED Dark Mode Palette
-    // JetBrains New UI Palette
-    const c = {
-        bgGradStart: isDark ? '#000000' : '#FFFFFF',
-        bgGradMid: isDark ? '#000000' : '#F7F8FA',
-        bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-        glassBgStart: isDark ? 'rgba(18, 18, 18, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-        glassBgEnd: isDark ? 'rgba(18, 18, 18, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-        glassBorder: isDark ? theme.palette.border : 'rgba(0,0,0,0.08)',
-        text: isDark ? theme.palette.text : '#1E1F22',
-        subtext: isDark ? theme.palette.subtext : '#6E6E73',
-        primary: theme.palette.purple,
-        accent: theme.palette.magenta,
-        success: theme.palette.green,
-        danger: theme.palette.red,
-    };
+    // Use dynamic colors from ThemeContext (includes accent-based gradients)
+    const c = themeColors;
 
     const styles = getStyles(c, isDark);
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -58,13 +48,13 @@ const DashboardScreen = ({ navigation }) => {
         NotificationService.registerForPushNotificationsAsync();
     }, []);
 
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (force = false) => {
         try {
-            const data = await attendanceService.getDashboardData(selectedSemester);
+            const data = await attendanceService.getDashboardData(selectedSemester, force);
             setDashboardData(data);
 
             if (data?.subjects) {
-                NotificationService.checkAndNotify(data.subjects, selectedSemester);
+                NotificationService.checkAndNotify(data.subjects, threshold);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -82,13 +72,15 @@ const DashboardScreen = ({ navigation }) => {
     );
 
     const onRefresh = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setRefreshing(true);
-        fetchDashboardData();
+        fetchDashboardData(true);
     }
 
     const handleSaveSubject = async (data) => {
         try {
             if (editingSubject) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 if (data.isOverride) {
                     await attendanceService.updateAttendanceCount(
                         data.subject_id,
@@ -98,6 +90,7 @@ const DashboardScreen = ({ navigation }) => {
                 }
                 await attendanceService.updateSubjectFullDetails(data.subject_id, data);
             } else {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 await attendanceService.addSubject(
                     data.name,
                     selectedSemester,
@@ -106,7 +99,8 @@ const DashboardScreen = ({ navigation }) => {
                     data.professor,
                     data.classroom,
                     data.practical_total,
-                    data.assignment_total
+                    data.assignment_total,
+                    data.syllabus
                 );
             }
             setModalVisible(false);
@@ -120,6 +114,7 @@ const DashboardScreen = ({ navigation }) => {
 
     const handleDeleteSubject = async (subjectId) => {
         try {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             await attendanceService.deleteSubject(subjectId);
             setModalVisible(false);
             setEditingSubject(null);
@@ -130,8 +125,9 @@ const DashboardScreen = ({ navigation }) => {
         }
     };
 
+    const threshold = user?.attendance_threshold || 75;
     const overallAttendance = dashboardData?.overall_attendance || 0;
-    const isAtRisk = overallAttendance < 75;
+    const isAtRisk = overallAttendance < threshold;
     const userName = user?.name?.split(' ')[0] || 'Friend';
     const dateText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -170,6 +166,21 @@ const DashboardScreen = ({ navigation }) => {
 
     const hasUnread = dashboardData?.subjects?.some(s => s.status_message?.includes('Attend')) || false;
 
+    // Default sort: Theory first, then Lab, then uncategorized
+    const sortSubjectsByCategory = (subjects) => {
+        if (!subjects) return [];
+        return [...subjects].sort((a, b) => {
+            const getCategoryPriority = (sub) => {
+                const cats = sub.categories || [];
+                if (cats.includes('Theory')) return 0;
+                if (cats.includes('Lab')) return 1;
+                if (cats.length === 0) return 2;
+                return 1; // Other categories treated as Lab-level priority
+            };
+            return getCategoryPriority(a) - getCategoryPriority(b);
+        });
+    };
+
     // Animations
     const heroAnim = useRef(new Animated.Value(0)).current; // Opacity & TranslateY
     const statsAnim = useRef(new Animated.Value(0)).current;
@@ -197,8 +208,7 @@ const DashboardScreen = ({ navigation }) => {
 
             {/* FULL SCREEN FLUID GRADIENT BACKGROUND */}
             <LinearGradient
-                noTexture
-                colors={[c.bgGradStart || '#FFF', c.bgGradMid || '#F8F9FA', c.bgGradEnd || '#FFF']}
+                colors={[c.background, c.surface, c.background]}
                 noTexture style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -213,8 +223,10 @@ const DashboardScreen = ({ navigation }) => {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor={c.text}
-                        progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                        tintColor={c.primary}
+                        colors={[c.primary]}
+                        progressBackgroundColor={c.surface}
+                        progressViewOffset={Layout.header.maxHeight + insets.top}
                     />
                 }
                 onScroll={Animated.event(
@@ -230,8 +242,8 @@ const DashboardScreen = ({ navigation }) => {
                 <Animated.View style={heroStyle}>
                     <LinearGradient
                         colors={isAtRisk
-                            ? theme.gradients.poppy || ['#FF318C', '#FF8F3F', '#FFEF5A']
-                            : theme.gradients.vibrant}
+                            ? c.gradients.poppy || ['#FF318C', '#FF8F3F', '#FFEF5A']
+                            : c.gradients.vibrant}
                         style={[styles.heroCard, { overflow: 'hidden' }]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.5 }}
                     >
@@ -272,23 +284,28 @@ const DashboardScreen = ({ navigation }) => {
                 {/* STATS ROW */}
                 <Animated.View style={[styles.statsRow, statsStyle]}>
                     <LinearGradient
-                        colors={isDark ? theme.gradients.cardDark : ['#FFFFFF', '#F8F9FA']}
+                        colors={c.gradients.card}
                         style={styles.statCard}
                     >
-                        <Book size={20} color={c.text} opacity={0.8} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.statLabel} numberOfLines={1}>TOTAL</Text>
-                            <Text style={styles.statValue}>{dashboardData?.total_subjects || 0}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                            <View style={{ flex: 1, paddingRight: 8 }}>
+                                <Text style={styles.statLabel} numberOfLines={1}>Subjects</Text>
+                                <Text style={styles.statValue}>{dashboardData?.total_subjects || 0}</Text>
+                            </View>
+                            <View style={styles.iconCircleSmall}>
+                                <Book size={18} color={c.primary} />
+                            </View>
                         </View>
                     </LinearGradient>
 
 
                     <PressableScale
-                        style={{ flex: 1.2, minWidth: 130 }}
+                        style={{ flex: 1.1, minWidth: 120 }}
                         onPress={() => {
                             setEditingSubject(null);
                             setModalVisible(true);
                         }}
+                        hapticStyle="medium"
                     >
                         <LinearGradient
                             colors={isDark ? ['#2B2D30', '#1E1F22'] : ['#F0F0F0', '#E5E5E5']}
@@ -297,16 +314,16 @@ const DashboardScreen = ({ navigation }) => {
                             end={{ x: 1, y: 1 }}
                         >
                             <LinearGradient
-                                colors={theme.gradients.primary}
+                                colors={c.gradients.primary}
                                 style={styles.addCourseIconBox}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                             >
-                                <Plus size={20} color="#FFF" strokeWidth={2.5} />
+                                <Plus size={22} color="#FFF" strokeWidth={2.5} />
                             </LinearGradient>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.addCourseLabel} numberOfLines={1}>Add Subject</Text>
-                                <Text style={styles.addCourseSub} numberOfLines={1}>Quick add</Text>
+                            <View style={{ justifyContent: 'center' }}>
+                                <Text style={styles.addCourseLabel} numberOfLines={1}>Add New</Text>
+                                <Text style={styles.addCourseSub} numberOfLines={1}>Subject</Text>
                             </View>
                         </LinearGradient>
                     </PressableScale>
@@ -325,11 +342,12 @@ const DashboardScreen = ({ navigation }) => {
 
                 {/* GLASS SUBJECT LIST */}
                 <View style={styles.list}>
-                    {dashboardData?.subjects?.map((subject, index) => (
+                    {sortSubjectsByCategory(dashboardData?.subjects || []).map((subject, index) => (
                         <EnhancedSubjectCard
                             key={`subj_item_${subject._id?.$oid || subject._id}_${index}`}
                             subject={subject}
                             isDark={isDark}
+                            threshold={threshold / 100}
                             onPress={() => {
                                 setEditingSubject(subject);
                                 setModalVisible(true);
@@ -363,6 +381,13 @@ const DashboardScreen = ({ navigation }) => {
                         >
                             <Bell size={24} color={c.text} />
                             {hasUnread && <View style={styles.badgeDot} />}
+                        </PressableScale>
+
+                        <PressableScale
+                            onPress={() => navigation.navigate('SettingsTab')}
+                            style={styles.profileBtn}
+                        >
+                            <UserAvatar user={user} size={38} colors={c} />
                         </PressableScale>
                     </View>
                 }
@@ -452,12 +477,13 @@ const getStyles = (c, isDark) => StyleSheet.create({
     },
     // Content
     scrollContent: {
-        paddingHorizontal: 24,
+        paddingHorizontal: Dimensions.get('window').width > 600 ? 40 : 20,
+        paddingBottom: 40
     },
     heroCard: {
         borderRadius: 36,
         padding: 28,
-        height: 210,
+        height: Dimensions.get('window').width > 600 ? 250 : 210,
         marginBottom: 24,
         borderWidth: 1.5,
         borderColor: 'rgba(255,255,255,0.3)',
@@ -501,7 +527,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
         alignItems: 'baseline',
     },
     heroValue: {
-        fontSize: 60,
+        fontSize: Dimensions.get('window').width > 600 ? 80 : 60,
         fontWeight: '800',
         color: '#FFFFFF',
         letterSpacing: -3
@@ -553,62 +579,71 @@ const getStyles = (c, isDark) => StyleSheet.create({
     // Stats
     statsRow: {
         flexDirection: 'row',
-        gap: 10,
-        marginBottom: 32
+        flexWrap: Dimensions.get('window').width > 600 ? 'nowrap' : 'wrap',
+        paddingHorizontal: Layout.screenPadding,
+        gap: 12,
+        marginBottom: 32,
+        marginTop: 8
     },
     statCard: {
         flex: 1,
-        borderRadius: 20,
-        padding: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
+        borderRadius: 24,
+        padding: 16,
+        justifyContent: 'center',
         borderWidth: 1,
         borderColor: c.glassBorder,
-        height: 80
+        minHeight: 100,
+        shadowColor: isDark ? '#000' : '#E5E5E5',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 3
     },
     statLabel: {
-        fontSize: 9,
-        color: c.subtext,
+        fontSize: 11,
         fontWeight: '700',
-        letterSpacing: 0.3
+        color: c.subtext,
+        marginBottom: 4,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+        flexWrap: 'wrap'
     },
     statValue: {
-        fontSize: 18,
+        fontSize: 28, // Reduced from 32 to prevent wrapping
         fontWeight: '800',
-        color: c.text
+        color: c.text,
+        letterSpacing: -1
     },
     // Add Course Button
     addCourseBtn: {
         flex: 1,
-        borderRadius: 20,
-        padding: 14,
+        borderRadius: 24,
+        padding: 12, // Tighter padding
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        height: 80,
-        borderWidth: 1.5,
-        borderColor: isDark ? 'rgba(255,255,255,0.12)' : c.accent + '40'
+        borderWidth: 1,
+        borderColor: c.glassBorder,
+        gap: 12, // Reduced gap
+        height: '100%',
+        minHeight: 100
     },
     addCourseIconBox: {
-        width: 44,
-        height: 44,
-        borderRadius: 14,
-        backgroundColor: c.accent + '15',
-        alignItems: 'center',
-        justifyContent: 'center'
+        width: 48, height: 48,
+        borderRadius: 18,
+        alignItems: 'center', justifyContent: 'center',
+        shadowColor: c.primary, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4
     },
     addCourseLabel: {
-        fontSize: 14,
+        fontSize: 16,
+        fontWeight: '800',
         color: c.text,
-        fontWeight: '700',
-        letterSpacing: 0.2
+        marginBottom: 2
     },
     addCourseSub: {
-        fontSize: 11,
+        marginTop: 1,
         color: c.subtext,
-        fontWeight: '500',
-        marginTop: 1
+        fontSize: 11,
+        fontWeight: '600'
     },
     // List
     sectionHeader: {
@@ -622,11 +657,17 @@ const getStyles = (c, isDark) => StyleSheet.create({
         marginBottom: 16
     },
     list: {
-        gap: 16
+        flexDirection: Dimensions.get('window').width > 800 ? 'row' : 'column',
+        flexWrap: Dimensions.get('window').width > 800 ? 'wrap' : 'nowrap',
+        gap: 16,
+        paddingBottom: 40,
+        // Ensure items stretch
+        alignItems: 'stretch'
     },
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 40
+        paddingVertical: 40,
+        width: '100%'
     },
     emptyText: {
         color: c.subtext,

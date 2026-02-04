@@ -5,6 +5,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/components/ui/Toast';
 import { useSemester } from '@/contexts/SemesterContext';
 import { attendanceService } from '@/services/attendance.service';
+import api from '@/services/api';
 import { Check, X, MoreHorizontal, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 
 
@@ -81,13 +82,13 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
     const fetchAttendanceLogs = async (date: Date) => {
         try {
             const dateStr = getDateStr(date);
-            const response = await fetch(`/api/get_attendance_logs?date=${dateStr}&semester=${currentSemester}`, {
-                credentials: 'include'
-            });
-            if (response.ok) {
-                const logs = await response.json();
-                setAttendanceLogs(logs);
-            }
+            // Use api instance for consistency/auth
+            const response = await api.get(`/api/attendance_logs?date=${dateStr}&semester=${currentSemester}`);
+
+            // Backend returns success_response({"logs": [...], ...}) 
+            // So response.data.data is the payload we want
+            const data = response.data.data;
+            setAttendanceLogs(data.logs || []);
         } catch (error) {
             console.error('Failed to fetch attendance logs:', error);
         }
@@ -105,22 +106,22 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     };
 
-    const markSimple = async (subjectId: string, status: 'present' | 'absent') => {
+    const markSimple = async (subject: any, status: 'present' | 'absent') => {
         try {
             const dateStr = getDateStr(selectedDate);
-            await attendanceService.markAttendance(subjectId, status, dateStr);
-            showToast('success', `Marked ${status}`);
+            // Check for existing log to Edit instead of Mark
+            if (subject.log_id) {
+                await attendanceService.editAttendance(subject.log_id, status, undefined, dateStr);
+                showToast('success', `Updated to ${status}`);
+            } else {
+                await attendanceService.markAttendance(subject._id || subject.id, status, dateStr);
+                showToast('success', `Marked ${status}`);
+            }
+
             loadClassesForDate(selectedDate, true); // Silent reload
             if (onSuccess) onSuccess();
         } catch (error: any) {
-            if (error.response?.data?.error?.includes('already been marked')) {
-                // If already marked, try editing? Or just tell user to delete first?
-                // For simple mark, we can just say "Use details or clear first". 
-                // But better UX: The delete button is now available.
-                showToast('error', 'Already marked. Clear it first to change.');
-            } else {
-                showToast('error', error.response?.data?.error || 'Failed to mark');
-            }
+            showToast('error', error.response?.data?.error || 'Failed to mark');
         }
     };
 
@@ -141,9 +142,10 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         }
     };
 
-    const submitDetailedMark = async (subjectId: string) => {
+    const submitDetailedMark = async (subject: any) => {
         try {
             const dateStr = getDateStr(selectedDate);
+            const subjectId = subject._id || subject.id;
 
             // If substituted, ensure we selected a substitute subject
             if (detailStatus === 'substituted' && !detailSubstitutedBy) {
@@ -151,15 +153,37 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                 return;
             }
 
-            await attendanceService.markAttendance(
-                subjectId,
-                detailStatus,
-                dateStr,
-                detailNotes,
-                detailStatus === 'substituted' ? detailSubstitutedBy : undefined
-            );
+            // Special handling for Substitution or if switching TO/FROM substitution:
+            // Since editAttendance doesn't support changing substitution details easily,
+            // we delete and re-mark if substitution is involved.
+            // Check if backend response has log_id
+            const isSubstitution = detailStatus === 'substituted' || (subject.marked_status === 'substituted');
 
-            showToast('success', 'Attendance marked successfully');
+            if (subject.log_id && !isSubstitution) {
+                // Regular Edit (Status/Notes)
+                await attendanceService.editAttendance(
+                    subject.log_id,
+                    detailStatus,
+                    detailNotes,
+                    dateStr
+                );
+                showToast('success', 'Attendance updated');
+            } else {
+                // New Mark OR Substitution (Delete + Mark)
+                if (subject.log_id && isSubstitution) {
+                    await attendanceService.deleteAttendance(subject.log_id);
+                }
+
+                await attendanceService.markAttendance(
+                    subjectId,
+                    detailStatus,
+                    dateStr,
+                    detailNotes,
+                    detailStatus === 'substituted' ? detailSubstitutedBy : undefined
+                );
+                showToast('success', 'Attendance marked successfully');
+            }
+
             setExpandedSubjectId(null);
             resetDetailForm();
             loadClassesForDate(selectedDate, true);
@@ -175,11 +199,11 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
         setDetailSubstitutedBy('');
     };
 
-    const openDetails = (subjectId: string, currentStatus?: string) => {
+    const openDetails = (subjectId: string, currentStatus?: string, currentNotes?: string) => {
         setExpandedSubjectId(subjectId);
         // Pre-fill if needed, mostly default
         setDetailStatus(currentStatus === 'pending' ? 'present' : currentStatus || 'present');
-        setDetailNotes('');
+        setDetailNotes(currentNotes || '');
         setDetailSubstitutedBy('');
     };
 
@@ -231,13 +255,13 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 status={subject.marked_status}
                                                 expanded={expandedSubjectId === subId}
                                                 // Wrapper for bulk mark
-                                                onSimpleMark={(id: string, status: string) => {
+                                                onSimpleMark={(subj: any, status: string) => {
                                                     if (subject.isMerged) {
                                                         // Mark only the first slot; backend/get_classes_for_date handles the rest
                                                         const primary = subject.originalClasses[0];
-                                                        markSimple(primary._id || primary.id, status as any);
+                                                        markSimple(primary, status as any);
                                                     } else {
-                                                        markSimple(id, status as any);
+                                                        markSimple(subj, status as any);
                                                     }
                                                 }}
                                                 onDelete={(subj: any) => {
@@ -250,7 +274,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                         handleDelete(subj);
                                                     }
                                                 }}
-                                                onOpenDetails={openDetails}
+                                                onOpenDetails={(id: string, status: string) => openDetails(id, status, subject.notes)}
                                                 onCloseDetails={() => setExpandedSubjectId(null)}
 
                                                 // Detail Props
@@ -261,26 +285,12 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 detailSubstitutedBy={detailSubstitutedBy}
                                                 setDetailSubstitutedBy={setDetailSubstitutedBy}
                                                 allSubjects={allSubjects}
-                                                onSubmitDetail={(id: string) => {
+                                                onSubmitDetail={() => {
                                                     if (subject.isMerged) {
                                                         const primary = subject.originalClasses[0];
-                                                        const dateStr = getDateStr(selectedDate);
-
-                                                        attendanceService.markAttendance(
-                                                            primary._id || primary.id,
-                                                            detailStatus,
-                                                            dateStr,
-                                                            detailNotes,
-                                                            detailStatus === 'substituted' ? detailSubstitutedBy : undefined
-                                                        ).then(() => {
-                                                            showToast('success', 'Attendance marked for session');
-                                                            setExpandedSubjectId(null);
-                                                            resetDetailForm();
-                                                            loadClassesForDate(selectedDate, true);
-                                                            if (onSuccess) onSuccess();
-                                                        }).catch(() => showToast('error', 'Failed to mark attendance'));
+                                                        submitDetailedMark(primary);
                                                     } else {
-                                                        submitDetailedMark(id);
+                                                        submitDetailedMark(subject);
                                                     }
                                                 }}
                                             />
@@ -309,37 +319,45 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                             {attendanceLogs.length > 0 ? (
                                 <div className="space-y-2">
                                     {attendanceLogs.map((log: any, idx: number) => {
-                                        // Handle MongoDB ObjectId format
-                                        const logSubjectId = typeof log.subject_id === 'object'
-                                            ? (log.subject_id.$oid || String(log.subject_id))
-                                            : String(log.subject_id);
+                                        // Robust ID Extraction Helper
+                                        const getSafeId = (val: any) => {
+                                            if (!val) return '';
+                                            if (typeof val === 'string') return val;
+                                            if (typeof val === 'object') return val.$oid || String(val);
+                                            return String(val);
+                                        };
 
+                                        const logSubjectId = getSafeId(log.subject_id);
+
+                                        // Find subject by matching robust IDs
                                         const logSubject = allSubjects.find((s: any) => {
-                                            const subjectId = typeof s._id === 'object'
-                                                ? (s._id.$oid || String(s._id))
-                                                : String(s._id);
-                                            return subjectId === logSubjectId || s.id === logSubjectId;
+                                            const sId = getSafeId(s._id || s.id);
+                                            return sId === logSubjectId;
                                         });
+
                                         const statusColors: any = {
                                             'present': 'text-green-600 bg-green-50',
                                             'absent': 'text-red-600 bg-red-50',
                                             'late': 'text-orange-600 bg-orange-50',
                                             'medical': 'text-blue-600 bg-blue-50',
+                                            'approved_medical': 'text-blue-600 bg-blue-50',
                                             'cancelled': 'text-gray-600 bg-gray-50',
                                             'substituted': 'text-purple-600 bg-purple-50'
                                         };
                                         const statusColor = statusColors[log.status] || 'text-gray-600 bg-gray-50';
 
+                                        const logId = getSafeId(log._id);
+
                                         return (
                                             <div
-                                                key={idx}
+                                                key={`log-entry-${logId}-${idx}`}
                                                 className="flex items-center justify-between p-3 rounded-lg bg-surface-variant/30 border border-stroke"
                                             >
                                                 <div className="flex-1">
                                                     <div className="font-semibold text-sm">{logSubject?.name || 'Unknown Subject'}</div>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
-                                                            {log.status.toUpperCase()}
+                                                            {String(log.status).toUpperCase()}
                                                         </span>
                                                         {log.notes && (
                                                             <span className="text-xs text-on-surface-variant">• {log.notes}</span>
@@ -348,11 +366,6 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({ isOpen, onClose, defa
                                                 </div>
                                                 <button
                                                     onClick={() => {
-                                                        // Handle MongoDB ObjectId format  
-                                                        const logId = typeof log._id === 'object'
-                                                            ? (log._id.$oid || String(log._id))
-                                                            : String(log._id);
-
                                                         if (confirm(`Delete this ${log.status} entry for ${logSubject?.name || 'this subject'}?`)) {
                                                             deleteLog(logId);
                                                         }
@@ -434,12 +447,17 @@ const SubjectRow = ({
                             >
                                 <option value="">Select Subject...</option>
                                 {allSubjects.filter((s: any) => {
-                                    const sId = s._id || s.id;
-                                    const currentId = subject._id || subject.id;
+                                    const sId = String(s._id || s.id);
+                                    const currentId = String(subject._id || subject.id);
                                     return sId !== currentId;
-                                }).map((s: any) => (
-                                    <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>
-                                ))}
+                                }).map((s: any) => {
+                                    // Robust ID extraction for unique key
+                                    const rawId = s._id || s.id;
+                                    const sId = (rawId && typeof rawId === 'object' && rawId.$oid) ? rawId.$oid : String(rawId);
+                                    return (
+                                        <option key={`sub-opt-${sId}`} value={sId}>{s.name}</option>
+                                    );
+                                })}
                             </select>
                         </div>
                     )}
@@ -483,7 +501,7 @@ const SubjectRow = ({
                         <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => onSimpleMark(subject._id || subject.id, 'present')}
+                            onClick={() => onSimpleMark(subject, 'present')}
                             className="h-8 w-8 p-0 rounded-full text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20"
                             title="Mark Present"
                         >
@@ -492,7 +510,7 @@ const SubjectRow = ({
                         <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => onSimpleMark(subject._id || subject.id, 'absent')}
+                            onClick={() => onSimpleMark(subject, 'absent')}
                             className="h-8 w-8 p-0 rounded-full text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20"
                             title="Mark Absent"
                         >
@@ -523,7 +541,7 @@ const SubjectRow = ({
                 <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => onOpenDetails(subject._id || subject.id, status)}
+                    onClick={() => onOpenDetails(subject._id || subject.id, status, subject.notes)}
                     className="h-8 w-8 p-0 rounded-full text-on-surface-variant hover:bg-surface-dim"
                 >
                     <MoreHorizontal size={16} />
@@ -570,6 +588,8 @@ const groupConsecutiveClasses = (classes: any[]) => {
             }
             // Status Priority: Show first slot's status
             currentGroup.marked_status = currentGroup.originalClasses[0].marked_status;
+            // Notes priority? First slot notes?
+            currentGroup.notes = currentGroup.originalClasses[0].notes || currentGroup.notes; // Keep notes from first log
 
         } else {
             // New Group

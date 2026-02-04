@@ -11,8 +11,8 @@ import { attendanceService } from '../services';
 const { height } = Dimensions.get('window');
 const AnimatedGradient = Animated.createAnimatedComponent(LinearGradient);
 
-const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading, allSubjects = [] }) => {
-    const { isDark } = useTheme();
+const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, onRefresh, loading, allSubjects = [] }) => {
+    const { isDark, colors: themeColors } = useTheme();
     const { selectedSemester } = useSemester();
 
     const getMinutes = (timeStr) => {
@@ -30,15 +30,17 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
         return getMinutes(timeA) - getMinutes(timeB);
     });
 
+    // Merge dynamic theme colors with local overrides
     const c = {
+        ...themeColors,
         glassBg: isDark ? ['#000000', '#000000'] : ['rgba(255, 255, 255, 0.98)', 'rgba(240, 240, 240, 0.98)'],
         glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
         text: isDark ? '#FFF' : '#1E1F22',
         subtext: isDark ? '#BABBBD' : '#6B7280',
-        primary: theme.palette.purple,
+        primary: themeColors.primary, // Use dynamic accent
         success: theme.palette.green,
         warning: theme.palette.orange,
-        medical: theme.palette.purple,
+        medical: themeColors.primary,
         substituted: theme.palette.magenta,
         danger: theme.palette.red,
         surface: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
@@ -101,7 +103,8 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
             const cleanId = typeof logId === 'object' ? (logId.$oid || String(logId)) : String(logId);
             await attendanceService.deleteAttendance(cleanId);
             fetchAttendanceLogs();
-            if (onMark) onMark();
+            // Trigger a refresh in the parent without calling onMark with empty args
+            if (onRefresh) onRefresh();
         } catch (error) {
             Alert.alert('Error', 'Failed to delete log');
         }
@@ -139,10 +142,12 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
             if (advancedClass.isMerged) {
                 advancedClass.originalClasses.forEach((cls, idx) => {
                     const isLast = idx === advancedClass.originalClasses.length - 1;
-                    onMark(getSafeId(cls._id || cls.id), 'pending', '', cls.log_id, !isLast, cls.type);
+                    const cleanSubId = getSafeId(cls.subject_id || cls.subjectId || cls.id || cls._id);
+                    onMark(cleanSubId, 'pending', '', cls.log_id, !isLast, cls.type);
                 });
             } else {
-                onMark(getSafeId(advancedClass._id || advancedClass.id), 'pending', '', advancedClass.log_id, false, advancedClass.type);
+                const cleanSubId = getSafeId(advancedClass.subject_id || advancedClass.subjectId || advancedClass.id || advancedClass._id);
+                onMark(cleanSubId, 'pending', '', advancedClass.log_id, false, advancedClass.type);
             }
             closeAdvanced();
         }
@@ -154,9 +159,9 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
         let currentGroup = null;
 
         classesList.forEach((slot) => {
-            const slotId = getSafeId(slot._id || slot.id);
-            const subjectId = getSafeId(slot.subject_id || slot.subjectId);
-            const isSameSubject = currentGroup && ((subjectId && getSafeId(currentGroup.subject_id) === subjectId) || (slot.name === currentGroup.name));
+            const slotId = getSafeId(slot.id || slot._id);
+            const subjectId = getSafeId(slot.subject_id || slot.subjectId || slot.id || slot._id);
+            const isSameSubject = currentGroup && ((subjectId && getSafeId(currentGroup.subject_id || currentGroup.subjectId || currentGroup.id) === subjectId) || (slot.name === currentGroup.name));
 
             if (currentGroup && isSameSubject && slot.type === currentGroup.type) {
                 currentGroup.originalClasses.push(slot);
@@ -197,7 +202,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                     </PressableScale>
                 </View>
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }} style={{ flex: 1 }}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24 }} style={{ flex: 1 }}>
                     <View style={styles.statusGrid}>
                         {[
                             { id: 'present', icon: Check, color: c.success },
@@ -258,7 +263,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                     </PressableScale>
                     <PressableScale style={{ flex: 1 }} onPress={handleConfirmAdvanced}>
                         <LinearGradient
-                            colors={theme.gradients.primary}
+                            colors={c.gradients?.primary || [c.primary, c.primary]}
                             style={styles.saveBtn}
                             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                         >
@@ -298,7 +303,7 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                         </PressableScale>
                                     </View>
 
-                                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }} style={{ flex: 1 }}>
+                                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }} style={{ flex: 1 }}>
                                         {groupedClasses.length > 0 ? (
                                             groupedClasses.map((cls, index) => {
                                                 const isMarked = cls.marked_status && cls.marked_status !== 'pending';
@@ -346,7 +351,19 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
                                                     <View key={idx} style={[styles.classItem, { paddingVertical: 12 }]}>
                                                         <View style={{ flex: 1 }}>
                                                             <Text style={[styles.className, { fontSize: 14 }]}>{log.subject_name || 'Class'}</Text>
-                                                            <Text style={{ fontSize: 11, color: c.subtext }}>{log.status.toUpperCase()}</Text>
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                                                <Text style={{ fontSize: 11, color: c.subtext, fontWeight: '700' }}>{log.status.toUpperCase()}</Text>
+                                                                {log.status === 'substituted' && log.substituted_by_name && (
+                                                                    <Text style={{ fontSize: 10, color: c.substituted, fontStyle: 'italic' }}>
+                                                                        (Sub by: {log.substituted_by_name})
+                                                                    </Text>
+                                                                )}
+                                                            </View>
+                                                            {log.notes ? (
+                                                                <Text style={{ fontSize: 11, color: c.subtext, fontStyle: 'italic', marginTop: 2, opacity: 0.8 }} numberOfLines={2}>
+                                                                    "{log.notes}"
+                                                                </Text>
+                                                            ) : null}
                                                         </View>
                                                         <PressableScale onPress={() => deleteLog(log._id)} style={styles.deleteBtn}>
                                                             <Trash2 size={16} color={c.danger} />
@@ -369,9 +386,9 @@ const MarkAttendanceModal = ({ visible, onClose, date, classes, onMark, loading,
 const getStyles = (c, isDark) => StyleSheet.create({
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 },
     modalWrapper: { width: '100%', maxHeight: height * 0.92 },
-    modalContent: { borderRadius: 32, padding: 24, paddingBottom: 0, borderWidth: 1, borderColor: c.glassBorder, minHeight: height * 0.5, maxHeight: height * 0.92, overflow: 'hidden' },
+    modalContent: { borderRadius: 32, paddingTop: 12, paddingBottom: 0, borderWidth: 1, borderColor: c.glassBorder, minHeight: height * 0.5, maxHeight: height * 0.92, overflow: 'hidden' },
     dragHandle: { width: 40, height: 4, backgroundColor: c.glassBorder, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, paddingHorizontal: 24 },
     title: { fontSize: 24, fontWeight: '800', color: c.text, letterSpacing: -0.5 },
     dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
     dateText: { fontSize: 14, color: c.primary, fontWeight: '600' },
@@ -385,9 +402,9 @@ const getStyles = (c, isDark) => StyleSheet.create({
     statusText: { fontSize: 10, fontWeight: '800' },
     sectionLabel: { fontSize: 11, fontWeight: '800', color: c.subtext, textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 },
     deleteBtn: { padding: 8, backgroundColor: c.danger + '10', borderRadius: 10 },
-    advHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+    advHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, paddingHorizontal: 24 },
     advTitle: { fontSize: 24, fontWeight: '900', color: c.text, letterSpacing: -0.5 },
-    advSub: { fontSize: 13, color: c.subtext },
+    advSub: { fontSize: 13, color: c.subtext, marginTop: 2 },
     statusGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -418,7 +435,6 @@ const getStyles = (c, isDark) => StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: c.glassBorder,
         backgroundColor: isDark ? '#000000' : '#FFF',
-        marginHorizontal: -24,
         paddingHorizontal: 24,
         alignItems: 'center'
     },

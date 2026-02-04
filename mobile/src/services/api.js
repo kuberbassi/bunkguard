@@ -50,16 +50,36 @@ api.interceptors.request.use(
     }
 );
 
-// Add response interceptor for error handling
+// Add response interceptor for error handling with retry logic
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
-            // Unauthorized - clear token and redirect to login
+        const config = error.config;
+        const status = error.response?.status;
+
+        // 1. Handle 401 Unauthorized (Auth Expiry)
+        if (status === 401) {
+            console.log("🔒 401 Unauthorized in API - Redirecting to logout logic");
             await SecureStore.deleteItemAsync('auth_token');
-            await SecureStore.deleteItemAsync('user');
-            // Note: Navigation should be handled in a NavigationService or similar
+            await SecureStore.deleteItemAsync('user_data');
+            // Redirection is handled by AuthContext state change or Navigation
         }
+
+        // 2. Handle 429 Too Many Requests (Rate Limiting) with Exponential Backoff
+        if (status === 429 && !config._retry) {
+            config._retry = (config._retryCount || 0) + 1;
+            const maxRetries = 3;
+
+            if (config._retry <= maxRetries) {
+                // Exponential backoff: 1s, 2s, 4s...
+                const delay = Math.pow(2, config._retry - 1) * 1000 + Math.random() * 500;
+                console.warn(`⚠️ Rate limited (429). Retrying in ${Math.round(delay)}ms... (Attempt ${config._retry}/${maxRetries})`);
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return api.request(config);
+            }
+        }
+
         return Promise.reject(error);
     }
 );

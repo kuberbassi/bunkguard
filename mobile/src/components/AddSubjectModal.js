@@ -105,14 +105,14 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
             <View style={styles.backdrop}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
                 <Animated.View style={[styles.modalContent, { transform: [{ scale: scaleAnim }], opacity: opacityAnim }]}>
+                    <View style={styles.dragHandle} />
 
-                    {/* Header */}
                     <View style={styles.header}>
-                        <View>
+                        <View style={{ flex: 1 }}>
                             <Text style={styles.headerTitle}>{initialData ? 'Edit Subject' : 'New Subject'}</Text>
                             <Text style={styles.headerSub}>{initialData ? 'Modify course details' : 'Add a new course to track'}</Text>
                         </View>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
                             {initialData && (
                                 <PressableScale
                                     onPress={() => {
@@ -125,9 +125,9 @@ const AddSubjectModal = ({ visible, onClose, onSave, onDelete, initialData, isDa
                                             ]
                                         );
                                     }}
-                                    style={[styles.closeBtn, { backgroundColor: c.danger + '20' }]}
+                                    style={[styles.closeBtn, { backgroundColor: c.danger + '15' }]}
                                 >
-                                    <Trash2 size={20} color={c.danger} />
+                                    <Trash2 size={18} color={c.danger} />
                                 </PressableScale>
                             )}
                             <PressableScale onPress={onClose} style={styles.closeBtn}>
@@ -289,20 +289,21 @@ const getStyles = (c, isDark) => StyleSheet.create({
     },
     modalContent: {
         borderRadius: 32,
-        paddingTop: 24,
+        paddingTop: 12,
         borderWidth: 1, borderColor: c.glassBorder,
-        maxHeight: height * 0.7, width: '100%',
+        maxHeight: height * 0.85, width: '100%',
         backgroundColor: isDark ? '#000000' : '#FFF',
         overflow: 'hidden',
         flexShrink: 1
     },
+    dragHandle: { width: 40, height: 4, backgroundColor: c.glassBorder, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
     header: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
         paddingHorizontal: 24, marginBottom: 20
     },
-    headerTitle: { fontSize: 24, fontWeight: '800', color: c.text },
-    headerSub: { fontSize: 13, color: c.subtext, marginTop: 4 },
-    closeBtn: { padding: 8, backgroundColor: c.surface, borderRadius: 20 },
+    headerTitle: { fontSize: 24, fontWeight: '800', color: c.text, letterSpacing: -0.5 },
+    headerSub: { fontSize: 13, color: c.subtext, marginTop: 2 },
+    closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' },
 
     scrollContent: { paddingHorizontal: 20 },
 

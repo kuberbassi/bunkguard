@@ -3,6 +3,10 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
+# Add build-time arguments for env variables
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Copy package.json and lock files
 COPY package*.json ./
 
@@ -31,22 +35,22 @@ RUN echo 'server { \
     index index.html index.htm; \
     \
     location /assets/ { \
-        try_files $uri =404; \
+    try_files $uri =404; \
     } \
     \
     location ~ \.(js|css|png|jpg|jpeg|gif|ico|svg|json)$ { \
-        try_files $uri =404; \
+    try_files $uri =404; \
     } \
     \
     location / { \
-        try_files $uri $uri/ /index.html; \
+    try_files $uri $uri/ /index.html; \
     } \
     \
     location /api/ { \
-        proxy_pass http://backend:5000; \
-        proxy_set_header Host $host; \
-        proxy_set_header X-Real-IP $remote_addr; \
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
+    proxy_pass http://backend:5000; \
+    proxy_set_header Host $host; \
+    proxy_set_header X-Real-IP $remote_addr; \
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
     } \
     }' > /etc/nginx/conf.d/default.conf
 

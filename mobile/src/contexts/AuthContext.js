@@ -56,7 +56,15 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const loadStorageData = async () => {
+    const [lastChecked, setLastChecked] = useState(0);
+
+    const loadStorageData = async (force = false) => {
+        // Simple throttle: check once every 5 minutes unless forced
+        const now = Date.now();
+        if (!force && now - lastChecked < 300000 && user) {
+            return;
+        }
+
         try {
             const storedToken = await getStorageItem('auth_token');
             const storedUser = await getStorageItem('user_data');
@@ -66,6 +74,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(JSON.parse(storedUser));
                 // Configure axios with the stored token
                 api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+                setLastChecked(now);
             }
         } catch (e) {
             console.error('Failed to load storage data', e);
@@ -78,9 +87,9 @@ export const AuthProvider = ({ children }) => {
         try {
             // CRITICAL SECURITY FIX: Do NOT store the full Base64 picture in SecureStore
             // SecureStore has a 2048 byte limit. Base64 images are 2MB+.
-            // We strip the picture before saving.
             const userToStore = { ...userData };
-            if (userToStore.picture && userToStore.picture.length > 500) {
+            // CRITICAL: Only strip picture if it is a massive Base64 string.
+            if (userToStore.picture && userToStore.picture.length > 2000 && !userToStore.picture.startsWith('http')) {
                 delete userToStore.picture;
             }
 
@@ -99,17 +108,51 @@ export const AuthProvider = ({ children }) => {
 
             await setStorageItem('auth_token', authToken);
             await storeUserSecurely(userData); // Use the new helper
+            setLastChecked(Date.now());
         } catch (error) {
             console.error("Login persistence error:", error);
         }
     };
 
+    const fetchUserProfile = async () => {
+        try {
+            const response = await api.get('/api/v1/profile/');
+            if (response.data && response.data.success) {
+                const fetchedUser = response.data.data;
+                console.log('📥 AuthContext: Profile synced from server', { 
+                    semester: fetchedUser.semester, 
+                    hasPicture: !!fetchedUser.picture 
+                });
+                // Merge with existing user state to keep locally added fields if any
+                setUser(prevUser => {
+                    const newUser = { ...prevUser, ...fetchedUser };
+                    // Persist basics (stripped) back to storage
+                    storeUserSecurely(newUser);
+                    return newUser;
+                });
+            }
+        } catch (error) {
+            console.error("Failed to fetch user profile for sync", error);
+        }
+    };
+
+    // Sync profile on app launch when user is authenticated
+    // This ensures picture, semester, and other web-modified fields are up-to-date
+    useEffect(() => {
+        if (token && user) {
+            fetchUserProfile();
+        }
+    }, [token]);
+
     const updateUser = async (updatedData) => {
         try {
-            const newUser = { ...user, ...updatedData };
-            setUser(newUser);
-            // Use the safe storage method that strips large images
-            await storeUserSecurely(newUser);
+            // Merge with existing user data
+            setUser(prevUser => {
+                const newUser = { ...prevUser, ...updatedData };
+                // Persist basics (stripped) back to storage
+                storeUserSecurely(newUser);
+                return newUser;
+            });
         } catch (error) {
             console.error("Failed to update user context:", error);
         }

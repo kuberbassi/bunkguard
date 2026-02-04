@@ -19,8 +19,12 @@ from api import socketio
 
 # Run the development server
 if __name__ == '__main__':
+    import os
+    is_dev = os.getenv('FLASK_ENV', 'production') == 'development'
+    
     print("🚀 Starting AcadHub Flask Server...")
     print(f"📍 Server running at: http://localhost:5000")
+    print(f"🔧 Mode: {'Development' if is_dev else 'Production'}")
     print(f"🛑 Press Ctrl+C to stop")
     
     # Start Background Worker (Notification Polling)
@@ -28,10 +32,10 @@ if __name__ == '__main__':
 
     socketio.run(
         app,
-        debug=True,
+        debug=is_dev,
         host='0.0.0.0',
         port=5000,
-        use_reloader=True,
+        use_reloader=is_dev,
         log_output=True,
-        allow_unsafe_werkzeug=True
+        allow_unsafe_werkzeug=is_dev
     )

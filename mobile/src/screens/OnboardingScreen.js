@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
     View, Text, StyleSheet, Dimensions, TouchableOpacity,
-    FlatList, Animated, StatusBar
+    FlatList, Animated, StatusBar, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { LinearGradient } from '../components/LinearGradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,12 +9,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     Sparkles, Settings, BookOpen, Calendar, Clock, Layers,
     CheckCircle, Bell, Award, FileText, ChevronRight,
-    MoreHorizontal, Plus, Grid3X3, Palette, Target
+    MoreHorizontal, Plus, Grid3X3, Palette, Target, User, School
 } from 'lucide-react-native';
 import { theme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import PressableScale from '../components/PressableScale';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const ONBOARDING_SLIDES = [
     {
@@ -29,6 +31,14 @@ const ONBOARDING_SLIDES = [
         gradient: ['#AC67FF', '#FF318C'],
     },
     {
+        id: 'form', // Special ID for data collection
+        icon: User,
+        title: '👤 About You',
+        subtitle: 'Personalize your experience',
+        steps: [],
+        gradient: ['#007FFF', '#2E9DFF'],
+    },
+    {
         id: '2',
         icon: Settings,
         title: '📅 Pick Your Semester',
@@ -38,7 +48,7 @@ const ONBOARDING_SLIDES = [
             "✅ Select your current semester",
             "📊 This organizes all your data",
         ],
-        gradient: ['#007FFF', '#2E9DFF'],
+        gradient: ['#AC67FF', '#2E9DFF'],
     },
     {
         id: '3',
@@ -144,7 +154,7 @@ const ONBOARDING_SLIDES = [
         gradient: ['#007FFF', '#AC67FF'],
     },
     {
-        id: '11',
+        id: 'end',
         icon: Target,
         title: '🎯 You\'re All Set!',
         subtitle: 'Start tracking like a pro',
@@ -161,17 +171,54 @@ const ONBOARDING_SLIDES = [
 const OnboardingScreen = ({ navigation, onComplete }) => {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+    const { user, updateUser } = useAuth();
     const flatListRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollX = useRef(new Animated.Value(0)).current;
 
-    // Theme colors - SOLID backgrounds
+    // Form State
+    const [formData, setFormData] = useState({
+        college: user?.college || '',
+        batch: user?.batch || '',
+        course: user?.course || '',
+        totalSemesters: '8'
+    });
+    const [saving, setSaving] = useState(false);
+
+    // Theme colors
     const backgroundColor = isDark ? '#0D0D0D' : '#FFFFFF';
     const cardBg = isDark ? '#1A1A1A' : '#F5F5F5';
     const textColor = isDark ? '#FFFFFF' : '#1A1A1A';
-    const subtextColor = isDark ? '#888888' : '#666666';
+    const subtextColor = isDark ? '#888888' : '#666';
+    const inputBg = isDark ? '#2A2A2A' : '#EFEFEF';
 
-    const handleNext = () => {
+    const handleNext = async () => {
+        // Validation for Form
+        if (ONBOARDING_SLIDES[currentIndex].id === 'form') {
+            if (!formData.college || !formData.batch || !formData.course) {
+                Alert.alert("Missing Info", "Please fill in all details to continue.");
+                return;
+            }
+            // Save Data
+            try {
+                setSaving(true);
+                const api = require('../services/api').default;
+                await api.post('/api/update_profile', {
+                    college: formData.college,
+                    batch: formData.batch,
+                    course: formData.course,
+                    // We don't strictly need totalSemesters in backend yet, but user asked for it. 
+                    // We can store it in local storage or context if needed.
+                });
+                await updateUser({ ...user, ...formData });
+                setSaving(false);
+            } catch (e) {
+                console.error(e);
+                setSaving(false);
+                // Allow proceed even if save fails (offline?)
+            }
+        }
+
         if (currentIndex < ONBOARDING_SLIDES.length - 1) {
             flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
         } else {
@@ -186,28 +233,78 @@ const OnboardingScreen = ({ navigation, onComplete }) => {
     const completeOnboarding = async () => {
         try {
             await AsyncStorage.setItem('hasSeenOnboarding', 'true');
-            if (onComplete) {
-                onComplete();
-            }
-        } catch (e) {
-            console.error('Failed to save onboarding status:', e);
-        }
+            if (onComplete) onComplete();
+        } catch (e) { }
     };
 
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
-        if (viewableItems.length > 0) {
-            setCurrentIndex(viewableItems[0].index || 0);
-        }
+        if (viewableItems.length > 0) setCurrentIndex(viewableItems[0].index || 0);
     }).current;
-
-    const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
     const renderSlide = ({ item, index }) => {
         const IconComponent = item.icon;
 
+        if (item.id === 'form') {
+            return (
+                <View style={[styles.slide, { paddingTop: insets.top + 40 }]}>
+                    <LinearGradient colors={item.gradient} style={styles.iconContainerSmall}>
+                        <IconComponent size={32} color="#FFFFFF" />
+                    </LinearGradient>
+                    <Text style={[styles.title, { color: textColor, fontSize: 24 }]}>{item.title}</Text>
+
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%', paddingHorizontal: 20 }}>
+                        <View style={[styles.formCard, { backgroundColor: cardBg }]}>
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: subtextColor }]}>College</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
+                                    placeholder="e.g. HMRITM"
+                                    placeholderTextColor={subtextColor}
+                                    value={formData.college}
+                                    onChangeText={t => setFormData({ ...formData, college: t })}
+                                />
+                            </View>
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: subtextColor }]}>Course</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
+                                    placeholder="e.g. B.Tech CSE"
+                                    placeholderTextColor={subtextColor}
+                                    value={formData.course}
+                                    onChangeText={t => setFormData({ ...formData, course: t })}
+                                />
+                            </View>
+                            <View style={styles.row}>
+                                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                                    <Text style={[styles.label, { color: subtextColor }]}>Batch</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
+                                        placeholder="2025-29"
+                                        placeholderTextColor={subtextColor}
+                                        value={formData.batch}
+                                        onChangeText={t => setFormData({ ...formData, batch: t })}
+                                    />
+                                </View>
+                                <View style={[styles.inputGroup, { flex: 1 }]}>
+                                    <Text style={[styles.label, { color: subtextColor }]}>Semesters</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: inputBg, color: textColor }]}
+                                        placeholder="8"
+                                        placeholderTextColor={subtextColor}
+                                        value={formData.totalSemesters}
+                                        keyboardType='numeric'
+                                        onChangeText={t => setFormData({ ...formData, totalSemesters: t })}
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </View>
+            );
+        }
+
         return (
             <View style={[styles.slide, { paddingTop: insets.top + 60 }]}>
-                {/* Icon with gradient */}
                 <LinearGradient
                     colors={item.gradient}
                     style={styles.iconContainer}
@@ -217,15 +314,11 @@ const OnboardingScreen = ({ navigation, onComplete }) => {
                     <IconComponent size={48} color="#FFFFFF" strokeWidth={1.5} />
                 </LinearGradient>
 
-                {/* Title */}
                 <Text style={[styles.title, { color: textColor }]}>{item.title}</Text>
-
-                {/* Subtitle */}
                 <View style={[styles.subtitleBadge, { backgroundColor: cardBg }]}>
                     <Text style={[styles.subtitle, { color: subtextColor }]}>{item.subtitle}</Text>
                 </View>
 
-                {/* Steps Card */}
                 <View style={[styles.stepsCard, { backgroundColor: cardBg }]}>
                     {item.steps.map((step, i) => (
                         <View key={i} style={styles.stepRow}>
@@ -237,40 +330,6 @@ const OnboardingScreen = ({ navigation, onComplete }) => {
         );
     };
 
-    const renderDots = () => (
-        <View style={styles.dotsContainer}>
-            {ONBOARDING_SLIDES.map((_, index) => {
-                const inputRange = [
-                    (index - 1) * width,
-                    index * width,
-                    (index + 1) * width,
-                ];
-
-                const dotWidth = scrollX.interpolate({
-                    inputRange,
-                    outputRange: [8, 24, 8],
-                    extrapolate: 'clamp',
-                });
-
-                const dotOpacity = scrollX.interpolate({
-                    inputRange,
-                    outputRange: [0.3, 1, 0.3],
-                    extrapolate: 'clamp',
-                });
-
-                return (
-                    <Animated.View
-                        key={index}
-                        style={[
-                            styles.dot,
-                            { width: dotWidth, opacity: dotOpacity },
-                        ]}
-                    />
-                );
-            })}
-        </View>
-    );
-
     const isLastSlide = currentIndex === ONBOARDING_SLIDES.length - 1;
     const progress = ((currentIndex + 1) / ONBOARDING_SLIDES.length) * 100;
 
@@ -278,14 +337,12 @@ const OnboardingScreen = ({ navigation, onComplete }) => {
         <View style={[styles.container, { backgroundColor }]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-            {/* Progress Bar */}
             <View style={[styles.progressBarContainer, { top: insets.top + 12 }]}>
                 <View style={[styles.progressBarBg, { backgroundColor: cardBg }]}>
                     <LinearGradient
                         colors={theme.gradients.primary}
                         style={[styles.progressBarFill, { width: `${progress}%` }]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     />
                 </View>
                 <Text style={[styles.progressText, { color: subtextColor }]}>
@@ -293,15 +350,10 @@ const OnboardingScreen = ({ navigation, onComplete }) => {
                 </Text>
             </View>
 
-            {/* Skip Button */}
-            <TouchableOpacity
-                style={[styles.skipButton, { top: insets.top + 12 }]}
-                onPress={handleSkip}
-            >
+            <TouchableOpacity style={[styles.skipButton, { top: insets.top + 12 }]} onPress={handleSkip}>
                 <Text style={[styles.skipText, { color: subtextColor }]}>Skip</Text>
             </TouchableOpacity>
 
-            {/* Slides */}
             <Animated.FlatList
                 ref={flatListRef}
                 data={ONBOARDING_SLIDES}
@@ -311,35 +363,29 @@ const OnboardingScreen = ({ navigation, onComplete }) => {
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 bounces={false}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-                    { useNativeDriver: false }
-                )}
+                scrollEnabled={currentIndex !== 1}
+                onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: false })}
                 onViewableItemsChanged={onViewableItemsChanged}
-                viewabilityConfig={viewabilityConfig}
+                viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
                 scrollEventThrottle={16}
-                getItemLayout={(_, index) => ({
-                    length: width,
-                    offset: width * index,
-                    index,
-                })}
+                getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
             />
 
-            {/* Bottom Section */}
             <View style={[styles.bottomSection, { paddingBottom: insets.bottom + 24 }]}>
-                {renderDots()}
-
-                <TouchableOpacity onPress={handleNext} activeOpacity={0.8}>
+                <TouchableOpacity onPress={handleNext} activeOpacity={0.8} disabled={saving}>
                     <LinearGradient
                         colors={theme.gradients.primary}
                         style={styles.nextButton}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     >
-                        <Text style={styles.nextButtonText}>
-                            {isLastSlide ? "🚀 Let's Go!" : 'Next'}
-                        </Text>
-                        {!isLastSlide && <ChevronRight size={20} color="#FFFFFF" />}
+                        {saving ? <ActivityIndicator color="#FFF" /> : (
+                            <>
+                                <Text style={styles.nextButtonText}>
+                                    {isLastSlide ? "🚀 Let's Go!" : (ONBOARDING_SLIDES[currentIndex].id === 'form' ? 'Save & Continue' : 'Next')}
+                                </Text>
+                                {!isLastSlide && <ChevronRight size={20} color="#FFFFFF" />}
+                            </>
+                        )}
                     </LinearGradient>
                 </TouchableOpacity>
             </View>
@@ -348,125 +394,30 @@ const OnboardingScreen = ({ navigation, onComplete }) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    progressBarContainer: {
-        position: 'absolute',
-        left: 24,
-        right: 80,
-        zIndex: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    progressBarBg: {
-        flex: 1,
-        height: 6,
-        borderRadius: 3,
-        overflow: 'hidden',
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: 3,
-    },
-    progressText: {
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    skipButton: {
-        position: 'absolute',
-        right: 20,
-        zIndex: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-    },
-    skipText: {
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    slide: {
-        width,
-        alignItems: 'center',
-        paddingHorizontal: 28,
-    },
-    iconContainer: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 24,
-        shadowColor: '#AC67FF',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 10,
-    },
-    title: {
-        fontSize: 26,
-        fontWeight: '800',
-        textAlign: 'center',
-        marginBottom: 12,
-        letterSpacing: -0.5,
-    },
-    subtitleBadge: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        marginBottom: 24,
-    },
-    subtitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        fontFamily: 'monospace',
-    },
-    stepsCard: {
-        width: '100%',
-        padding: 20,
-        borderRadius: 20,
-        gap: 14,
-    },
-    stepRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    stepText: {
-        flex: 1,
-        fontSize: 16,
-        lineHeight: 24,
-        fontWeight: '500',
-    },
-    bottomSection: {
-        paddingHorizontal: 24,
-        gap: 24,
-    },
-    dotsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 6,
-    },
-    dot: {
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: theme.palette.purple,
-    },
-    nextButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 18,
-        borderRadius: 16,
-        gap: 8,
-    },
-    nextButtonText: {
-        color: '#FFFFFF',
-        fontSize: 17,
-        fontWeight: '700',
-    },
+    container: { flex: 1 },
+    progressBarContainer: { position: 'absolute', left: 24, right: 80, zIndex: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+    progressBarBg: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
+    progressBarFill: { height: '100%', borderRadius: 3 },
+    progressText: { fontSize: 13, fontWeight: '700' },
+    skipButton: { position: 'absolute', right: 20, zIndex: 10, paddingVertical: 8, paddingHorizontal: 14 },
+    skipText: { fontSize: 15, fontWeight: '600' },
+    slide: { width, alignItems: 'center', paddingHorizontal: 28 },
+    iconContainer: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center', marginBottom: 24, shadowColor: '#AC67FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 10 },
+    iconContainerSmall: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+    title: { fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 12, letterSpacing: -0.5 },
+    subtitleBadge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginBottom: 24 },
+    subtitle: { fontSize: 13, fontWeight: '600', fontFamily: 'monospace' },
+    stepsCard: { width: '100%', padding: 20, borderRadius: 20, gap: 14 },
+    formCard: { width: '100%', padding: 24, borderRadius: 24, gap: 16 },
+    stepRow: { flexDirection: 'row', alignItems: 'center' },
+    stepText: { flex: 1, fontSize: 16, lineHeight: 24, fontWeight: '500' },
+    bottomSection: { paddingHorizontal: 24, gap: 24 },
+    nextButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, borderRadius: 16, gap: 8 },
+    nextButtonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+    inputGroup: { gap: 8 },
+    label: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
+    input: { borderRadius: 12, padding: 14, fontSize: 16, fontWeight: '600' },
+    row: { flexDirection: 'row' }
 });
 
 export default OnboardingScreen;
-
-
-

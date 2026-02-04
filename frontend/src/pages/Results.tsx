@@ -96,7 +96,7 @@ const Results: React.FC = () => {
 
     // Derived state determining if the selected semester is saved in history
     // We use this to decide whether to show VIEW mode or EDIT/ADD mode headers
-    const isSaved = useMemo(() => allResults.some(r => r.semester === currentSemester), [allResults, currentSemester]);
+    const isSaved = useMemo(() => (allResults || []).some(r => r.semester === currentSemester), [allResults, currentSemester]);
 
     const [isEditing, setIsEditing] = useState(false);
 
@@ -108,11 +108,11 @@ const Results: React.FC = () => {
     const loadResults = async () => {
         try {
             setLoading(true);
-            const results = await attendanceService.getSemesterResults();
+            const results = (await attendanceService.getSemesterResults()) || [];
             setAllResults(results);
 
             // If current semester has data, load it
-            const currentSemResult = results.find(r => r.semester === currentSemester);
+            const currentSemResult = results.find((r: any) => r.semester === currentSemester);
             if (currentSemResult) {
                 setSubjects(currentSemResult.subjects);
             } else {
@@ -312,112 +312,430 @@ const Results: React.FC = () => {
             // Generate HTML report
             const html = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Semester ${semester} Summary Report</title>
+    <meta charset="UTF-8">
+    <title>Semester ${semester} Summary Report - AcadHub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #6750A4;
+            --primary-light: #EADDFF;
+            --secondary: #625B71;
+            --surface: #FFFBFE;
+            --on-surface: #1C1B1F;
+            --on-surface-variant: #49454F;
+            --outline: #79747E;
+            --success: #10B981;
+            --error: #EF4444;
+            --bg: #F8F9FA;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #f5f5f5; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-        h1 { color: #1a1a2e; margin-bottom: 8px; }
-        .subtitle { color: #666; margin-bottom: 24px; }
-        .period { background: #f0f0f0; padding: 12px 20px; border-radius: 8px; margin-bottom: 24px; }
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-        .stat { text-align: center; padding: 16px; background: linear-gradient(135deg, #6750A4, #8B5CF6); color: white; border-radius: 12px; }
-        .stat-value { font-size: 28px; font-weight: bold; }
-        .stat-label { font-size: 12px; opacity: 0.9; }
-        h2 { margin: 24px 0 16px; color: #333; border-bottom: 2px solid #eee; padding-bottom: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f8f8; font-weight: 600; }
-        .grade { font-weight: bold; }
-        .grade-O { color: #10B981; }
-        .grade-A { color: #22C55E; }
-        .grade-B { color: #EAB308; }
-        .grade-C { color: #F97316; }
-        .grade-F { color: #EF4444; }
-        .footer { text-align: center; color: #999; margin-top: 32px; font-size: 12px; }
-        @media print { body { background: white; padding: 0; } .container { box-shadow: none; } }
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background: var(--bg); 
+            color: var(--on-surface);
+            line-height: 1.5;
+            padding: 50px 20px;
+        }
+
+        .report-page {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 60px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary), #8B5CF6);
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+        }
+
+        .brand-section h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .brand-section p {
+            color: var(--on-surface-variant);
+            font-weight: 500;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .meta-section {
+            text-align: right;
+        }
+
+        .report-id {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--outline);
+            margin-bottom: 4px;
+        }
+
+        .date-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* Overview Section */
+        .page-title {
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #EDEDED;
+        }
+
+        .page-title h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .period-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--on-surface-variant);
+            margin-top: 5px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            padding: 24px 20px;
+            border-radius: 18px;
+            background: var(--bg);
+            border: 1px solid #EFEFEF;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card.featured {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .stat-card .value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+        }
+
+        /* Table Styles */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 40px 0 20px;
+        }
+
+        .section-header .icon {
+            font-size: 20px;
+        }
+
+        .section-header h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--on-surface);
+        }
+
+        .data-table-container {
+            border-radius: 16px;
+            border: 1px solid #EDEDED;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #F9FAFB;
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #EDEDED;
+        }
+
+        td {
+            padding: 16px 20px;
+            font-size: 14px;
+            border-bottom: 1px solid #F3F4F6;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        .subject-name {
+            font-weight: 600;
+            color: var(--on-surface);
+        }
+
+        .code-pill {
+            font-family: monospace;
+            padding: 2px 6px;
+            background: #F3F4F6;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #4B5563;
+        }
+
+        .grade-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 45px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .grade-O { background: #ECFDF5; color: #059669; }
+        .grade-A { background: #F0FDF4; color: #16A34A; }
+        .grade-B { background: #FFFBEB; color: #D97706; }
+        .grade-C { background: #FFF7ED; color: #EA580C; }
+        .grade-F { background: #FEF2F2; color: #DC2626; }
+
+        /* Grading System Legend */
+        .legend {
+            margin-top: 40px;
+            padding: 20px;
+            background: #F9FAFB;
+            border-radius: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--on-surface-variant);
+        }
+
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px dashed #DDD;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #9CA3AF;
+            font-size: 12px;
+        }
+
+        .watermark {
+            position: absolute;
+            bottom: -30px;
+            right: -30px;
+            font-size: 120px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            opacity: 0.03;
+            transform: rotate(-15deg);
+            pointer-events: none;
+        }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .report-page { box-shadow: none; border: none; padding: 40px; border-radius: 0; max-width: 100%; }
+            .report-page::before { display: none; }
+            .stat-card { background: white !important; color: black !important; border: 1px solid #DDD; }
+            .grade-badge { border: 1px solid #EEE; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📚 Semester ${semester} Summary Report</h1>
-        <p class="subtitle">Academic Performance Summary</p>
+    <div class="report-page">
+        <div class="watermark">ACADHUB</div>
         
-        <div class="period">
-            <strong>Period:</strong> ${semester === 1 ? '27 Aug 2025 → 26 Dec 2025' : `${startDate} → ${endDate}`}
-        </div>
-        
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-value">${semResult.sgpa?.toFixed(2) || '—'}</div>
-                <div class="stat-label">SGPA</div>
+        <header>
+            <div class="brand-section">
+                <h1>AcadHub</h1>
+                <p>Academic Excellence Platform</p>
             </div>
-            <div class="stat">
-                <div class="stat-value">${semResult.cgpa?.toFixed(2) || '—'}</div>
-                <div class="stat-label">CGPA</div>
+            <div class="meta-section">
+                <div class="report-id">REF: ${new Date().getFullYear()}/SEM${semester}/${String(Math.random()).slice(2, 8)}</div>
+                <div class="date-badge">Generated on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
             </div>
-            <div class="stat">
-                <div class="stat-value">${semResult.total_credits || 0}</div>
-                <div class="stat-label">Credits</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value">${attendanceData.overall_attendance?.toFixed(1) || '—'}%</div>
-                <div class="stat-label">Attendance</div>
+        </header>
+
+        <div class="page-title">
+            <h2>Semester ${semester} Performance Report</h2>
+            <div class="period-info">
+                <span>📅 Period:</span>
+                <strong>${semester === 1 ? '27 Aug 2025 – 26 Dec 2025' : `${startDate} – ${endDate}`}</strong>
             </div>
         </div>
-        
-        <h2>📊 Subject-wise Results</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Subject</th>
-                    <th>Code</th>
-                    <th>Credits</th>
-                    <th>Marks</th>
-                    <th>Grade</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${semResult.subjects?.map(s => {
+
+        <div class="stats-grid">
+            <div class="stat-card featured">
+                <span class="value">${semResult.sgpa?.toFixed(2) || '0.00'}</span>
+                <span class="label">Semester SGPA</span>
+            </div>
+            <div class="stat-card">
+                <span class="value">${semResult.cgpa?.toFixed(2) || '0.00'}</span>
+                <span class="label">Cumulative CGPA</span>
+            </div>
+            <div class="stat-card">
+                <span class="value">${semResult.total_credits || 0}</span>
+                <span class="label">Earned Credits</span>
+            </div>
+            <div class="stat-card">
+                <span class="value">${attendanceData.overall_attendance?.toFixed(1) || '0.0'}%</span>
+                <span class="label">Avg. Attendance</span>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <span class="icon">📊</span>
+            <h3>Academic Results</h3>
+        </div>
+
+        <div class="data-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40%">Subject Details</th>
+                        <th style="width: 15%">Credits</th>
+                        <th style="width: 25%">Scored Marks</th>
+                        <th style="width: 20%">Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${semResult.subjects?.map(s => {
                 const result = calculateLocalResult(s);
                 return `
-                    <tr>
-                        <td>${s.name}</td>
-                        <td>${s.code || '—'}</td>
-                        <td>${s.credits}</td>
-                        <td>${result.totalMarks}/${result.maxMarks} (${result.percentage}%)</td>
-                        <td class="grade grade-${result.grade.charAt(0)}">${result.grade} (${result.gradePoint})</td>
-                    </tr>
-                    `;
-            }).join('') || '<tr><td colspan="5">No subjects</td></tr>'}
-            </tbody>
-        </table>
-        
-        ${attendanceData.subjects?.length > 0 ? `
-        <h2>📅 Attendance Summary</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Subject</th>
-                    <th>Percentage</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${attendanceData.subjects.map((s: any) => `
-                    <tr>
-                        <td>${s.name}</td>
-                        <td>${s.attendance_percentage?.toFixed(1) || 0}%</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        ` : ''}
-        
-        <div class="footer">
-            Generated by AcadHub on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        <tr>
+                            <td>
+                                <div class="subject-name">${s.name}</div>
+                                <div class="code-pill">${s.code || 'NO-CODE'}</div>
+                            </td>
+                            <td><strong>${s.credits}</strong></td>
+                            <td>
+                                <div><strong>${result.totalMarks} / ${result.maxMarks}</strong></div>
+                                <div style="font-size: 11px; color: #6B7280; margin-top: 2px;">Efficiency: ${result.percentage}%</div>
+                            </td>
+                            <td>
+                                <div class="grade-badge grade-${result.grade.charAt(0)}">
+                                    ${result.grade} (${result.gradePoint})
+                                </div>
+                            </td>
+                        </tr>
+                        `;
+            }).join('') || '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #999;">No results recorded for this semester</td></tr>'}
+                </tbody>
+            </table>
         </div>
+
+        ${attendanceData.subjects?.length > 0 ? `
+        <div class="section-header" style="margin-top: 20px;">
+            <span class="icon">📅</span>
+            <h3>Attendance Record</h3>
+        </div>
+        <div class="data-table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 60%">Subject Name</th>
+                        <th style="width: 40%">Attendance Standing</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${attendanceData.subjects.map((s: any) => `
+                        <tr>
+                            <td class="subject-name">${s.name}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="flex: 1; height: 6px; background: #E5E7EB; border-radius: 3px; overflow: hidden;">
+                                        <div style="width: ${s.attendance_percentage || 0}%; height: 100%; background: ${s.attendance_percentage < 75 ? '#EF4444' : '#10B981'};"></div>
+                                    </div>
+                                    <strong style="min-width: 45px; text-align: right;">${s.attendance_percentage?.toFixed(1) || 0}%</strong>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        ` : ''}
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-box grade-O"></div> O: Outstanding (90+)</div>
+            <div class="legend-item"><div class="legend-box grade-A"></div> A+: Excellent (75-89)</div>
+            <div class="legend-item"><div class="legend-box grade-A" style="opacity: 0.7"></div> A: Very Good (65-74)</div>
+            <div class="legend-item"><div class="legend-box grade-B"></div> B+: Good (55-64)</div>
+            <div class="legend-item"><div class="legend-box grade-B" style="opacity: 0.7"></div> B: Above Avg (50-54)</div>
+            <div class="legend-item"><div class="legend-box grade-F"></div> F: Fail (<40)</div>
+        </div>
+
+        <footer>
+            <div>Digitally verified via AcadHub Academic Records</div>
+            <div>&copy; ${new Date().getFullYear()} AcadHub • acadhub.kuberbassi.com</div>
+        </footer>
     </div>
 </body>
 </html>
@@ -428,11 +746,11 @@ const Results: React.FC = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Semester_${semester}_Report_${new Date().toISOString().split('T')[0]}.html`;
+            a.download = `AcadHub_Sem_${semester}_Report_${new Date().toISOString().split('T')[0]}.html`;
             a.click();
             URL.revokeObjectURL(url);
 
-            showToast('success', 'Report downloaded! Open in browser to print as PDF.');
+            showToast('success', 'Professional report generated! Open in browser to print as PDF.');
         } catch (error) {
             console.error('Error generating report:', error);
             showToast('error', 'Failed to generate report');

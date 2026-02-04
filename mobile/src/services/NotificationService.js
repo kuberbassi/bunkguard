@@ -72,7 +72,7 @@ export const NotificationService = {
     },
 
     // The "Smart" Check
-    async checkAndNotify(subjects) {
+    async checkAndNotify(subjects, threshold = 75) {
         if (!subjects || subjects.length === 0) return;
 
         try {
@@ -93,8 +93,8 @@ export const NotificationService = {
                 const pct = subject.attendance_percentage; // 75.5
                 const statusMsg = subject.status_message || ""; // "Attend next 2 classes"
 
-                // Criteria: Low Attendance (<75%) AND actionable message "Attend"
-                const isDanger = statusMsg.toLowerCase().includes('attend') && pct < 75;
+                // Criteria: Low Attendance (<threshold%) AND actionable message "Attend"
+                const isDanger = statusMsg.toLowerCase().includes('attend') && pct < threshold;
 
                 if (isDanger) {
                     if (!log.subjects.includes(subject._id)) {

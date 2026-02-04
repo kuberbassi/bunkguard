@@ -5,42 +5,27 @@ import {
 import { TrendingUp, Calendar } from 'lucide-react';
 
 import GlassCard from '@/components/ui/GlassCard';
-import { attendanceService } from '@/services/attendance.service';
+import { useAnalytics } from '@/hooks/useAnalytics';
+
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSemester } from '@/contexts/SemesterContext';
-import { useToast } from '@/components/ui/Toast';
+
 import Skeleton from '@/components/ui/Skeleton';
 
 const Analytics: React.FC = () => {
     const { theme } = useTheme();
-    const { showToast } = useToast();
+
     const { currentSemester } = useSemester();
-    const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
-    const [dayOfWeekData, setDayOfWeekData] = useState<any>(null);
-    const [reportsData, setReportsData] = useState<any>(null);
+
+    // Use the new hook for data fetching with caching
+    const { dayOfWeekData, reportsData, loading } = useAnalytics();
 
     useEffect(() => {
         setIsMounted(true);
-        loadAnalytics();
-    }, [currentSemester]);
+    }, []);
 
-    const loadAnalytics = async () => {
-        try {
-            setLoading(true);
-            const [dayData, reports] = await Promise.all([
-                attendanceService.getDayOfWeekAnalytics(currentSemester),
-                attendanceService.getReportsData(currentSemester)
-            ]);
-            setDayOfWeekData(dayData);
-            setReportsData(reports);
-        } catch (error) {
-            console.error('Error loading analytics:', error);
-            showToast('error', 'Failed to load analytics data');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Removed manual loadAnalytics function as it is handled by the hook
 
     const weeklyData = useMemo(() => {
         const data = (dayOfWeekData?.days || [])

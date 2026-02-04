@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar, useColorScheme, View, Text, StyleSheet, Platform, Dimensions } from 'react-native';
 import { theme } from './src/theme';
@@ -10,10 +10,12 @@ import { LayoutDashboard, Calendar as CalendarIcon, Settings, BarChart2, Graduat
 import { LinearGradient } from './src/components/LinearGradient';
 import { BlurView } from 'expo-blur';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import ReportsScreen from './src/screens/ReportsScreen';
 import AcademicScreen from './src/screens/AcademicScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import AnalyticsScreen from './src/screens/AnalyticsScreen';
@@ -67,8 +69,11 @@ const GlassTabBarBackground = () => {
 };
 
 const MainTabs = () => {
-  const { isDark } = useTheme();
-  const primary = theme.palette.purple;
+  const { isDark, accentColor } = useTheme();
+  const primary = accentColor || theme.palette.purple;
+  
+  // Create a semi-transparent version for backgrounds
+  const accentBgColor = `${primary}33`; // 20% opacity
 
   return (
     <Tab.Navigator
@@ -93,7 +98,7 @@ const MainTabs = () => {
           shadowRadius: 20,
         },
         tabBarBackground: () => <GlassTabBarBackground />,
-        tabBarActiveTintColor: '#AC67FF',
+        tabBarActiveTintColor: primary,
         tabBarInactiveTintColor: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
         tabBarShowLabel: false,
       }}
@@ -106,18 +111,20 @@ const MainTabs = () => {
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               {focused && (
-                <LinearGradient
-                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
+                <View
                   style={{
                     position: 'absolute', width: 44, height: 44, borderRadius: 22,
+                    backgroundColor: accentBgColor,
                   }}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 />
               )}
               <LayoutDashboard color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
-              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: primary }} />}
             </View>
           ),
+        }}
+        listeners={{
+          tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
         }}
       />
       <Tab.Screen
@@ -128,18 +135,15 @@ const MainTabs = () => {
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               {focused && (
-                <LinearGradient
-                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
-                  style={{
-                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
-                  }}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                />
+                <View style={{ position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: accentBgColor }} />
               )}
               <CalendarIcon color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
-              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: primary }} />}
             </View>
           ),
+        }}
+        listeners={{
+          tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
         }}
       />
       <Tab.Screen
@@ -150,18 +154,15 @@ const MainTabs = () => {
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               {focused && (
-                <LinearGradient
-                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
-                  style={{
-                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
-                  }}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                />
+                <View style={{ position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: accentBgColor }} />
               )}
               <GraduationCap color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
-              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: primary }} />}
             </View>
           ),
+        }}
+        listeners={{
+          tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
         }}
       />
       <Tab.Screen
@@ -172,18 +173,15 @@ const MainTabs = () => {
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               {focused && (
-                <LinearGradient
-                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
-                  style={{
-                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
-                  }}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                />
+                <View style={{ position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: accentBgColor }} />
               )}
               <BarChart2 color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
-              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: primary }} />}
             </View>
           ),
+        }}
+        listeners={{
+          tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
         }}
       />
       <Tab.Screen
@@ -194,18 +192,15 @@ const MainTabs = () => {
           tabBarIcon: ({ color, focused }) => (
             <View style={{ alignItems: 'center', justifyContent: 'center' }}>
               {focused && (
-                <LinearGradient
-                  colors={['rgba(172, 103, 255, 0.2)', 'rgba(255, 49, 140, 0.2)']}
-                  style={{
-                    position: 'absolute', width: 44, height: 44, borderRadius: 22,
-                  }}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                />
+                <View style={{ position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: accentBgColor }} />
               )}
               <Settings color={color} size={24} strokeWidth={focused ? 2.2 : 1.8} />
-              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: '#AC67FF' }} />}
+              {focused && <View style={{ position: 'absolute', bottom: -10, width: 4, height: 4, borderRadius: 2, backgroundColor: primary }} />}
             </View>
           ),
+        }}
+        listeners={{
+          tabPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
         }}
       />
     </Tab.Navigator>
@@ -267,7 +262,18 @@ const AppNavigator = () => {
     <View style={{ flex: 1 }}>
       <NavigationContainer>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent={true} />
-        <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: colors.background } }}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            cardStyle: { backgroundColor: colors.background },
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+            presentation: 'card',
+            animationEnabled: true,
+            cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
+            headerMode: 'none',
+          }}
+        >
           {!user ? (
             <Stack.Screen name="Login" component={LoginScreen} />
           ) : !hasSeenOnboarding ? (
@@ -277,14 +283,15 @@ const AppNavigator = () => {
           ) : (
             <>
               <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen name="Reports" component={ReportsScreen} />
               <Stack.Screen name="SubjectDetail" component={SubjectDetailScreen} />
               <Stack.Screen name="Results" component={ResultsScreen} />
               <Stack.Screen name="SkillTracker" component={SkillTrackerScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="ActivityLog" component={ActivityLogScreen} />
-              <Stack.Screen name="TimetableSetup" component={TimetableSetupScreen} />
+              <Stack.Screen name="TimetableSetup" component={TimetableSetupScreen} options={{ presentation: 'modal' }} />
               <Stack.Screen name="Assignments" component={AssignmentsScreen} />
-              <Stack.Screen name="CourseManager" component={CourseManagerScreen} />
+              <Stack.Screen name="CourseManager" component={CourseManagerScreen} options={{ presentation: 'modal' }} />
               <Stack.Screen name="Timetable" component={TimetableScreen} />
             </>
           )}

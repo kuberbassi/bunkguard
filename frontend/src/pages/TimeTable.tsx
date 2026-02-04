@@ -111,7 +111,7 @@ const TimeTable: React.FC = () => {
             }
             console.log('📅 Timetable loaded:', schedule);
             setTimetable(schedule);
-            setSubjects(dashData.subjects_overview || []);
+            setSubjects(dashData.subjects || []);
         } catch (error) {
             console.error(error);
             showToast('error', 'Failed to load timetable');

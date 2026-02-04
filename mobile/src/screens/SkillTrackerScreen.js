@@ -11,7 +11,8 @@ import {
     Plus, Edit2, Trash2, Zap, Palette, Globe, Briefcase, Heart, Grid, X, Save, TrendingUp
 } from 'lucide-react-native';
 import { LinearGradient } from '../components/LinearGradient';
-import { skillsService } from '../services';
+import { attendanceService } from '../services/attendance.service';
+import * as Haptics from 'expo-haptics';
 import AnimatedHeader from '../components/AnimatedHeader';
 import PressableScale from '../components/PressableScale';
 
@@ -33,7 +34,7 @@ const SKILL_CATEGORIES = [
 const SKILL_LEVELS = ['beginner', 'intermediate', 'advanced', 'expert'];
 
 const SkillTrackerScreen = ({ navigation }) => {
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const insets = useSafeAreaInsets();
 
     // AMOLED Theme
@@ -51,7 +52,8 @@ const SkillTrackerScreen = ({ navigation }) => {
         inputBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
         trackBg: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
 
-        primary: '#0A84FF',
+        primary: themeColors.primary, // Dynamic accent
+        gradients: themeColors.gradients, // Dynamic gradients
     };
 
 
@@ -94,7 +96,7 @@ const SkillTrackerScreen = ({ navigation }) => {
 
     const fetchSkills = async () => {
         try {
-            const data = await skillsService.getSkills();
+            const data = await attendanceService.getSkills();
             const skills = Array.isArray(data) ? data : (data.skills || []);
             setSkills(skills);
         } catch (error) { console.error(error); }
@@ -105,6 +107,7 @@ const SkillTrackerScreen = ({ navigation }) => {
     };
 
     const onRefresh = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setRefreshing(true);
         fetchSkills();
     };
@@ -135,11 +138,12 @@ const SkillTrackerScreen = ({ navigation }) => {
 
         try {
             if (isEdit) {
-                await skillsService.updateSkill(tempId, payload);
+                await attendanceService.updateSkill(tempId, payload);
             } else {
-                await skillsService.addSkill(payload);
+                await attendanceService.addSkill(payload);
             }
             fetchSkills(); // Sync with server for real IDs
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error) {
             console.error("Skill Save Error", error);
             setSkills(previousSkills); // Revert
@@ -167,7 +171,7 @@ const SkillTrackerScreen = ({ navigation }) => {
                     }));
 
                     try {
-                        await skillsService.deleteSkill(id);
+                        await attendanceService.deleteSkill(id);
                     } catch (error) {
                         console.error(error);
                         setSkills(previousSkills); // Revert
@@ -249,8 +253,10 @@ const SkillTrackerScreen = ({ navigation }) => {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor={c.text}
-                        progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                        tintColor={c.primary}
+                        colors={[c.primary]}
+                        progressBackgroundColor={c.surface}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 15}
                     />
                 }
             />
@@ -316,7 +322,7 @@ const SkillTrackerScreen = ({ navigation }) => {
                 }}
             >
                 <LinearGradient
-                    colors={theme.gradients.primary}
+                    colors={c.gradients.primary}
                     style={styles.fabGrad}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 >
@@ -394,7 +400,7 @@ const SkillTrackerScreen = ({ navigation }) => {
                             {/* Sticky Footer */}
                             <View style={[styles.modalFooter, { padding: 24, borderTopWidth: 1, borderTopColor: c.glassBorder }]}>
                                 <PressableScale style={[styles.saveBtn, { overflow: 'hidden' }]} onPress={handleSave} disabled={saving}>
-                                    <LinearGradient colors={theme.gradients.primary} style={styles.saveGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                    <LinearGradient colors={c.gradients.primary} style={styles.saveGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                                         {saving ? <Text style={styles.saveText}>SAVING...</Text> : (
                                             <>
                                                 <Save size={20} color="#FFF" />

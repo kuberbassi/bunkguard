@@ -15,7 +15,8 @@ def init_limiter(app):
     limiter.init_app(app)
     return limiter
 
-# Rate limit decorators for different endpoint types
-STRICT_LIMIT = "10 per minute"      # Auth, sensitive operations
-MODERATE_LIMIT = "30 per minute"    # Data mutations (POST/PUT/DELETE)
-RELAXED_LIMIT = "60 per minute"     # Read operations (GET)
+# Rate limit decorators with Burst Protection
+# Format: "X per minute; Y per second" ensures robots can't fire 10 reqs in 1ms
+STRICT_LIMIT = "10 per minute; 2 per second"      # Auth, sensitive operations
+MODERATE_LIMIT = "30 per minute; 5 per second"    # Data mutations (POST/PUT/DELETE)
+RELAXED_LIMIT = "300 per minute; 50 per second"   # Read operations (GET)

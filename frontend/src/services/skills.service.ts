@@ -12,7 +12,7 @@ export interface Skill {
 export const skillsService = {
     getSkills: async (): Promise<Skill[]> => {
         const response = await api.get('/api/skills');
-        return response.data;
+        return response.data.data;
     },
 
     addSkill: async (skill: Omit<Skill, '_id'>): Promise<void> => {

@@ -3,7 +3,7 @@
     "name": "AcadHub",
     "slug": "acad-hub-mobile-kuber",
     "description": "Your ultimate academic companion for tracking attendance, results, and skills.",
-    "version": "2.0.1",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -26,7 +26,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.kuberbassi.acadhubmobilekuber",
-      "versionCode": 201,
+      "versionCode": 300,
       "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": "./google-services.json",
       "permissions": [

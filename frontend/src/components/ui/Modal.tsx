@@ -1,4 +1,4 @@
-import React, { useEffect, type ReactNode } from 'react';
+import React, { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,18 +20,62 @@ const Modal: React.FC<ModalProps> = ({
     size = 'md',
     className = '',
 }) => {
+    const contentRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Close on Escape
+            if (e.key === 'Escape') {
+                onClose();
+                return;
+            }
+
+            // Arrow key scrolling for modal content
+            const content = contentRef.current;
+            if (!content) return;
+
+            const scrollAmount = 60;
+            switch (e.key) {
+                case 'ArrowDown':
+                    content.scrollTop += scrollAmount;
+                    e.preventDefault();
+                    break;
+                case 'ArrowUp':
+                    content.scrollTop -= scrollAmount;
+                    e.preventDefault();
+                    break;
+                case 'PageDown':
+                    content.scrollTop += content.clientHeight * 0.8;
+                    e.preventDefault();
+                    break;
+                case 'PageUp':
+                    content.scrollTop -= content.clientHeight * 0.8;
+                    e.preventDefault();
+                    break;
+                case 'Home':
+                    if (e.ctrlKey) {
+                        content.scrollTop = 0;
+                        e.preventDefault();
+                    }
+                    break;
+                case 'End':
+                    if (e.ctrlKey) {
+                        content.scrollTop = content.scrollHeight;
+                        e.preventDefault();
+                    }
+                    break;
+            }
         };
 
         if (isOpen) {
-            document.addEventListener('keydown', handleEscape);
+            document.addEventListener('keydown', handleKeyDown);
             document.body.style.overflow = 'hidden';
+            // Focus the modal for accessibility
+            contentRef.current?.focus();
         }
 
         return () => {
-            document.removeEventListener('keydown', handleEscape);
+            document.removeEventListener('keydown', handleKeyDown);
             document.body.style.overflow = 'unset';
         };
     }, [isOpen, onClose]);
@@ -79,7 +123,13 @@ const Modal: React.FC<ModalProps> = ({
                         )}
 
                         {/* Body - theme-aware text colors */}
-                        <div className="p-6 text-on-surface dark:text-dark-surface-on overflow-y-auto flex-1 custom-scrollbar">{children}</div>
+                        <div 
+                            ref={contentRef}
+                            tabIndex={-1}
+                            className="p-6 text-on-surface dark:text-dark-surface-on overflow-y-auto flex-1 custom-scrollbar focus:outline-none"
+                        >
+                            {children}
+                        </div>
                     </motion.div>
                 </div>
             )}

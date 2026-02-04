@@ -93,7 +93,6 @@ const AcademicScreen = ({ navigation }) => {
             colors: c.cards.courses,
             route: 'CourseManager',
         },
-
     ];
 
     return (
@@ -102,7 +101,6 @@ const AcademicScreen = ({ navigation }) => {
 
             {/* BACKGROUND GRADIENT */}
             <LinearGradient
-                noTexture
                 colors={[c.bgGradStart, c.bgGradMid, c.bgGradEnd]}
                 noTexture style={StyleSheet.absoluteFillObject}
                 start={{ x: 0, y: 0 }}
@@ -136,10 +134,12 @@ const AcademicScreen = ({ navigation }) => {
                         refreshing={refreshing}
                         onRefresh={() => {
                             setRefreshing(true);
-                            // Just visual feedback for a menu screen
                             setTimeout(() => setRefreshing(false), 500);
                         }}
                         tintColor={c.text}
+                        colors={[isDark ? theme.palette.purple : theme.light.primary]}
+                        progressBackgroundColor={isDark ? '#121212' : '#FFFFFF'}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 15}
                     />
                 }
             >

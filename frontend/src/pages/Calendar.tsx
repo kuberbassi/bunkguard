@@ -38,7 +38,17 @@ const Calendar: React.FC = () => {
             const month = currentDate.getMonth() + 1;
 
             const calendarData = await attendanceService.getCalendarData(year, month, currentSemester);
-            setAttendanceData(calendarData as Record<string, AttendanceRecord[]> || {});
+
+            // Transform list to map: { "YYYY-MM-DD": [logs] }
+            const dataMap: Record<string, AttendanceRecord[]> = {};
+            if (Array.isArray(calendarData)) {
+                calendarData.forEach((log: any) => {
+                    const date = log.date;
+                    if (!dataMap[date]) dataMap[date] = [];
+                    dataMap[date].push(log);
+                });
+            }
+            setAttendanceData(dataMap);
         } catch (error) {
             console.error(error);
             showToast('error', 'Failed to load calendar data');

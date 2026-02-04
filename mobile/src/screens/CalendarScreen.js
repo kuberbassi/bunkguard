@@ -7,6 +7,7 @@ import { attendanceService } from '../services';
 import MarkAttendanceModal from '../components/MarkAttendanceModal';
 import { ChevronLeft, ChevronRight, Calendar as CalIcon } from 'lucide-react-native';
 import { LinearGradient } from '../components/LinearGradient';
+import * as Haptics from 'expo-haptics';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useSemester } from '../contexts/SemesterContext';
 import { theme, Layout } from '../theme';
@@ -22,7 +23,7 @@ const getMonthKey = (date) => {
 };
 
 // Memoized Legend Item
-const LegendItem = React.memo(({ color, label, isBorder }) => (
+const LegendItem = React.memo(({ color, label, isBorder, textColor }) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16 }}>
         <View style={{
             width: 8, height: 8, borderRadius: 4,
@@ -31,12 +32,12 @@ const LegendItem = React.memo(({ color, label, isBorder }) => (
             borderColor: color,
             marginRight: 6
         }} />
-        <Text style={{ fontSize: 12, color: '#9CA3AF', fontWeight: '500' }}>{label}</Text>
+        <Text style={{ fontSize: 12, color: textColor || '#9CA3AF', fontWeight: '500' }}>{label}</Text>
     </View>
 ));
 
 const CalendarScreen = ({ navigation }) => {
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const { selectedSemester } = useSemester();
     const insets = useSafeAreaInsets();
 
@@ -53,11 +54,12 @@ const CalendarScreen = ({ navigation }) => {
         text: isDark ? '#FFFFFF' : '#1E1F22',
         subtext: isDark ? '#BABBBD' : '#6B7280',
 
-        primary: theme.palette.purple,
+        primary: themeColors.primary, // Use dynamic accent color
         success: theme.palette.green,
         danger: theme.palette.red,
         surface: isDark ? '#121212' : '#FFFFFF',
-    }), [isDark]);
+        gradients: themeColors.gradients,
+    }), [isDark, themeColors.gradients, themeColors.primary]);
 
     const styles = useMemo(() => getStyles(c, isDark, insets), [c, isDark, insets]);
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -125,6 +127,7 @@ const CalendarScreen = ({ navigation }) => {
     };
 
     const onDayPress = (day) => {
+        Haptics.selectionAsync();
         setSelectedDate(day.dateString);
         fetchClassesForDate(day.dateString);
         setModalVisible(true);
@@ -134,15 +137,20 @@ const CalendarScreen = ({ navigation }) => {
         setLoadingClasses(true);
         try {
             const data = await attendanceService.getClassesForDate(date, selectedSemester);
-            setDayClasses(data);
+            setDayClasses(data || []);
         } catch (error) {
             console.error(error);
+            setDayClasses([]);
         } finally {
             setLoadingClasses(false);
         }
     };
 
     const handleMarkAttendance = async (subjectId, status, note = '', logId = null, skipRefresh = false, type = 'Lecture', substitutedById = null) => {
+        if (!subjectId) {
+            Alert.alert("Error", "Subject identifier missing. Cannot mark.");
+            return;
+        }
         try {
             // 1. Optimistic Update (List)
             setDayClasses(prev => prev.map(c => c._id === subjectId ? { ...c, marked_status: status } : c));
@@ -166,7 +174,7 @@ const CalendarScreen = ({ navigation }) => {
                 return {
                     ...prev,
                     [monthKey]: {
-                        ...monthData,
+                        ...(monthData || {}),
                         [dateKey]: filteredLogs
                     }
                 };
@@ -174,8 +182,13 @@ const CalendarScreen = ({ navigation }) => {
 
             // 3. API Call
             if (status === 'pending' && logId) {
+                // Clear/delete existing log
                 await attendanceService.deleteAttendance(logId);
+            } else if (logId) {
+                // EDIT existing log (prevents duplicates when re-saving)
+                await attendanceService.editAttendance(logId, status, note, selectedDate);
             } else {
+                // Create NEW log
                 await attendanceService.markAttendance(
                     subjectId,
                     status,
@@ -198,8 +211,9 @@ const CalendarScreen = ({ navigation }) => {
 
         } catch (error) {
             console.error("Mark error", error);
-            const msg = error.response?.data?.error || "Failed to mark attendance.";
-            Alert.alert("Error", msg);
+            const errData = error.response?.data?.error;
+            const msg = typeof errData === 'object' ? JSON.stringify(errData) : (errData || error.message || "Failed to mark attendance.");
+            Alert.alert("Error", String(msg));
             // Revert on error: Refresh BOTH list and dots to remove ghosts
             if (!skipRefresh) {
                 fetchClassesForDate(selectedDate);
@@ -210,6 +224,7 @@ const CalendarScreen = ({ navigation }) => {
     };
 
     const onRefresh = async () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setRefreshing(true);
         try {
             // Don't clear data immediately to avoid flickering
@@ -287,8 +302,10 @@ const CalendarScreen = ({ navigation }) => {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        tintColor={c.text}
-                        progressViewOffset={Layout.header.minHeight + (insets.top || 0) + 20}
+                        tintColor={c.primary}
+                        colors={[c.primary]}
+                        progressBackgroundColor={c.surface}
+                        progressViewOffset={Layout.header.minHeight + (insets.top || 0) + 15}
                     />
                 }
             >
@@ -300,6 +317,7 @@ const CalendarScreen = ({ navigation }) => {
                         </Text>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                             <PressableScale onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 const d = new Date(currentMonth);
                                 d.setDate(1); // Safety: Start from 1st to avoid month-end skips
                                 d.setMonth(d.getMonth() - 1);
@@ -310,6 +328,7 @@ const CalendarScreen = ({ navigation }) => {
                                 <ChevronLeft size={20} color={c.text} />
                             </PressableScale>
                             <PressableScale onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 const d = new Date(currentMonth);
                                 d.setDate(1); // Safety: Start from 1st to avoid month-end skips
                                 d.setMonth(d.getMonth() + 1);
@@ -355,9 +374,9 @@ const CalendarScreen = ({ navigation }) => {
                     />
 
                     <View style={styles.legendContainer}>
-                        <LegendItem color={c.success} label="Present" />
-                        <LegendItem color={c.danger} label="Absent" />
-                        <LegendItem color={c.primary} label="Today" isBorder />
+                        <LegendItem color={c.success} label="Present" textColor={c.subtext} />
+                        <LegendItem color={c.danger} label="Absent" textColor={c.subtext} />
+                        <LegendItem color={c.primary} label="Today" isBorder textColor={c.subtext} />
                     </View>
                 </LinearGradient>
 
@@ -392,6 +411,12 @@ const CalendarScreen = ({ navigation }) => {
                 classes={dayClasses}
                 loading={loadingClasses}
                 onMark={handleMarkAttendance}
+                onRefresh={() => {
+                    // Refresh calendar data and class list after log deletion
+                    const d = new Date(selectedDate);
+                    fetchMonthData(d.getFullYear(), d.getMonth() + 1);
+                    fetchClassesForDate(selectedDate);
+                }}
                 allSubjects={[]} // Will fetch from API inside modal
             />
         </View>
@@ -416,7 +441,7 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     navBtn: {
         padding: 8,
         borderRadius: 12,
-        backgroundColor: c.glassBgEnd,
+        backgroundColor: c.gradients.card[0],
         borderWidth: 1,
         borderColor: c.glassBorder,
         // Increased touch target

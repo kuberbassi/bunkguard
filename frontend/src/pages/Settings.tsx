@@ -8,7 +8,7 @@ import {
 import type { SystemLog } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import Card from '@/components/ui/Card';
+import { useSemester } from '@/contexts/SemesterContext';
 import GlassCard from '@/components/ui/GlassCard'; // Added
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -21,7 +21,7 @@ import { useUnsavedChanges } from '@/hooks/useUnsavedChanges';
 
 interface UserPreferences {
     attendance_threshold: number;
-    min_attendance: number;  // Changed from warning_threshold to match API/Mobile
+    warning_threshold: number;  // Standardized field name
     counting_mode: 'classes' | 'percentage';
 
     accent_color: string;
@@ -45,7 +45,7 @@ const ACCENT_COLORS = [
 // --- Sub-Components ---
 
 const SystemLogsSection: React.FC = () => {
-    const [logs, setLogs] = useState<SystemLog[]>([]);
+    const [groupedLogs, setGroupedLogs] = useState<Record<string, SystemLog[]>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -55,7 +55,19 @@ const SystemLogsSection: React.FC = () => {
     const loadLogs = async () => {
         try {
             const data = await attendanceService.getSystemLogs();
-            setLogs(data);
+
+            // Group by date
+            const grouped = data.reduce((acc: Record<string, SystemLog[]>, log) => {
+                const date = typeof log.timestamp === 'string'
+                    ? new Date(log.timestamp).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                    : new Date((log.timestamp as any).$date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+                if (!acc[date]) acc[date] = [];
+                acc[date].push(log);
+                return acc;
+            }, {});
+
+            setGroupedLogs(grouped);
         } catch (err) {
             console.error(err);
         } finally {
@@ -63,58 +75,87 @@ const SystemLogsSection: React.FC = () => {
         }
     };
 
-    if (loading) return (
-        <Card variant="outlined" className="h-40 flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </Card>
-    );
+    const getLogIcon = (action: string) => {
+        const a = action.toLowerCase();
+        if (a.includes('profile')) return <User size={14} className="text-blue-500" />;
+        if (a.includes('attendance') || a.includes('subject')) return <Activity size={14} className="text-green-500" />;
+        if (a.includes('delete') || a.includes('reset') || a.includes('wipe')) return <Trash2 size={14} className="text-red-500" />;
+        if (a.includes('setting') || a.includes('preference')) return <SettingsIcon size={14} className="text-purple-500" />;
+        if (a.includes('login') || a.includes('auth')) return <Clock size={14} className="text-orange-500" />;
+        return <FileText size={14} className="text-primary" />;
+    };
 
-    return (
-        <GlassCard className="max-h-96 overflow-y-auto pr-2">
-            <div className="space-y-4">
-                {logs.length === 0 ? (
-                    <p className="text-center text-on-surface-variant py-4">No activity recorded yet.</p>
-                ) : (
-                    logs.map((log, index) => (
-                        <div key={`${log._id}-${index}`} className="flex gap-4 items-start pb-4 border-b border-outline-variant/30 last:border-0 last:pb-0">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-                                <Activity size={14} className="text-primary" />
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-sm text-on-surface">{log.action}</h4>
-                                <p className="text-sm text-on-surface-variant">{log.description}</p>
-                                <div className="flex items-center gap-1 mt-1 text-xs text-on-surface-variant/70">
-                                    <Clock size={10} />
-                                    <span>
-                                        {typeof log.timestamp === 'string'
-                                            ? new Date(log.timestamp).toLocaleString()
-                                            : new Date((log.timestamp as any).$date).toLocaleString()
-                                        }
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    ))
-                )}
+    if (loading) return (
+        <GlassCard className="h-64 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-on-surface-variant animate-pulse">Fetching activities...</p>
             </div>
         </GlassCard>
+    );
+
+    const dates = Object.keys(groupedLogs);
+
+    return (
+        <div className="space-y-6">
+            {dates.length === 0 ? (
+                <GlassCard className="p-12 flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-4 opacity-50">
+                        <Activity size={32} className="text-on-surface-variant" />
+                    </div>
+                    <h3 className="text-lg font-medium text-on-surface">No Activity Yet</h3>
+                    <p className="text-sm text-on-surface-variant max-w-xs">Your system actions, profile updates, and vital changes will appear here.</p>
+                </GlassCard>
+            ) : (
+                dates.map(date => (
+                    <div key={date} className="space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant/60 sticky top-0 py-2 bg-surface/80 backdrop-blur-sm z-10 px-2 rounded-lg">
+                            {date}
+                        </h3>
+                        <GlassCard className="divide-y divide-outline-variant/10">
+                            {groupedLogs[date].map((log, index) => (
+                                <div key={`${log._id}-${index}`} className="flex gap-4 items-start p-4 hover:bg-surface-container-low/30 transition-colors group">
+                                    <div className="w-10 h-10 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0 border border-outline-variant/10 group-hover:scale-110 transition-transform">
+                                        {getLogIcon(log.action)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <h4 className="font-bold text-sm text-on-surface truncate">{log.action}</h4>
+                                            <span className="text-[10px] tabular-nums text-on-surface-variant/50">
+                                                {typeof log.timestamp === 'string'
+                                                    ? new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                    : new Date((log.timestamp as any).$date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                }
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-on-surface-variant line-clamp-2 mt-0.5 leading-relaxed">{log.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </GlassCard>
+                    </div>
+                ))
+            )}
+        </div>
     );
 };
 
 // --- Main Settings Component ---
 
 const Settings: React.FC = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, setUser } = useAuth();
     const { theme, toggleTheme, setAccentColor, accentColor } = useTheme(); // Added setAccentColor
+    const { setCurrentSemester } = useSemester(); // Sync semester globally
     const { showToast } = useToast();
 
     // ... (rest of state)
 
     const [activeTab, setActiveTab] = useState<'profile' | 'academics'>('profile');
+    const [imgError, setImgError] = useState(false);
 
     const [preferences, setPreferences] = useState<UserPreferences>({
         attendance_threshold: 75,
-        min_attendance: 76,
+        warning_threshold: 76,
         counting_mode: 'percentage',
 
         accent_color: accentColor || '#EC4899'
@@ -166,6 +207,12 @@ const Settings: React.FC = () => {
                     picture: profileForm.picture || user.picture
                 };
                 authService.storeUser(updatedUser);
+
+                // CRITICAL: Update context immediately so UI reflects changes
+                setUser(updatedUser);
+                
+                // Sync the global semester selector with profile semester
+                setCurrentSemester(profileForm.semester);
             }
 
             // Mark as saved BEFORE forcing any navigation/updates to avoid guard
@@ -187,7 +234,7 @@ const Settings: React.FC = () => {
                 setPreferences(prev => ({
                     ...prev,
                     attendance_threshold: prefs.attendance_threshold ?? prev.attendance_threshold,
-                    min_attendance: prefs.min_attendance ?? prev.min_attendance,
+                    warning_threshold: prefs.warning_threshold ?? prefs.min_attendance ?? prev.warning_threshold,
                     counting_mode: prefs.counting_mode ?? prev.counting_mode,
                     accent_color: prefs.accent_color ?? accentColor // Use context as fallback
                 }));
@@ -279,6 +326,21 @@ const Settings: React.FC = () => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Show warning about data replacement
+        const confirmed = confirm(
+            "⚠️ IMPORT WARNING\n\n" +
+            "Importing data will REPLACE all your current subjects, attendance logs, and settings.\n\n" +
+            "💡 If you want to keep your existing data, export a backup first.\n\n" +
+            "🗑️ For a clean import, consider using 'Delete All Data' before importing.\n\n" +
+            "Do you want to continue?"
+        );
+
+        if (!confirmed) {
+            // Reset the file input
+            e.target.value = '';
+            return;
+        }
+
         try {
             const text = await file.text();
             const data = JSON.parse(text);
@@ -291,8 +353,11 @@ const Settings: React.FC = () => {
     };
 
     const handleDeleteAllData = async () => {
+        // Get current user email for verification
+        const userEmail = user?.email?.toLowerCase() || '';
+        
         // First confirmation
-        if (!confirm('⚠️ WARNING: This will permanently DELETE ALL your attendance data. This action CANNOT be undone. Are you absolutely sure?')) return;
+        if (!confirm(`⚠️ WARNING: This will DELETE ALL your attendance data.\n\n📥 You will be required to download a backup first.\n🔒 Deleting data for: ${userEmail}\n\nAre you sure?`)) return;
 
         // Second confirmation
         if (!confirm('⚠️ FINAL WARNING: All subjects, attendance logs, timetable, semester results, and settings will be deleted. Continue?')) return;
@@ -305,15 +370,36 @@ const Settings: React.FC = () => {
         }
 
         try {
-            const res: any = await attendanceService.deleteAllData();
-            if (res && res.success) {
-                showToast('success', 'All data deleted.');
-                window.location.reload();
+            // 📥 MANDATORY: Force download backup FIRST
+            showToast('info', 'Downloading backup before deletion...');
+            
+            const blob = await attendanceService.exportData();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `acadhub-backup-BEFORE-DELETE-${userEmail.replace('@', '_at_')}-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('success', 'Backup downloaded! Now proceeding with deletion...');
+            
+            // Small delay to ensure download initiated
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // NOW proceed with delete
+            const res: any = await attendanceService.deleteAllData(userEmail);
+            if (res && res.success !== false) {
+                const backupId = res.backup_id || 'N/A';
+                showToast('success', `Data deleted. Server Backup ID: ${backupId} (expires in 30 days)`);
+                setTimeout(() => window.location.reload(), 2000);
             } else {
-                showToast('error', 'Failed to delete data');
+                showToast('error', res?.error || 'Failed to delete data');
             }
-        } catch (error) {
-            showToast('error', 'Failed to delete data');
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.error || error.message || 'Failed to delete data';
+            showToast('error', errorMsg);
         }
     };
 
@@ -356,17 +442,20 @@ const Settings: React.FC = () => {
                             <GlassCard className="p-4 md:p-6">
                                 <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start">
                                     {/* Profile Picture */}
-                                    {profileForm.picture || user?.picture ? (
-                                        <img
-                                            src={profileForm.picture || user?.picture}
-                                            alt={user?.name || 'Profile'}
-                                            className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border-2 border-primary/20"
-                                        />
-                                    ) : (
-                                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary-container text-primary text-2xl md:text-3xl flex items-center justify-center font-bold shrink-0">
-                                            {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                                        </div>
-                                    )}
+                                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden shrink-0">
+                                        {(imgError || (!profileForm.picture && !user?.picture)) ? (
+                                            <div className="w-full h-full bg-primary-container text-primary text-2xl md:text-3xl flex items-center justify-center font-bold">
+                                                {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                                            </div>
+                                        ) : (
+                                            <img
+                                                src={profileForm.picture || user?.picture || ''}
+                                                alt={user?.name || 'Profile'}
+                                                className="w-full h-full object-cover border-2 border-primary/20"
+                                                onError={() => setImgError(true)}
+                                            />
+                                        )}
+                                    </div>
                                     <div className="flex-1 w-full space-y-3 md:space-y-4">
                                         {/* PFP File Upload */}
                                         <div>
@@ -580,8 +669,8 @@ const Settings: React.FC = () => {
                                                     type="number"
                                                     min={preferences.attendance_threshold}
                                                     max="100"
-                                                    value={preferences.min_attendance}
-                                                    onChange={(e) => debouncedSave({ min_attendance: Math.min(100, Math.max(preferences.attendance_threshold, parseInt(e.target.value) || 76)) })}
+                                                    value={preferences.warning_threshold}
+                                                    onChange={(e) => debouncedSave({ warning_threshold: Math.min(100, Math.max(preferences.attendance_threshold, parseInt(e.target.value) || 76)) })}
                                                     onBlur={() => savePreferencesToAPI(preferences)}
                                                     className="w-16 md:w-20 px-2 md:px-3 py-1.5 md:py-2 text-center text-base md:text-lg font-bold rounded-lg bg-surface-container-highest text-orange-500 border-2 border-orange-500/30 focus:border-orange-500 outline-none"
                                                 />

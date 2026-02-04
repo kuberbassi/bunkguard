@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Dimensions, Animated, UIManager, Platform } from 'react-native';
-import { theme } from '../theme';
-import api from '../services/api';
+import { theme, Layout } from '../theme';
+import { attendanceService } from '../services/attendance.service';
 import { useAuth } from '../contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { BarChart2, TrendingDown, Activity, Zap, CheckCircle, AlertTriangle } from 'lucide-react-native';
@@ -49,11 +49,11 @@ const AnalyticsScreen = () => {
     const fetchData = async () => {
         try {
             const [reportRes, weeklyRes] = await Promise.all([
-                api.get(`/api/reports_data?semester=${selectedSemester}`),
-                api.get(`/api/analytics/day_of_week?semester=${selectedSemester}`)
+                attendanceService.getReportsData(selectedSemester),
+                attendanceService.getDayOfWeekAnalytics(selectedSemester)
             ]);
-            setReportData(reportRes.data);
-            setWeeklyRawData(weeklyRes.data);
+            setReportData(reportRes);
+            setWeeklyRawData(weeklyRes);
         } catch (error) {
             console.error("Analytics Fetch Error:", error);
         } finally {
@@ -124,7 +124,16 @@ const AnalyticsScreen = () => {
             <Animated.ScrollView
                 contentContainerStyle={styles.scrollContent}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.primary}
+                        colors={[c.primary]}
+                        progressBackgroundColor={c.surface}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 15}
+                    />
+                }
             >
                 {/* Weekly Chart Card */}
                 <LinearGradient colors={[c.glassBgStart, c.glassBgEnd]} style={styles.card}>

@@ -1,14 +1,71 @@
-from flask import Blueprint, jsonify
+import re
+from flask import Blueprint, jsonify, request
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+from api.utils.response import success_response, error_response
 
 scraper_bp = Blueprint('scraper', __name__)
 
+CATEGORY_MAP = {
+    "Exam": ["exam", "datesheet", "examination", "viva", "theory", "practical"],
+    "Admission": ["admission", "counseling", "seat", "cet", "cutoff"],
+    "Result": ["result", "grade", "marks", "declared"],
+    "Holiday": ["holiday", "closed", "break", "vacation"],
+    "Placement": ["placement", "job", "recruitment", "drive", "interview", "career"],
+    "Fee": ["fee", "payment", "challan", "dues", "scholarship"],
+    "Hostel": ["hostel", "mess", "accommodation"],
+    "Campus Event": ["event", "seminar", "workshop", "festival", "cult", "competition"],
+    "COVID": ["covid", "vaccination", "mask", "pandemic"]
+}
+
+def categorize_notice(title):
+    title_lower = title.lower()
+    for cat, keywords in CATEGORY_MAP.items():
+        if any(kw in title_lower for kw in keywords):
+            return cat
+    return "General"
+
+# Simple in-memory cache
+CACHE_TIMEOUT = 3600  # 1 hour
+_notice_cache = {
+    "data": [],
+    "last_updated": None
+}
+
 @scraper_bp.route('/notices', methods=['GET'])
 def get_notices():
+    global _notice_cache
+    category_filter = request.args.get('category')
+    force_refresh = request.args.get('force') == 'true'
+    
+    now = datetime.now()
+    if force_refresh or not _notice_cache["last_updated"] or (now - _notice_cache["last_updated"]).total_seconds() > CACHE_TIMEOUT:
+        print("Fetching fresh notices via scraper...")
+        try:
+            notices = scrape_ipu_notices()
+            if notices: # Only update cache if successful
+                _notice_cache["data"] = notices
+                _notice_cache["last_updated"] = now
+        except Exception as e:
+             print(f"Scraper update failed: {e}")
+             # Serve stale data if available
+    
+    notices = _notice_cache["data"]
+    
+    if category_filter:
+        notices = [n for n in notices if n.get('category') == category_filter]
+        
+    return success_response(notices)
+
+@scraper_bp.route('/stats', methods=['GET'])
+def get_notice_stats():
     notices = scrape_ipu_notices()
-    return jsonify(notices)
+    stats = {}
+    for n in notices:
+        cat = n.get('category', 'General')
+        stats[cat] = stats.get(cat, 0) + 1
+    return success_response(stats)
 
 def scrape_ipu_notices():
     url = "http://www.ipu.ac.in/notices.php"
@@ -23,24 +80,39 @@ def scrape_ipu_notices():
         soup = BeautifulSoup(response.content, 'html.parser')
         notices = []
         
-        # Try multiple selector strategies
-        # Strategy 1: Find all links in content area
-        links = soup.select("div.content a") or soup.select("table a") or soup.find_all('a', href=True)
+        # Try to find the main notice table first for better accuracy
+        # The IPU site often uses multiple nested tables
+        links = []
         
-        # Filter only PDF/notice links
+        # Priority 1: Specifically targeted areas
+        notice_container = soup.find('div', id='content') or soup.find('div', class_='content')
+        if notice_container:
+            links = notice_container.find_all('a', href=True)
+            
+        # Priority 2: Tables that look like they contain notices (often have many rows)
+        if not links:
+            for table in soup.find_all('table'):
+                row_count = len(table.find_all('tr'))
+                if row_count > 10:
+                    links = table.find_all('a', href=True)
+                    if links: break
+        
+        # Fallback 3: All links (original strategy)
+        if not links:
+            links = soup.find_all('a', href=True)
+        
         notice_count = 0
         for link in links:
-            if notice_count >= 20:
+            if notice_count >= 50: # Increased for better categorization coverage
                 break
                 
             title = link.get_text(strip=True)
             href = link.get('href', '')
             
-            if not href or not title or len(title) < 10:
+            if not href or not title or len(title) < 5:
                 continue
             
-            # Filter for likely notices (PDFs, notice pages)
-            if not any(keyword in href.lower() for keyword in ['pdf', 'notice', 'upload', 'download']):
+            if not any(keyword in href.lower() for keyword in ['pdf', 'notice', 'upload', 'download', '.php']):
                 continue
                 
             if not href.startswith('http'):
@@ -48,34 +120,47 @@ def scrape_ipu_notices():
             
             date_str = datetime.now().strftime("%Y-%m-%d")
             
-            # Try to extract date from surrounding elements
+            # Improved date extraction
             try:
+                # 1. Look in the same table row
                 row = link.find_parent('tr')
                 if row:
                     cols = row.find_all('td')
                     for col in cols:
                         text = col.get_text(strip=True)
-                        # Look for date patterns (DD-MM-YYYY, DD/MM/YYYY, etc.)
-                        if any(sep in text for sep in ['-', '/', '.']):
-                            parts = text.replace('.', '-').replace('/', '-').split('-')
-                            if len(parts) == 3 and all(p.isdigit() for p in parts):
-                                date_str = text
-                                break
+                        # Look for date patterns: DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY
+                        # Or even just numbers with separators
+                        match = re.search(r'(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{2,4})', text)
+                        if match:
+                            date_str = match.group(0)
+                            break
+                
+                # 2. Look in the text itself if not found
+                if date_str == datetime.now().strftime("%Y-%m-%d"):
+                    match = re.search(r'(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{2,4})', title)
+                    if match:
+                        date_str = match.group(0)
+                
+                # 3. Look at preceding/following elements lightly
+                if date_str == datetime.now().strftime("%Y-%m-%d"):
+                    prev_text = link.find_previous(string=True)
+                    if prev_text:
+                        match = re.search(r'(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{2,4})', prev_text)
+                        if match:
+                            date_str = match.group(0)
             except:
                 pass
 
             notices.append({
-                "title": title[:200],  # Limit title length
+                "title": title[:250],
                 "link": href,
-                "date": date_str
+                "date": date_str,
+                "category": categorize_notice(title)
             })
             notice_count += 1
             
-        return notices if notices else [{"title": "No notices found", "link": url, "date": datetime.now().strftime("%Y-%m-%d")}]
+        return notices if notices else []
 
     except Exception as e:
         print(f"Scraper Error: {e}")
-        return [{"title": f"Scraper error: {str(e)}", "link": url, "date": datetime.now().strftime("%Y-%m-%d")}]
-
-if __name__ == "__main__":
-    print(scrape_ipu_notices())
+        return []

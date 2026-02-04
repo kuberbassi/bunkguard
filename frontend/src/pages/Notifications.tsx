@@ -4,7 +4,7 @@ import { Bell, Info, ExternalLink, Calendar, RefreshCw, AlertCircle } from 'luci
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import api from '@/services/api';
+import { attendanceService } from '@/services/attendance.service';
 
 interface Notice {
     title: string;
@@ -28,8 +28,8 @@ const Notifications: React.FC = () => {
             setError(false);
 
             // Fetch only notices
-            const response = await api.get('/api/notices');
-            setNotices(response.data || []);
+            const data = await attendanceService.getNotices();
+            setNotices(data || []);
 
         } catch (error) {
             console.error('Failed to load notices', error);

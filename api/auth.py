@@ -8,6 +8,7 @@ import jwt
 from datetime import datetime, timedelta
 from api.database import db
 import time
+from functools import wraps
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -18,6 +19,29 @@ def login():
 
 # This will be initialized in our main __init__.py
 oauth = OAuth()
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        user_email = session['user'].get('email')
+        user = db.get_collection('users').find_one({"email": user_email})
+        
+        if not user or user.get('role') != 'admin':
+            return jsonify({"error": "Forbidden: Admin access required"}), 403
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 @auth_bp.route('/google', methods=['POST'])
 def google_auth():
@@ -71,15 +95,24 @@ def google_auth():
             return jsonify({"error": "Failed to fetch user info"}), 401
             
         user_info = userinfo_resp.json()
+        email = user_info["email"].lower()  # ✅ Normalized to lowercase
         
         # 3. Fetch existing user to preserve custom PFP
-        existing_user = users_collection.find_one({"email": user_info["email"]})
+        existing_user = users_collection.find_one({"email": email})
         
+        # Hardcoded admin for the developer
+        role = "student"
+        if user_info["email"] == "kuberbassi@gmail.com": # Designated primary admin
+            role = "admin"
+        elif existing_user and "role" in existing_user:
+            role = existing_user["role"]
+
         user_data = {
-            "email": user_info["email"],
+            "email": email,
             "name": user_info.get("name"),
             "google_id": user_info.get("id"),
             "last_login": datetime.utcnow(),
+            "role": role,
             "google_token": access_token if access_token else None,
             "google_refresh_token": refresh_token if refresh_token else None,
             "token_expiry": datetime.utcnow() + timedelta(seconds=expires_in)
@@ -92,15 +125,15 @@ def google_auth():
         else:
             # Keep existing custom picture
             user_data["picture"] = current_pic
-
+ 
         users_collection.update_one(
-            {"email": user_info["email"]},
+            {"email": email},
             {"$set": user_data},
             upsert=True
         )
         
         # Refresh user object after upsert
-        db_user = users_collection.find_one({"email": user_info["email"]})
+        db_user = users_collection.find_one({"email": email})
         
         if not db_user:
             return jsonify({"error": "Failed to retrieve user after registration"}), 500
@@ -135,7 +168,7 @@ def google_auth():
             session_picture = None # Fetch from API instead
             
         session['user'] = {
-            'email': db_user['email'],
+            'email': db_user['email'].lower(),  # ✅ Store lowercased email
             'name': db_user.get('name'),
             'picture': session_picture,
             'google_token': access_token,
@@ -213,7 +246,7 @@ def dev_login():
         if not data:
             return jsonify({"error": "Invalid JSON body"}), 400
             
-        email = data.get('email')
+        email = data.get('email', '').lower()  # ✅ Normalized to lowercase with safety check
         
         if not email:
             return jsonify({"error": "Email required"}), 400

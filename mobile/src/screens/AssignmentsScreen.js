@@ -4,9 +4,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSemester } from '../contexts/SemesterContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from '../components/LinearGradient';
-import { theme } from '../theme';
+import { theme, Layout } from '../theme';
 import { Plus, Minus, CheckCircle, Beaker, FileText, Filter } from 'lucide-react-native';
-import api from '../services/api';
+// import api from '../services/api'; // Removed in favor of attendanceService
+import { attendanceService } from '../services/attendance.service';
+import * as Haptics from 'expo-haptics';
 import AnimatedHeader from '../components/AnimatedHeader';
 
 const AssignmentsScreen = ({ navigation }) => {
@@ -43,9 +45,9 @@ const AssignmentsScreen = ({ navigation }) => {
     const fetchSubjects = async () => {
         try {
             // Fetch subjects for the selected semester
-            const res = await api.get(`/api/dashboard_data?semester=${selectedSemester}`);
-            if (res.data && res.data.subjects) {
-                setSubjects(res.data.subjects);
+            const data = await attendanceService.getDashboardData(selectedSemester);
+            if (data && data.subjects) {
+                setSubjects(data.subjects);
             }
         } catch (e) {
             console.error(e);
@@ -58,13 +60,14 @@ const AssignmentsScreen = ({ navigation }) => {
     };
 
     const onRefresh = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setRefreshing(true);
         fetchSubjects();
     };
 
     const updatePracticals = async (subjectId, updates) => {
         try {
-            await api.put(`/api/subject/${subjectId}/practicals`, updates);
+            await attendanceService.updatePracticals(subjectId, updates);
             // Optimistic Update
             setSubjects(prev => prev.map(s => {
                 if (s._id === subjectId) {
@@ -78,7 +81,7 @@ const AssignmentsScreen = ({ navigation }) => {
 
     const updateAssignments = async (subjectId, updates) => {
         try {
-            await api.put(`/api/subject/${subjectId}/assignments`, updates);
+            await attendanceService.updateAssignments(subjectId, updates);
             setSubjects(prev => prev.map(s => {
                 if (s._id === subjectId) {
                     const current = s.assignments || { total: 4, completed: 0, hardcopy: false };
@@ -101,6 +104,22 @@ const AssignmentsScreen = ({ navigation }) => {
         if (filter === 'All') return true;
         return cats.includes(filter);
     });
+
+    // Default sort: Theory first, then Lab, then uncategorized
+    const sortSubjectsByCategory = (subs) => {
+        return [...subs].sort((a, b) => {
+            const getCategoryPriority = (sub) => {
+                const cats = sub.categories || [];
+                if (cats.includes('Theory')) return 0;
+                if (cats.includes('Lab')) return 1;
+                if (cats.length === 0) return 2;
+                return 1; // Other categories treated as Lab-level priority
+            };
+            return getCategoryPriority(a) - getCategoryPriority(b);
+        });
+    };
+
+    const sortedFilteredSubjects = sortSubjectsByCategory(filteredSubjects);
 
     const renderItem = ({ item }) => {
         const practicals = item.practicals || { total: 10, completed: 0, hardcopy: false };
@@ -157,7 +176,10 @@ const AssignmentsScreen = ({ navigation }) => {
                                 </View>
 
                                 <TouchableOpacity
-                                    onPress={() => updatePracticals(item._id, { hardcopy: !practicals.hardcopy })}
+                                    onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                        updatePracticals(item._id, { hardcopy: !practicals.hardcopy });
+                                    }}
                                     style={styles.toggleBtn}
                                 >
                                     {practicals.hardcopy ? (
@@ -203,7 +225,10 @@ const AssignmentsScreen = ({ navigation }) => {
                                 </View>
 
                                 <TouchableOpacity
-                                    onPress={() => updateAssignments(item._id, { hardcopy: !assignments.hardcopy })}
+                                    onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                        updateAssignments(item._id, { hardcopy: !assignments.hardcopy });
+                                    }}
                                     style={styles.toggleBtn}
                                 >
                                     {assignments.hardcopy ? (
@@ -276,7 +301,7 @@ const AssignmentsScreen = ({ navigation }) => {
                     ].map(tab => (
                         <TouchableOpacity
                             key={tab.id}
-                            onPress={() => setFilter(tab.id)}
+                            onPress={() => { setFilter(tab.id); Haptics.selectionAsync(); }}
                             style={{ borderRadius: 20, overflow: 'hidden' }}
                         >
                             {filter === tab.id ? (
@@ -328,11 +353,20 @@ const AssignmentsScreen = ({ navigation }) => {
 
             <Animated.FlatList
                 contentContainerStyle={{ padding: 20, paddingBottom: 100 + insets.bottom, paddingTop: 140 + insets.top }} // Adjusted padding for new header
-                data={filteredSubjects}
+                data={sortedFilteredSubjects}
                 renderItem={renderItem}
                 keyExtractor={item => item._id}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.text}
+                        colors={[isDark ? theme.palette.purple : theme.light.primary]}
+                        progressBackgroundColor={isDark ? '#121212' : '#FFFFFF'}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 15}
+                    />
+                }
             />
         </View>
     );

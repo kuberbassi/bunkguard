@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, SectionList, Modal, TextInput
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from '../components/LinearGradient';
-import { theme } from '../theme';
+import { theme, Layout } from '../theme';
 import { Plus, X, Globe, Video, Clock, Trash2, Edit2, ExternalLink, Save, CheckCircle2 } from 'lucide-react-native';
-import api from '../services/api';
+import { attendanceService } from '../services/attendance.service';
 import AnimatedHeader from '../components/AnimatedHeader';
 import * as Linking from 'expo-linking';
+import * as Haptics from 'expo-haptics';
 import PressableScale from '../components/PressableScale';
 
 const PLATFORMS = [
@@ -20,7 +21,7 @@ const PLATFORMS = [
 const { height } = Dimensions.get('window');
 
 const CourseManagerScreen = ({ navigation }) => {
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const insets = useSafeAreaInsets();
     const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -28,7 +29,17 @@ const CourseManagerScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [formData, setFormData] = useState({ title: '', platform: 'coursera', url: '', progress: '0', instructor: '', targetCompletionDate: '' });
+    const [formData, setFormData] = useState({
+        title: '',
+        platform: 'coursera',
+        url: '',
+        progress: '0',
+        instructor: '',
+        targetCompletionDate: '',
+        enrolledDate: new Date().toISOString().split('T')[0],
+        notes: '',
+        certificateUrl: ''
+    });
     const [editingItem, setEditingItem] = useState(null);
 
     // Animation Refs
@@ -57,8 +68,9 @@ const CourseManagerScreen = ({ navigation }) => {
         subtext: isDark ? '#9CA3AF' : '#6B7280',
         card: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
         border: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
-        primary: '#0A84FF',
-        accent: '#64D2FF',
+        primary: themeColors.primary, // Dynamic accent
+        accent: themeColors.primary,
+        gradients: themeColors.gradients, // Dynamic gradients
         glassBgStart: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)',
         glassBgEnd: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
         glassBorder: 'rgba(255,255,255,0.15)',
@@ -71,8 +83,8 @@ const CourseManagerScreen = ({ navigation }) => {
 
     const fetchCourses = async () => {
         try {
-            const res = await api.get('/api/courses/manual');
-            setCourses(res.data);
+            const data = await attendanceService.getManualCourses();
+            setCourses(data);
         } catch (e) { console.error(e); }
         finally {
             setLoading(false);
@@ -81,6 +93,7 @@ const CourseManagerScreen = ({ navigation }) => {
     };
 
     const onRefresh = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setRefreshing(true);
         fetchCourses();
     };
@@ -95,9 +108,11 @@ const CourseManagerScreen = ({ navigation }) => {
 
             if (editingItem) {
                 const id = editingItem._id?.$oid || editingItem._id;
-                await api.put(`/api/courses/manual/${id}`, payload);
+                await attendanceService.updateManualCourse(id, payload);
             } else {
-                await api.post('/api/courses/manual', payload);
+                await attendanceService.saveManualCourses(payload); // Note: Service expects list or single? 
+                // Service `saveManualCourses` calls `POST /api/v1/academic/courses/manual`.
+                // Backend `handle_manual_courses` handles list or single dict.
             }
             setModalVisible(false);
             fetchCourses();
@@ -105,13 +120,19 @@ const CourseManagerScreen = ({ navigation }) => {
     };
 
     const handleDelete = async (id) => {
-        Alert.alert("Delete", "Are you sure?", [
-            { text: "Cancel" },
+        Alert.alert("Delete", "Are you sure you want to delete this course?", [
+            { text: "Cancel", style: 'cancel' },
             {
                 text: "Delete", style: 'destructive', onPress: async () => {
-                    const oid = id.$oid || id;
-                    await api.delete(`/api/courses/manual/${oid}`);
-                    fetchCourses();
+                    try {
+                        const oid = id.$oid || id;
+                        await attendanceService.deleteManualCourse(oid);
+                        setModalVisible(false);
+                        setEditingItem(null);
+                        fetchCourses();
+                    } catch (e) {
+                        Alert.alert("Error", "Failed to delete course");
+                    }
                 }
             }
         ]);
@@ -128,7 +149,17 @@ const CourseManagerScreen = ({ navigation }) => {
         return (
             <PressableScale
                 activeOpacity={0.9}
-                onPress={() => { setEditingItem(item); setFormData({ ...item, progress: String(item.progress || 0) }); setModalVisible(true); }}
+                onPress={() => {
+                    setEditingItem(item);
+                    setFormData({
+                        ...item,
+                        progress: String(item.progress || 0),
+                        enrolledDate: item.enrolledDate || new Date().toISOString().split('T')[0],
+                        notes: item.notes || '',
+                        certificateUrl: item.certificateUrl || ''
+                    });
+                    setModalVisible(true);
+                }}
                 style={[
                     styles.card,
                     {
@@ -238,10 +269,11 @@ const CourseManagerScreen = ({ navigation }) => {
             flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, marginRight: 8
         },
         modalRefined: {
-            borderRadius: 32, maxHeight: height * 0.8, width: '100%',
+            borderRadius: 32, maxHeight: height * 0.9, width: '100%',
             overflow: 'hidden', borderWidth: 1, borderColor: c.glassBorder,
-            flexShrink: 1
+            flexShrink: 1, paddingTop: 12
         },
+        dragHandle: { width: 40, height: 4, backgroundColor: c.glassBorder, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
         sectionHeader: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -286,15 +318,15 @@ const CourseManagerScreen = ({ navigation }) => {
                 sections={[
                     {
                         title: 'In Progress',
-                        data: courses.filter(c => c.progress > 0 && c.progress < 100)
+                        data: (Array.isArray(courses) ? courses : []).filter(c => c.progress > 0 && c.progress < 100)
                     },
                     {
                         title: 'Not Started',
-                        data: courses.filter(c => c.progress === 0)
+                        data: (Array.isArray(courses) ? courses : []).filter(c => c.progress === 0)
                     },
                     {
                         title: 'Completed',
-                        data: courses.filter(c => c.progress >= 100)
+                        data: (Array.isArray(courses) ? courses : []).filter(c => c.progress >= 100)
                     }
                 ].filter(section => section.data.length > 0)}
                 renderItem={renderItem}
@@ -319,12 +351,38 @@ const CourseManagerScreen = ({ navigation }) => {
                 )}
                 keyExtractor={item => item._id?.$oid || item._id || Math.random().toString()}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.primary}
+                        colors={[c.primary]}
+                        progressBackgroundColor={isDark ? '#000000' : '#FFFFFF'}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 15}
+                    />
+                }
                 stickySectionHeadersEnabled={false}
             />
 
-            <PressableScale style={[styles.fab, { overflow: 'hidden' }]} onPress={() => { setFormData({ platform: 'coursera' }); setEditingItem(null); setModalVisible(true); }}>
-                <LinearGradient colors={theme.gradients.primary} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <PressableScale
+                style={[styles.fab, { overflow: 'hidden' }]}
+                onPress={() => {
+                    setFormData({
+                        title: '',
+                        platform: 'coursera',
+                        url: '',
+                        progress: '0',
+                        instructor: '',
+                        targetCompletionDate: '',
+                        enrolledDate: new Date().toISOString().split('T')[0],
+                        notes: '',
+                        certificateUrl: ''
+                    });
+                    setEditingItem(null);
+                    setModalVisible(true);
+                }}
+            >
+                <LinearGradient colors={c.gradients.primary} style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                     <Plus color="#FFF" size={28} />
                 </LinearGradient>
             </PressableScale>
@@ -335,6 +393,7 @@ const CourseManagerScreen = ({ navigation }) => {
                     <TouchableOpacity noTexture style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} activeOpacity={1} />
                     <Animated.View style={[styles.modalRefined, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                         <LinearGradient colors={[isDark ? '#000000' : '#FFFFFF', isDark ? '#000000' : '#F2F2F7']} style={{ flexShrink: 1 }}>
+                            <View style={styles.dragHandle} />
                             <View style={{ padding: 24, paddingBottom: 0, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
                                 <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>{editingItem ? 'Edit' : 'Add'} Course</Text>
                                 <PressableScale onPress={() => setModalVisible(false)}><X color={c.text} /></PressableScale>
@@ -379,8 +438,21 @@ const CourseManagerScreen = ({ navigation }) => {
                                     <Text style={styles.label}>URL (Optional)</Text>
                                     <TextInput style={styles.input} value={formData.url} onChangeText={t => setFormData({ ...formData, url: t })} placeholder="https://..." placeholderTextColor={c.subtext} />
 
+                                    <Text style={styles.label}>CERTIFICATE URL (Optional)</Text>
+                                    <TextInput style={styles.input} value={formData.certificateUrl} onChangeText={t => setFormData({ ...formData, certificateUrl: t })} placeholder="Link to certificate" placeholderTextColor={c.subtext} />
+
+                                    <Text style={styles.label}>NOTES</Text>
+                                    <TextInput
+                                        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                                        value={formData.notes}
+                                        onChangeText={t => setFormData({ ...formData, notes: t })}
+                                        placeholder="Add notes..."
+                                        placeholderTextColor={c.subtext}
+                                        multiline
+                                    />
+
                                     {editingItem && (
-                                        <PressableScale onPress={() => { handleDelete(editingItem._id); setModalVisible(false); }} style={{ padding: 16, alignItems: 'center', marginTop: 8 }}>
+                                        <PressableScale onPress={() => handleDelete(editingItem._id)} style={{ padding: 16, alignItems: 'center', marginTop: 8 }}>
                                             <Text style={{ color: '#FF3B30', fontWeight: '600' }}>Delete Course</Text>
                                         </PressableScale>
                                     )}
@@ -391,7 +463,7 @@ const CourseManagerScreen = ({ navigation }) => {
                             {/* Sticky Footer */}
                             <View style={{ padding: 24, borderTopWidth: 1, borderTopColor: c.border }}>
                                 <PressableScale onPress={handleSave} style={{ borderRadius: 16, overflow: 'hidden' }}>
-                                    <LinearGradient colors={theme.gradients.primary} style={{ padding: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                                    <LinearGradient colors={c.gradients.primary} style={{ padding: 18, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                                         <Save size={20} color="#FFF" />
                                         <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>SAVE COURSE</Text>
                                     </LinearGradient>

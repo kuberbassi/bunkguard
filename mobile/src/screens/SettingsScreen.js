@@ -15,40 +15,42 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from '../components/LinearGradient';
 import { attendanceService } from '../services';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import AnimatedHeader from '../components/AnimatedHeader';
 import { useUpdate } from '../contexts/UpdateContext';
 import { useSemester } from '../contexts/SemesterContext';
+import UserAvatar from '../components/UserAvatar';
+import * as Haptics from 'expo-haptics';
+
 
 const SettingsScreen = ({ navigation }) => {
+    // ... partial replacement around specific areas ...
+    // Wait, I should do a full replace or targeted chunks.
+    // Targeted chunks are safer for large files.
+
+    // 1. Update imports and hook usage
     const { user, logout, updateUser } = useAuth();
-    const { isDark, toggleTheme } = useTheme();
+    const { isDark, toggleTheme, colors: themeColors, updateAccent, accentColor } = useTheme();
     const { selectedSemester, updateSemester } = useSemester();
     const insets = useSafeAreaInsets();
 
-    // AMOLED Theme
     const c = {
+        ...themeColors,
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
-        bgGradMid: isDark ? '#000000' : '#F7F8FA',
+        bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-
         glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
         glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
         glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-
         text: isDark ? '#FFFFFF' : '#1E1F22',
         subtext: isDark ? '#BABBBD' : '#6B7280',
-
-        primary: theme.palette.purple,
-        accent: theme.palette.magenta,
+        primary: themeColors.primary, // FIX: Use dynamic theme color
         danger: theme.palette.red,
-        surface: isDark ? '#121212' : '#FFFFFF',
-
+        success: theme.palette.green,
         inputBg: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
     };
-
 
     const styles = getStyles(c, isDark, insets);
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -59,18 +61,17 @@ const SettingsScreen = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
     const [profileData, setProfileData] = useState({
         name: user?.name || '',
-        course: user?.course || '',
-        semester: user?.semester ? String(user.semester) : '1',
+        course: user?.course || user?.branch || '',
+        semester: user?.semester ? String(user.semester) : '',
         batch: user?.batch || '',
         email: user?.email || '',
-        college: user?.college || 'HMRITM',
+        college: user?.college || '',
     });
 
-    const [minAttendance, setMinAttendance] = useState('75');
-    const [warningThreshold, setWarningThreshold] = useState('76');
-    const [attendanceThreshold, setAttendanceThreshold] = useState('75');
+    const [minAttendance, setMinAttendance] = useState(user?.attendance_threshold ? String(user.attendance_threshold) : '75');
+    const [warningThreshold, setWarningThreshold] = useState(user?.warning_threshold ? String(user.warning_threshold) : '76');
+    const [attendanceThreshold, setAttendanceThreshold] = useState('75'); // Legacy state, can be merged
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-    const [accentColor, setAccentColor] = useState(c.primary);
     const [showHowToUse, setShowHowToUse] = useState(false);
 
     const { updateStatus, latestRelease, downloadProgress, checkUpdate, downloadAndInstallUpdate, currentVersion } = useUpdate();
@@ -81,16 +82,15 @@ const SettingsScreen = ({ navigation }) => {
                 ...prev,
                 name: user.name || prev.name,
                 email: user.email || prev.email,
-                course: user.course || prev.course,
+                course: user.course || user.branch || prev.course,
                 semester: user.semester ? String(user.semester) : prev.semester,
                 batch: user.batch || prev.batch,
                 college: user.college || prev.college
             }));
 
-            // Should fetch preferences here if available in user object or separate call
-            // user object from context might not have preferences directly unless updated
-            // For now assuming defaults or state is managed
-            // Ideally: api.get('/api/preferences').then(...)
+            // Sync preferences from user context
+            if (user.attendance_threshold) setMinAttendance(String(user.attendance_threshold));
+            if (user.warning_threshold) setWarningThreshold(String(user.warning_threshold));
         }
     }, [user]);
 
@@ -102,24 +102,45 @@ const SettingsScreen = ({ navigation }) => {
 
             // 1. Load user profile (name, email, course, batch, college, etc)
             const profileResponse = await api.get('/api/profile');
-            if (profileResponse.data) {
+            // API wraps response in { success: true, data: {...} }
+            if (profileResponse.data?.success && profileResponse.data?.data) {
+                const data = profileResponse.data.data;
+                console.log('📥 Profile loaded:', { email: data.email, semester: data.semester, attendance_threshold: data.attendance_threshold });
+                
                 setProfileData(prev => ({
                     ...prev,
-                    name: profileResponse.data.name || prev.name,
-                    email: profileResponse.data.email || prev.email,
-                    course: profileResponse.data.course || prev.course,
-                    batch: profileResponse.data.batch || prev.batch,
-                    college: profileResponse.data.college || prev.college,
-                    semester: profileResponse.data.semester ? String(profileResponse.data.semester) : prev.semester,
+                    name: data.name || prev.name,
+                    email: data.email || prev.email,
+                    course: data.course || data.branch || prev.course,
+                    batch: data.batch || prev.batch,
+                    college: data.college || prev.college,
+                    semester: data.semester ? String(data.semester) : prev.semester,
                 }));
 
-                // Set attendance thresholds
-                if (profileResponse.data.attendance_threshold) {
-                    setAttendanceThreshold(String(profileResponse.data.attendance_threshold));
-                    setMinAttendance(String(profileResponse.data.attendance_threshold));
+                // Set attendance thresholds from profile
+                if (data.attendance_threshold) {
+                    setMinAttendance(String(data.attendance_threshold));
+                    console.log('✅ Min attendance set to:', data.attendance_threshold);
                 }
-                if (profileResponse.data.warning_threshold) {
-                    setWarningThreshold(String(profileResponse.data.warning_threshold));
+                if (data.warning_threshold) {
+                    setWarningThreshold(String(data.warning_threshold));
+                    console.log('✅ Warning threshold set to:', data.warning_threshold);
+                }
+
+                // 2. Also load preferences endpoint for additional settings
+                try {
+                    const prefsResponse = await attendanceService.getPreferences();
+                    if (prefsResponse) {
+                        console.log('📥 Preferences loaded:', prefsResponse);
+                        if (prefsResponse.attendance_threshold) {
+                            setMinAttendance(String(prefsResponse.attendance_threshold));
+                        }
+                        if (prefsResponse.warning_threshold) {
+                            setWarningThreshold(String(prefsResponse.warning_threshold));
+                        }
+                    }
+                } catch (prefError) {
+                    console.log('⚠️ Preferences endpoint not available, using profile data');
                 }
 
                 // CRITICAL FIX: Update global context with fetched picture so Avatar refreshes
@@ -127,22 +148,25 @@ const SettingsScreen = ({ navigation }) => {
                 // ALSO Update other fields (Name, Course, etc.) so Header syncs with Desktop changes
                 const updatedUser = {
                     ...user,
-                    name: profileResponse.data.name || user.name,
-                    email: profileResponse.data.email || user.email,
-                    course: profileResponse.data.course || user.course,
-                    batch: profileResponse.data.batch || user.batch,
-                    college: profileResponse.data.college || user.college,
-                    semester: profileResponse.data.semester,
+                    name: data.name || user.name,
+                    email: data.email || user.email,
+                    course: data.course || data.branch || user.course,
+                    branch: data.branch || data.course || user.branch,
+                    batch: data.batch || user.batch,
+                    college: data.college || user.college,
+                    semester: data.semester,
+                    attendance_threshold: data.attendance_threshold,
+                    warning_threshold: data.warning_threshold,
                 };
 
-                if (profileResponse.data.picture) {
-                    updatedUser.picture = profileResponse.data.picture;
+                if (data.picture) {
+                    updatedUser.picture = data.picture;
                 }
 
                 updateUser(updatedUser);
             }
         } catch (e) {
-            // console.log("Error loading profile", e);
+            console.error('❌ Error loading profile/preferences:', e.message);
         }
     };
 
@@ -151,13 +175,6 @@ const SettingsScreen = ({ navigation }) => {
     const onRefresh = async () => {
         setRefreshing(true);
         try {
-            // Load latest profile on mount (for PFP)
-            if (user?.email) {
-                const profileRes = await attendanceService.getPreferences();
-                if (profileRes?.profile_pic_url) {
-                    setProfilePic(profileRes.profile_pic_url);
-                }
-            }
             await loadPrefs(); // Reload all preferences
         } catch (e) {
             console.error(e);
@@ -170,21 +187,31 @@ const SettingsScreen = ({ navigation }) => {
     const handleSaveProfile = async () => {
         setLoading(true);
         try {
-            // Import api for direct endpoint access
-            const api = require('../services/api').default;
-
             const updatedSemester = Number(profileData.semester);
+            const attThreshold = parseInt(minAttendance);
+            const warnThreshold = parseInt(warningThreshold);
 
-            // Send to backend using /api/update_profile endpoint (POST method, not PUT)
-            await api.post('/api/update_profile', {
-                name: profileData.name,
-                course: profileData.course,
-                batch: profileData.batch,
-                college: profileData.college,
-                semester: updatedSemester,
-                attendance_threshold: parseInt(minAttendance),
-                warning_threshold: parseInt(warningThreshold),
-            });
+            const dataToSave = {
+                ...profileData,
+                attendance_threshold: attThreshold,
+                warning_threshold: warnThreshold
+            };
+
+            console.log('💾 Saving profile and preferences:', { attendance_threshold: attThreshold, warning_threshold: warnThreshold });
+
+            // Update Backend via Service
+            await attendanceService.updateProfile(dataToSave);
+            
+            // Also update preferences endpoint for proper sync
+            try {
+                await attendanceService.updatePreferences({
+                    attendance_threshold: attThreshold,
+                    warning_threshold: warnThreshold
+                });
+                console.log('✅ Preferences saved successfully');
+            } catch (prefError) {
+                console.log('⚠️ Preferences update skipped (endpoint may not exist)');
+            }
 
             // Update global semester context
             await updateSemester(updatedSemester);
@@ -192,21 +219,24 @@ const SettingsScreen = ({ navigation }) => {
             // Update Local Context
             await updateUser({
                 ...user,
-                ...profileData,
+                ...dataToSave,
                 semester: updatedSemester
             });
 
             setEditingProfile(false);
-            Alert.alert("Success", "Profile and settings updated.");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert("✓ Success", "Profile and settings updated successfully.");
         } catch (error) {
-            console.error(error);
-            Alert.alert("Error", "Failed to update profile.");
+            console.error('❌ Save profile error:', error.message);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert("Error", "Failed to update profile. Please try again.");
         } finally {
             setLoading(false);
         }
     };
     const handleExportData = async () => {
         try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             setLoading(true);
             const data = await attendanceService.exportData();
             const dataToSave = JSON.stringify(data, null, 2);
@@ -218,6 +248,7 @@ const SettingsScreen = ({ navigation }) => {
                 Alert.alert("Saved", "Backup saved to " + fileUri);
             }
         } catch (error) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Alert.alert("Error", "Export failed.");
         } finally {
             setLoading(false);
@@ -225,36 +256,41 @@ const SettingsScreen = ({ navigation }) => {
     };
 
     const handleImportData = async () => {
-        try {
-            const result = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
-            if (result.canceled) return;
-            setLoading(true);
-            const fileUri = result.assets[0].uri;
-            const fileContent = await FileSystem.readAsStringAsync(fileUri);
-            await attendanceService.importData(JSON.parse(fileContent));
-            Alert.alert("Success", "Data imported. Please refresh.");
-        } catch (error) {
-            Alert.alert("Error", "Import failed.");
-        } finally {
-            setLoading(false);
-        }
+        // Show warning about existing data BEFORE file picker
+        Alert.alert(
+            "⚠️ Import Warning",
+            "Importing data will REPLACE all your current subjects, attendance logs, and settings.\n\n💡 If you want to keep your existing data, export a backup first.\n\n🗑️ For a clean import, consider using 'Delete All Data' before importing.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "I Understand, Continue",
+                    onPress: async () => {
+                        try {
+                            const result = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
+                            if (result.canceled) return;
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            setLoading(true);
+                            const fileUri = result.assets[0].uri;
+                            const fileContent = await FileSystem.readAsStringAsync(fileUri);
+                            await attendanceService.importData(JSON.parse(fileContent));
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            Alert.alert("✓ Success", "Data imported successfully! Refreshing...", [{
+                                text: "OK",
+                                onPress: () => loadPrefs() // Refresh to show new data
+                            }]);
+                        } catch (error) {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                            Alert.alert("Error", "Import failed. Please check the file format.");
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
-    const handleDeleteAllData = () => {
-        Alert.alert("Delete All Data", "Are you sure? This cannot be undone.", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete Forever", style: "destructive", onPress: async () => {
-                    try {
-                        setLoading(true);
-                        await attendanceService.deleteAllData();
-                        Alert.alert("Deleted", "All data wiped.");
-                    } catch (e) { Alert.alert("Error", "Failed to delete."); }
-                    finally { setLoading(false); }
-                }
-            }
-        ]);
-    };
+    // handleDeleteAllData removed
 
     const handleUploadPFP = async () => {
         try {
@@ -266,6 +302,8 @@ const SettingsScreen = ({ navigation }) => {
             if (result.canceled) return;
 
             setLoading(true);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            
             const file = result.assets[0];
 
             // Create form data matching backend expectations
@@ -277,37 +315,38 @@ const SettingsScreen = ({ navigation }) => {
             });
 
             // Use direct Axios call with explicit multipart header
-            // Sometimes React Native needs this explicit header to trigger multipart handling correctly
             const api = require('../services/api').default;
-            const { API_URL } = require('../services/api');
-
-
 
             const response = await api.post('/api/upload_pfp', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-                // Add transformRequest to prevent axios from stringifying FormData
                 transformRequest: (data, headers) => {
                     return formData;
                 }
             });
 
-
-
             if (response?.data?.url) {
-                // setProfilePic is not defined, relying on updateUser context
+                // Update user context with new picture
                 await updateUser({ ...user, picture: response.data.url });
-                Alert.alert("Success", "Profile picture updated.");
+                
+                // Also refresh profile data to ensure sync
+                await loadPrefs();
+                
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("✓ Success", "Profile picture updated successfully!");
+            } else {
+                throw new Error("No URL returned from server");
             }
         } catch (error) {
             console.error("Upload Error:", error);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             if (error.response) {
                 console.error("Server Response:", error.response.status, error.response.data);
                 Alert.alert("Upload Failed", `Server error: ${error.response.status}`);
             } else if (error.request) {
                 console.error("No Response:", error.request);
-                Alert.alert("Network Error", "Could not reach server. Check IP in services/api.js");
+                Alert.alert("Network Error", "Could not reach server.");
             } else {
                 Alert.alert("Error", error.message);
             }
@@ -365,7 +404,16 @@ const SettingsScreen = ({ navigation }) => {
                 )}
                 scrollEventThrottle={16}
                 showsVerticalScrollIndicator={false}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.text}
+                        colors={[isDark ? theme.palette.purple : theme.light.primary]}
+                        progressBackgroundColor={isDark ? '#121212' : '#FFFFFF'}
+                        progressViewOffset={AppLayout.header.minHeight + insets.top + 15}
+                    />
+                }
             >
                 <View style={{ height: 140 }} />
 
@@ -373,15 +421,7 @@ const SettingsScreen = ({ navigation }) => {
                 {/* NEW HERO PROFILE CARD */}
                 <View style={{ alignItems: 'center', marginBottom: 24 }}>
                     <PressableScale onPress={handleUploadPFP} style={{ position: 'relative', marginBottom: 16 }}>
-                        <View style={styles.heroAvatar}>
-                            {user?.picture ? (
-                                <Image source={{ uri: user.picture }} style={{ width: '100%', height: '100%' }} />
-                            ) : (
-                                <LinearGradient colors={[c.primary, c.accent || c.primary]} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                    <User size={40} color="#FFF" />
-                                </LinearGradient>
-                            )}
-                        </View>
+                        <UserAvatar user={user} size={100} colors={c} style={styles.heroAvatar} />
                         <View style={styles.editBadge}>
                             <Camera size={14} color="#FFF" />
                         </View>
@@ -477,10 +517,40 @@ const SettingsScreen = ({ navigation }) => {
                             <Text style={styles.settingLabel}>Dark Mode</Text>
                             <Text style={styles.settingSub}>{isDark ? 'Dark Theme' : 'Light Theme'}</Text>
                         </View>
-                        <Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: '#767577', true: c.primary }} thumbColor={'#f4f3f4'} />
+                        <Switch
+                            value={isDark}
+                            onValueChange={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                toggleTheme();
+                            }}
+                            trackColor={{ false: '#767577', true: c.primary }}
+                            thumbColor={'#f4f3f4'}
+                        />
                     </View>
 
-                    {/* Removed Notification Toggle as requested */}
+                    <View style={[styles.row, { flexDirection: 'column', alignItems: 'flex-start', gap: 12, marginBottom: 16 }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View style={[styles.iconBox, { backgroundColor: c.text + '10' }]}>
+                                <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: accentColor }} />
+                            </View>
+                            <Text style={styles.settingLabel}>Accent Color</Text>
+                        </View>
+
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingLeft: 44 }}>
+                            {[theme.palette.purple, theme.palette.blue, theme.palette.magenta, theme.palette.orange, theme.palette.green, theme.palette.red].map((color, i) => (
+                                <PressableScale
+                                    key={i}
+                                    onPress={() => {
+                                        if (accentColor !== color) Haptics.selectionAsync();
+                                        updateAccent(color);
+                                    }}
+                                    style={{ padding: 4, borderWidth: 2, borderColor: accentColor === color ? c.text : 'transparent', borderRadius: 20 }}
+                                >
+                                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color }} />
+                                </PressableScale>
+                            ))}
+                        </ScrollView>
+                    </View>
 
                     <View style={[styles.row, { marginTop: 16 }]}>
                         <View style={{ flex: 1, marginRight: 10 }}>
@@ -505,8 +575,9 @@ const SettingsScreen = ({ navigation }) => {
 
                     <PressableScale
                         onPress={handleSaveProfile}
+                        hapticStyle="medium"
                     >
-                        <LinearGradient colors={theme.gradients.primary} style={styles.updateBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                        <LinearGradient colors={c.gradients.primary} style={styles.updateBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                             <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 16 }}>Update Preferences</Text>
                         </LinearGradient>
                     </PressableScale>
@@ -589,6 +660,33 @@ const SettingsScreen = ({ navigation }) => {
                         </View>
                         <ChevronRight size={18} color={c.subtext} />
                     </PressableScale>
+
+                    <View style={styles.divider} />
+
+                    <Text style={[styles.sectionTitle, { marginTop: 16, marginBottom: 12, fontSize: 14 }]}>Data Management</Text>
+
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <PressableScale style={[styles.actionRow, { flex: 1, backgroundColor: c.glassBgStart, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder }]} onPress={handleExportData}>
+                            <View style={[styles.iconBox, { backgroundColor: c.primary + '10' }]}>
+                                <Download size={18} color={c.primary} />
+                            </View>
+                            <View style={{ marginLeft: 10 }}>
+                                <Text style={{ fontWeight: '700', color: c.text }}>Export</Text>
+                                <Text style={{ fontSize: 10, color: c.subtext }}>Backup JSON</Text>
+                            </View>
+                        </PressableScale>
+
+                        <PressableScale style={[styles.actionRow, { flex: 1, backgroundColor: c.glassBgStart, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder }]} onPress={handleImportData}>
+                            <View style={[styles.iconBox, { backgroundColor: c.success + '10' }]}>
+                                <Upload size={18} color={c.success} />
+                            </View>
+                            <View style={{ marginLeft: 10 }}>
+                                <Text style={{ fontWeight: '700', color: c.text }}>Import</Text>
+                                <Text style={{ fontSize: 10, color: c.subtext }}>Restore Data</Text>
+                            </View>
+                        </PressableScale>
+                    </View>
+
                 </LinearGradient>
 
 
@@ -600,7 +698,7 @@ const SettingsScreen = ({ navigation }) => {
                         <Text style={[styles.sectionTitle, { color: c.danger, marginBottom: 0, fontSize: 11, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase' }]}>Danger Zone</Text>
                     </View>
 
-                    <PressableScale style={styles.dangerBtn} onPress={logout}>
+                    <PressableScale style={styles.dangerBtn} onPress={logout} hapticStyle="heavy">
                         <View style={[styles.dangerIconBox, { backgroundColor: c.danger + '15', marginRight: 16 }]}>
                             <LogOut size={18} color={c.danger} strokeWidth={2.5} />
                         </View>
@@ -611,26 +709,143 @@ const SettingsScreen = ({ navigation }) => {
                         <ChevronRight size={18} color={c.danger + '60'} />
                     </PressableScale>
 
-                    <PressableScale style={[styles.dangerBtn, { marginTop: 12 }]} onPress={handleDeleteAllData}>
+                    <PressableScale
+                        style={[styles.dangerBtn, { marginTop: 12, borderColor: c.danger + '40', backgroundColor: c.danger + '05' }]}
+                        onPress={() => {
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                            
+                            // Get current user email for safety verification
+                            const userEmail = user?.email?.toLowerCase() || '';
+                            
+                            Alert.alert(
+                                "⚠️ DELETE ALL DATA",
+                                `This will permanently delete all your subjects, attendance logs, timetable, and settings.\n\n📥 A backup file will be saved to your device first.\n\n🔒 Deleting data for: ${userEmail}\n\nAre you absolutely sure?`,
+                                [
+                                    { 
+                                        text: "Cancel", 
+                                        style: "cancel",
+                                        onPress: () => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        }
+                                    },
+                                    {
+                                        text: "Delete Everything",
+                                        style: "destructive",
+                                        onPress: async () => {
+                                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                                            setLoading(true);
+                                            try {
+                                                console.log('🗑️ Attempting to delete all data for:', userEmail);
+                                                
+                                                // 📥 MANDATORY: Force download backup FIRST
+                                                Alert.alert("Downloading Backup", "Please wait while we save your backup file...");
+                                                
+                                                try {
+                                                    // Export data first
+                                                    const exportData = await attendanceService.exportData();
+                                                    const filename = `acadhub-backup-BEFORE-DELETE-${userEmail.replace('@', '_at_').replace(/\./g, '_')}-${new Date().toISOString().split('T')[0]}.json`;
+                                                    const fileUri = FileSystem.documentDirectory + filename;
+                                                    
+                                                    // Write to file
+                                                    await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(exportData, null, 2));
+                                                    
+                                                    // Force share/save the backup
+                                                    if (await Sharing.isAvailableAsync()) {
+                                                        await Sharing.shareAsync(fileUri, {
+                                                            mimeType: 'application/json',
+                                                            dialogTitle: 'Save your backup before deletion',
+                                                            UTI: 'public.json'
+                                                        });
+                                                    } else {
+                                                        Alert.alert("Backup Saved", `Backup saved to: ${fileUri}`);
+                                                    }
+                                                    
+                                                    console.log('✅ Backup downloaded successfully');
+                                                } catch (backupError) {
+                                                    console.error('❌ Backup failed:', backupError);
+                                                    Alert.alert(
+                                                        "Backup Failed",
+                                                        "Could not create backup. Deletion cancelled for your safety.\n\nPlease try exporting your data manually first.",
+                                                        [{ text: "OK" }]
+                                                    );
+                                                    setLoading(false);
+                                                    return; // ABORT deletion if backup fails
+                                                }
+                                                
+                                                // Final confirmation after backup
+                                                Alert.alert(
+                                                    "Backup Complete",
+                                                    "Your backup has been saved. Do you want to proceed with deletion?",
+                                                    [
+                                                        { text: "Cancel", style: "cancel", onPress: () => setLoading(false) },
+                                                        {
+                                                            text: "Yes, Delete Now",
+                                                            style: "destructive",
+                                                            onPress: async () => {
+                                                                try {
+                                                                    const result = await attendanceService.deleteAllData(userEmail);
+                                                                    console.log('✅ Delete result:', result);
+                                                                    
+                                                                    const backupId = result?.backup_id || 'N/A';
+                                                                    
+                                                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                                                    Alert.alert(
+                                                                        "✓ Reset Complete", 
+                                                                        `All data has been deleted.\n\n📦 Server Backup ID: ${backupId}\n📥 Local backup saved to device.\n\nYou will now be logged out.`,
+                                                                        [{
+                                                                            text: "OK",
+                                                                            onPress: async () => {
+                                                                                await logout();
+                                                                            }
+                                                                        }]
+                                                                    );
+                                                                } catch (deleteError) {
+                                                                    console.error('❌ Delete failed:', deleteError);
+                                                                    let errorMsg = deleteError.message || 'Unknown error';
+                                                                    if (deleteError.response?.data?.error) {
+                                                                        errorMsg = deleteError.response.data.error;
+                                                                    }
+                                                                    Alert.alert("Error", `Failed to delete data.\n\n${errorMsg}`);
+                                                                } finally {
+                                                                    setLoading(false);
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                );
+                                            } catch (e) {
+                                                console.error('❌ Process failed:', e.message, e.response?.data);
+                                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                                                Alert.alert("Error", `Operation failed: ${e.message}`);
+                                                setLoading(false);
+                                            }
+                                        }
+                                    }
+                                ]
+                            );
+                        }}
+                        hapticStyle="error"
+                    >
                         <View style={[styles.dangerIconBox, { backgroundColor: c.danger + '15', marginRight: 16 }]}>
                             <Trash2 size={18} color={c.danger} strokeWidth={2.5} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.dangerText}>Reset All Data</Text>
-                            <Text style={styles.dangerSubtext}>Permanently delete all records</Text>
+                            <Text style={styles.dangerText}>Delete All Data</Text>
+                            <Text style={styles.dangerSubtext}>Permanently remove account & data</Text>
                         </View>
-                        <ChevronRight size={18} color={c.danger + '60'} />
+                        <AlertTriangle size={18} color={c.danger} />
                     </PressableScale>
 
-                    {
-                        loading && (
-                            <View style={styles.loader}>
-                                <ActivityIndicator size="large" color={c.primary} />
-                            </View>
-                        )
-                    }
+                    {/* Reset Data Removed */}
                 </View>
             </Animated.ScrollView>
+
+            {/* FULL-SCREEN LOADING OVERLAY - Positioned at root level to cover entire screen */}
+            {loading && (
+                <View style={styles.loader}>
+                    <ActivityIndicator size="large" color={c.primary} />
+                </View>
+            )}
 
             {/* How to Use Modal */}
             <Modal
@@ -639,64 +854,89 @@ const SettingsScreen = ({ navigation }) => {
                 transparent={false}
                 onRequestClose={() => setShowHowToUse(false)}
             >
-                <View style={{ flex: 1, backgroundColor: isDark ? '#0D0D0D' : '#FFFFFF' }}>
+                <View style={{ flex: 1, backgroundColor: isDark ? '#0D0D0D' : '#F7F8FA' }}>
                     {/* Header with safe area */}
                     <LinearGradient
-                        colors={theme.gradients.primary}
-                        style={{ paddingTop: insets.top, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                        colors={c.gradients.primary}
+                        style={{ paddingTop: insets.top, paddingBottom: 20, paddingHorizontal: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 }}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                     >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                            <HelpCircle size={22} color="#FFF" />
-                            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '700' }}>📱 How to Use AcadHub</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <View style={{ gap: 4 }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '900', letterSpacing: 1.5, textTransform: 'uppercase' }}>User Guide</Text>
+                                <Text style={{ color: '#FFF', fontSize: 24, fontWeight: '900', letterSpacing: -0.5 }}>Master AcadHub</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setShowHowToUse(false)} style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 20 }}>
+                                <X size={20} color="#FFF" />
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity onPress={() => setShowHowToUse(false)} style={{ padding: 4 }}>
-                            <X size={24} color="#FFF" />
-                        </TouchableOpacity>
                     </LinearGradient>
 
                     {/* Content */}
-                    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, gap: 20 }} showsVerticalScrollIndicator={false}>
-                        {/* HELPER FOR STEPS */}
+                    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, gap: 16 }} showsVerticalScrollIndicator={false}>
+
+                        <View style={{ marginBottom: 8 }}>
+                            <Text style={{ color: c.text, fontSize: 18, fontWeight: '800', marginBottom: 4 }}>🚀 Get Started Fast</Text>
+                            <Text style={{ color: c.subtext, fontSize: 13, fontWeight: '500' }}>Follow these simple steps to track like a pro.</Text>
+                        </View>
+
                         {[
-                            { t: '📅 1. Pick Your Semester', d: 'On Dashboard, tap the semester dropdown at the top and select your current semester. This keeps all your data organized.' },
-                            { t: '📚 2. Add Your Subjects', d: 'Tap the ➕ button on Dashboard → Enter subject name → Select categories (Theory, Lab, Tutorial) → Save. Repeat for all courses!' },
-                            { t: '⏰ 3. Setup Class Timings', d: 'Go to Calendar tab → Tap "Manage" → Tap ⚙️ gear icon → Add each period with time and type (Class/Break) → Save & Close.' },
-                            { t: '🗓️ 4. Build Your Timetable', d: 'Still in Manage, tap ➕ icon → Pick day & time slot → Choose subject (or Free/Break) → Fill all slots for your week!' },
-                            { t: '✋ 5. Mark Attendance', d: 'Tap any date in Calendar → Toggle ✅ Present or ❌ Absent for each class. For substitution, medical leave, or notes, tap the ⋯ three-dot menu.' },
-                            { t: '🔔 6. IPU Notices', d: 'Tap the 🔔 bell icon on Dashboard to view official IPU notices. They auto-update regularly!' },
-                            { t: '🏆 7. Track Results', d: 'Academy → Results → Tap ✏️ pencil → Add subject with credits, type (Theory/Practical/NUES) and marks (Internal + External) → Save with 💾.' },
-                            { t: '📋 8. Assignments & Practicals', d: 'Academy → Assignments → Use ➕/➖ buttons to track count. Customize counts in Subject Settings on Dashboard. Mark "Submitted" when done!' },
-                            { t: '🎨 9. Customize', d: 'Settings → Switch 🌙/☀️ theme → Set minimum attendance % warning → Edit profile → Tap "Update Preferences" to save.' }
+                            { color: '#AC67FF', t: '1. Select Your Semester', d: 'Tap the semester badge on the Dashboard. This segments your subjects and attendance by term.', icon: '📅' },
+                            { color: '#FF318C', t: '2. Add All Subjects', d: 'Use the ➕ button on Dashboard. Add separate entries for Theory, Lab, and Tutorials to stay precise.', icon: '📚' },
+                            { color: '#FF8F3F', t: '3. Configure Timetable', d: 'Go to Schedule tab → Manage → ⚙️. Define your period timings (e.g., 9:00 - 10:00). Then map subjects to slots.', icon: '⏰' },
+                            { color: '#34C759', t: '4. Precision Marking', d: 'Mark Present ✅ or Absent ❌ from Calendar. Long press for bulk marking or substitution details.', icon: '✋' },
+                            { color: '#1E90FF', t: '5. Dynamic Results', d: 'Academy → Results. Add internals & externals. We calculate your SGPA/CGPA automatically based on credits.', icon: '🏆' },
+                            { color: '#FFD700', t: '6. Official IPU Notices', d: 'Check the 🔔 bell icon for official scraper updates. Swipe down to refresh the feed instantly.', icon: '🔔' }
                         ].map((step, i) => (
-                            <LinearGradient
+                            <View
                                 key={i}
-                                colors={[c.glassBgStart, c.glassBgEnd]}
-                                style={{ gap: 8, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: c.glassBorder }}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                                style={{
+                                    flexDirection: 'row',
+                                    backgroundColor: c.glassBgStart,
+                                    borderRadius: 24,
+                                    padding: 20,
+                                    borderWidth: 1,
+                                    borderColor: c.glassBorder,
+                                    alignItems: 'center',
+                                    gap: 16
+                                }}
                             >
-                                <Text style={{ color: c.primary, fontSize: 16, fontWeight: '800' }}>{step.t}</Text>
-                                <Text style={{ color: c.text, fontSize: 14, lineHeight: 22, fontWeight: '500' }}>{step.d}</Text>
-                            </LinearGradient>
+                                <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: step.color + '15', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ fontSize: 24 }}>{step.icon}</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: step.color, fontSize: 15, fontWeight: '800', marginBottom: 4 }}>{step.t}</Text>
+                                    <Text style={{ color: c.text, fontSize: 13, lineHeight: 18, fontWeight: '500', opacity: 0.9 }}>{step.d}</Text>
+                                </View>
+                            </View>
                         ))}
 
-                        {/* Extras */}
                         <LinearGradient
-                            colors={[theme.palette.purple + '15', theme.palette.purple + '05']}
-                            style={{ gap: 8, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: theme.palette.purple + '30' }}
-                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                            colors={isDark ? ['#1E1F22', '#121212'] : ['#F0F0F0', '#E5E5E5']}
+                            style={{ padding: 20, borderRadius: 24, marginTop: 10, borderWidth: 1, borderColor: c.glassBorder }}
                         >
-                            <Text style={{ color: c.primary, fontSize: 16, fontWeight: '800' }}>💡 Quick Tips</Text>
-                            <Text style={{ color: c.text, fontSize: 14, lineHeight: 22, fontWeight: '500' }}>
-                                • 📊 Analytics auto-updates with your data{'\n'}
-                                • 🎓 Skills & Courses - just add and use{'\n'}
-                                • 📜 View System Logs in Settings{'\n'}
-                                • 🔄 Check for app updates in Settings
-                            </Text>
+                            <Text style={{ color: c.primary, fontSize: 15, fontWeight: '800', marginBottom: 12 }}>💡 Pro Tips</Text>
+                            <View style={{ gap: 10 }}>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.text, marginTop: 6 }} />
+                                    <Text style={{ color: c.text, fontSize: 13, flex: 1 }}>Enable notifications to get a summary of your classes every morning.</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.text, marginTop: 6 }} />
+                                    <Text style={{ color: c.text, fontSize: 13, flex: 1 }}>Sync your data periodically by performing an export from Settings.</Text>
+                                </View>
+                            </View>
                         </LinearGradient>
 
-                        <View style={{ height: 20 }} />
+                        <PressableScale
+                            onPress={() => setShowHowToUse(false)}
+                            style={{ backgroundColor: c.primary, padding: 18, borderRadius: 24, alignItems: 'center', marginTop: 10 }}
+                        >
+                            <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>Got it, thanks!</Text>
+                        </PressableScale>
+
+                        <View style={{ height: 40 }} />
                     </ScrollView>
                 </View>
             </Modal>

@@ -17,6 +17,8 @@ export const theme = {
   },
   light: {
     primary: '#3574F0',
+    text: '#1E1F22',
+    subtext: '#6E6E73',
     onPrimary: '#FFFFFF',
     primaryContainer: '#DFE1E5',
     onPrimaryContainer: '#1E1F22',
@@ -45,9 +47,35 @@ export const theme = {
     surfaceContainerHigh: '#EBECF0',
     surfaceContainerHighest: '#DFE1E5',
     surfaceDim: '#DCDCDC',
+    heroCardBg: '#3574F0',
+    heroText: '#FFFFFF',
+    riskBadgeBg: '#F9FAFB',
+    riskBadgeText: '#E06260',
+    safeBadgeBg: '#F9FAFB',
+    safeBadgeText: '#59A275',
+    cardShadow: 'rgba(0,0,0,0.05)',
+    inputBg: 'rgba(0,0,0,0.04)',
+    glassBorder: 'rgba(0,0,0,0.08)',
+    danger: '#E06260',
+    accent: '#3574F0',
+    gradients: {
+      primary: ['#3574F0', '#007FFF'],
+      vibrant: ['#3574F0', '#FF318C', '#FF8F3F'],
+      poppy: ['#FF318C', '#FF8F3F', '#FFEF5A'],
+      royal: ['#3574F0', '#AC67FF'],
+      ocean: ['#007FFF', '#2E9DFF'],
+      success: ['#59A275', '#76B78F'],
+      orange: ['#FF8F3F', '#FFB870'],
+      danger: ['#E06260', '#EB794E'],
+      accent: ['#3574F0', '#FF318C'],
+      glass: ['rgba(255,255,255,1)', 'rgba(240,240,240,1)'],
+      card: ['#FFFFFF', '#F7F8FA'],
+    }
   },
   dark: {
     primary: '#AC67FF',
+    text: '#DFE1E5',
+    subtext: '#9FA1A8',
     onPrimary: '#FFFFFF',
     primaryContainer: '#121212',
     onPrimaryContainer: '#DFE1E5',
@@ -83,6 +111,24 @@ export const theme = {
     riskBadgeText: '#E06260',
     safeBadgeBg: '#2B2D30',
     safeBadgeText: '#59A275',
+    cardShadow: 'rgba(0,0,0,0.5)',
+    inputBg: 'rgba(255,255,255,0.06)',
+    glassBorder: 'rgba(255,255,255,0.12)',
+    danger: '#E06260',
+    accent: '#AC67FF',
+    gradients: {
+      primary: ['#AC67FF', '#FF318C'], // Purple to Magenta
+      vibrant: ['#AC67FF', '#FF318C', '#FF8F3F'],
+      poppy: ['#FF318C', '#FF8F3F', '#FFEF5A'],
+      royal: ['#AC67FF', '#007FFF'],
+      ocean: ['#007FFF', '#2E9DFF'],
+      success: ['#59A275', '#76B78F'],
+      orange: ['#FF8F3F', '#FFB870'],
+      danger: ['#E06260', '#EB794E'],
+      accent: ['#AC67FF', '#FF318C'],
+      glass: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)'],
+      card: ['#1E1F22', '#121212'],
+    }
   },
   gradients: {
     primary: ['#AC67FF', '#FF318C'], // Purple to Magenta
@@ -93,6 +139,7 @@ export const theme = {
     success: ['#59A275', '#76B78F'],
     orange: ['#FF8F3F', '#FFB870'],  // Orange gradient - was missing!
     danger: ['#E06260', '#EB794E'],
+    accent: ['#AC67FF', '#FF318C'], // Matches primary/purple theme
     glass: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)'],
     glassLight: ['rgba(255,255,255,0.92)', 'rgba(255,255,255,0.75)'],
     cardDark: ['#1E1F22', '#121212'],

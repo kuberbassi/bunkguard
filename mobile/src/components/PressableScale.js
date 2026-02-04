@@ -1,10 +1,25 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, StyleSheet } from 'react-native';
 
+import * as Haptics from 'expo-haptics';
+
 const PressableScale = ({ children, onPress, style, scaleTo = 0.95, friction = 8, tension = 45, activeOpacity = 0.9, ...props }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
     const handlePressIn = () => {
+        // Dynamic Haptics
+        if (props.hapticStyle === 'medium') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } else if (props.hapticStyle === 'heavy') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        } else if (props.hapticStyle === 'success') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else if (props.hapticStyle === 'error') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        } else if (props.hapticStyle !== 'none') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+
         Animated.spring(scaleAnim, {
             toValue: scaleTo,
             friction,

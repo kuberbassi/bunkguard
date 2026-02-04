@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, RefreshControl } from 'react-native';
 import { theme, Layout } from '../theme';
 import { useSemester } from '../contexts/SemesterContext';
@@ -12,29 +12,12 @@ import AnimatedHeader from '../components/AnimatedHeader';
 import PressableScale from '../components/PressableScale';
 
 const SubjectsScreen = ({ navigation }) => {
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const insets = useSafeAreaInsets();
     const { selectedSemester } = useSemester();
 
-    // AMOLED Theme
-    const c = {
-        bgGradStart: isDark ? '#000000' : '#FFFFFF',
-        bgGradMid: isDark ? '#000000' : '#F8F9FA',
-        bgGradEnd: isDark ? '#000000' : '#FFFFFF',
-
-        glassBgStart: isDark ? 'rgba(30,31,34,0.95)' : 'rgba(255,255,255,0.95)',
-        glassBgEnd: isDark ? 'rgba(30,31,34,0.85)' : 'rgba(255,255,255,0.85)',
-        glassBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-
-        text: isDark ? '#FFFFFF' : '#1E1F22',
-        subtext: isDark ? '#BABBBD' : '#6B7280',
-
-        primary: theme.palette.purple,
-        success: theme.palette.green,
-        danger: theme.palette.red,
-        warning: theme.palette.orange,
-        surface: isDark ? '#121212' : '#FFFFFF',
-    };
+    // Use dynamic colors from ThemeContext (includes accent-based gradients)
+    const c = themeColors;
 
     const styles = getStyles(c, isDark, insets);
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -140,7 +123,16 @@ const SubjectsScreen = ({ navigation }) => {
                 keyExtractor={(item, index) => index.toString()}
                 contentContainerStyle={styles.listContent}
                 onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor={c.primary}
+                        colors={[c.primary]}
+                        progressBackgroundColor={isDark ? '#000000' : '#FFFFFF'}
+                        progressViewOffset={Layout.header.minHeight + insets.top + 15}
+                    />
+                }
                 ListEmptyComponent={
                     !loading && <View style={styles.emptyContainer}>
                         <Book size={48} color={c.subtext} style={{ opacity: 0.5 }} />
@@ -167,17 +159,22 @@ const getStyles = (c, isDark, insets) => StyleSheet.create({
     listContent: {
         paddingHorizontal: 16,
         paddingTop: Layout.header.maxHeight + (insets?.top || 20) + 12,
-        paddingBottom: 40 + insets.bottom
+        paddingBottom: 40 + insets.bottom,
+        flexDirection: Dimensions.get('window').width > 600 ? 'row' : 'column',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between'
     },
     cardWrapper: {
         marginBottom: 16,
+        width: Dimensions.get('window').width > 600 ? '48%' : '100%',
     },
     card: {
         padding: 18,
         borderRadius: 24,
         borderWidth: 1,
         borderColor: c.glassBorder,
-        backgroundColor: c.surface
+        backgroundColor: c.surface,
+        minHeight: 180
     },
     cardHeader: {
         flexDirection: 'row',

@@ -202,6 +202,13 @@ const AppRoutes: React.FC = () => {
 
 // Main App Component
 import { useAutoUpdate } from './hooks/useAutoUpdate';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+
+// Keyboard shortcuts wrapper - must be inside BrowserRouter
+const KeyboardShortcutsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  useKeyboardShortcuts();
+  return <>{children}</>;
+};
 
 const AppContent: React.FC = () => {
   useAutoUpdate(); // Automatically check for updates and reload if needed
@@ -224,7 +231,9 @@ const App: React.FC = () => {
               <SemesterProvider>
                 <ToastProvider>
                   <ErrorBoundary>
-                    <AppContent />
+                    <KeyboardShortcutsProvider>
+                      <AppContent />
+                    </KeyboardShortcutsProvider>
                   </ErrorBoundary>
                 </ToastProvider>
               </SemesterProvider>

@@ -84,6 +84,22 @@ const Practicals: React.FC = () => {
         return cats.includes(selectedCategory);
     });
 
+    // Default sort: Theory first, then Lab, then uncategorized
+    const sortSubjectsByCategory = (subs: Subject[]) => {
+        return [...subs].sort((a, b) => {
+            const getCategoryPriority = (sub: Subject) => {
+                const cats = sub.categories || [];
+                if (cats.includes('Theory')) return 0;
+                if (cats.includes('Lab')) return 1;
+                if (cats.length === 0) return 2;
+                return 1; // Other categories treated as Lab-level priority
+            };
+            return getCategoryPriority(a) - getCategoryPriority(b);
+        });
+    };
+
+    const sortedFilteredSubjects = sortSubjectsByCategory(filteredSubjects);
+
     const categories = ['All', 'Theory', 'Practical', 'Assignment', 'Project'];
 
     const handleAssignmentUpdate = async (id: string | any, updates: { total?: number; completed?: number; hardcopy?: boolean }) => {
@@ -151,13 +167,21 @@ const Practicals: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 <AnimatePresence mode="popLayout">
-                    {filteredSubjects.map((subject, index) => {
+                    {sortedFilteredSubjects.map((subject, index) => {
                         const cats = subject.categories || (subject.category ? [subject.category] : ['Theory']);
                         const hasPracticals = cats.includes('Practical');
                         const hasAssignments = cats.includes('Assignment');
 
-                        const practicals = subject.practicals || { total: 10, completed: 0, hardcopy: false };
-                        const assignments = subject.assignments || { total: 4, completed: 0, hardcopy: false };
+                        const practicals = {
+                            total: subject.practicals?.total ?? 10,
+                            completed: subject.practicals?.completed ?? 0,
+                            hardcopy: subject.practicals?.hardcopy ?? false
+                        };
+                        const assignments = {
+                            total: subject.assignments?.total ?? 4,
+                            completed: subject.assignments?.completed ?? 0,
+                            hardcopy: subject.assignments?.hardcopy ?? false
+                        };
 
                         // Calculate combined progress only for active tracks
                         let totalItems = 0;

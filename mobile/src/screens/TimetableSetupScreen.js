@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as Haptics from 'expo-haptics';
 import { View, Text, StyleSheet, SafeAreaView, Platform, StatusBar, TouchableOpacity, FlatList, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Animated, KeyboardAvoidingView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,12 +15,13 @@ import { attendanceService } from '../services';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const TimetableSetupScreen = ({ navigation }) => {
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const { selectedSemester } = useSemester();
     const insets = useSafeAreaInsets();
 
-    // AMOLED Theme
+    // Merge dynamic theme colors with local overrides
     const c = {
+        ...themeColors,
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
@@ -28,7 +30,7 @@ const TimetableSetupScreen = ({ navigation }) => {
         glassBorder: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
         text: isDark ? '#FFFFFF' : '#000000',
         subtext: isDark ? '#9CA3AF' : '#6B7280',
-        primary: '#0A84FF',
+        primary: themeColors.primary, // Use dynamic accent
         danger: '#FF3B30',
         surface: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
         modalBg: isDark ? '#000000' : '#FFFFFF',
@@ -147,23 +149,26 @@ const TimetableSetupScreen = ({ navigation }) => {
     };
 
     const handleAddPeriod = () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         const nextIdx = tempPeriods.length + 1;
         setTempPeriods([...tempPeriods, {
             id: `p-${Date.now()}`,
-            name: nextIdx.toString(),
+            name: '', // Empty name by default to avoid redundancy
             startTime: '09:00 AM',
             endTime: '10:00 AM',
-            type: 'class' // Lowercase for sync compatibility
+            type: 'class'
         }]);
     };
 
     const handleDeletePeriod = (index) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const updated = [...tempPeriods];
         updated.splice(index, 1);
         setTempPeriods(updated);
     };
 
     const togglePeriodType = (index) => {
+        Haptics.selectionAsync();
         const updated = [...tempPeriods];
         // Toggle between 'class' and 'break' (lowercase)
         updated[index].type = updated[index].type === 'break' ? 'class' : 'break';
@@ -182,6 +187,7 @@ const TimetableSetupScreen = ({ navigation }) => {
     });
 
     const handleSaveStructure = () => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         saveStructureMutation.mutate(tempPeriods);
     };
 
@@ -190,7 +196,7 @@ const TimetableSetupScreen = ({ navigation }) => {
         mutationFn: async (slotData) => {
             // If editing, delete the old slot first
             if (editingSlot && (editingSlot.id || editingSlot._id)) {
-                await api.delete(`/api/timetable/slot/${editingSlot.id || editingSlot._id}?semester=${selectedSemester}`);
+                await attendanceService.deleteTimetableSlot(editingSlot.id || editingSlot._id, selectedSemester);
             }
             return attendanceService.addTimetableSlot(slotData);
         },
@@ -207,7 +213,11 @@ const TimetableSetupScreen = ({ navigation }) => {
     });
 
     const handleAddSlot = (quickData = null) => {
-        const slotData = quickData || newSlot;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // Check if quickData is an event object (has nativeEvent)
+        const isEvent = quickData && (quickData.nativeEvent || quickData._dispatchInstances);
+        const slotData = (quickData && !isEvent) ? quickData : newSlot;
 
         if (!slotData.subject_id && !['Break', 'Free', 'Custom'].includes(slotData.type)) {
             return Alert.alert("Missing Fields", "Please select a subject.");
@@ -226,17 +236,42 @@ const TimetableSetupScreen = ({ navigation }) => {
     };
 
     const deleteSlotMutation = useMutation({
-        mutationFn: (slotId) => api.delete(`/api/timetable/slot/${slotId}?semester=${selectedSemester}`),
+        mutationFn: (slotId) => attendanceService.deleteTimetableSlot(slotId, selectedSemester),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['timetable', selectedSemester] });
         }
     });
 
     const handleDeleteSlot = (slotId) => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert("Delete Class", "Remove this class from the schedule?", [
             { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: () => deleteSlotMutation.mutate(slotId) }
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                    deleteSlotMutation.mutate(slotId);
+                }
+            }
         ]);
+    };
+
+    const formatTimeDisplay = (timeStr) => {
+        if (!timeStr) return { time: '--:--', period: '' };
+        const lower = timeStr.toLowerCase().trim();
+        let period = '';
+        let time = lower;
+
+        if (lower.includes('am')) {
+            period = 'AM';
+            time = lower.replace('am', '').trim();
+        } else if (lower.includes('pm')) {
+            period = 'PM';
+            time = lower.replace('pm', '').trim();
+        }
+
+        return { time, period };
     };
 
     const renderSlotItem = ({ item, index }) => {
@@ -246,14 +281,17 @@ const TimetableSetupScreen = ({ navigation }) => {
             displayTime = `${periods[index].startTime} - ${periods[index].endTime}`;
         }
 
-        let startTime = '09:00';
-        let endTime = '10:00';
+        let startTime = '09:00 AM';
+        let endTime = '10:00 AM';
         if (displayTime && displayTime.includes('-')) {
             [startTime, endTime] = displayTime.split('-').map(s => s.trim());
         } else if (item.startTime && item.endTime) {
             startTime = item.startTime;
             endTime = item.endTime;
         }
+
+        const start = formatTimeDisplay(startTime);
+        const end = formatTimeDisplay(endTime);
 
         // Break/Free Logic
         let displaySubject = 'Unknown Subject';
@@ -279,7 +317,11 @@ const TimetableSetupScreen = ({ navigation }) => {
         } else {
             let subjectName = item.name || item.subject_name;
             if (!subjectName && item.subject_id) {
-                const foundSub = subjects.find(s => s._id === item.subject_id || s.id === item.subject_id);
+                const normalizedItemId = safeId(item.subject_id);
+                const foundSub = (Array.isArray(subjects) ? subjects : []).find(s => {
+                    const sId = safeId(s._id || s.id);
+                    return sId === normalizedItemId;
+                });
                 if (foundSub) subjectName = foundSub.name;
             }
             if (subjectName) displaySubject = subjectName;
@@ -325,10 +367,16 @@ const TimetableSetupScreen = ({ navigation }) => {
 
         return (
             <View style={styles.timelineRow}>
-                {/* Left: Time */}
+                {/* Left: Time (Optimized) */}
                 <View style={styles.timelineLeft}>
-                    <Text style={styles.timeStart}>{startTime}</Text>
-                    <Text style={styles.timeEnd}>{endTime}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'flex-end', width: '100%' }}>
+                        <Text style={styles.timeStartMain}>{start.time}</Text>
+                        <Text style={styles.timeStartPeriod}>{start.period}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'flex-end', width: '100%', marginTop: -2 }}>
+                        <Text style={styles.timeEndMain}>{end.time}</Text>
+                        <Text style={styles.timeEndPeriod}>{end.period}</Text>
+                    </View>
                 </View>
 
                 {/* Middle: Line & Dot */}
@@ -451,8 +499,10 @@ const TimetableSetupScreen = ({ navigation }) => {
                     }
                     onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                     onRefresh={fetchData} refreshing={false}
-                    progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                    progressViewOffset={Layout.header.maxHeight + insets.top}
                     tintColor={c.primary}
+                    colors={[c.primary]}
+                    progressBackgroundColor={c.modalBg}
                 />
             )}
 
@@ -483,7 +533,10 @@ const TimetableSetupScreen = ({ navigation }) => {
                             <TouchableOpacity
                                 key={day}
                                 style={[styles.dayTab, selectedDay === day && styles.activeDayTab]}
-                                onPress={() => setSelectedDay(day)}
+                                onPress={() => {
+                                    Haptics.selectionAsync();
+                                    setSelectedDay(day);
+                                }}
                             >
                                 <Text style={[styles.dayText, selectedDay === day && styles.activeDayText]}>
                                     {day.substring(0, 3)}
@@ -502,12 +555,14 @@ const TimetableSetupScreen = ({ navigation }) => {
                     onPress={() => setStructureModalVisible(false)}
                 >
                     <Pressable style={styles.centeredModal} onPress={(e) => e.stopPropagation()}>
-                        <View
-                            style={[styles.modalContentCentered, { backgroundColor: c.modalBg }]}
-                        >
+                        <View style={[styles.modalContentCentered, { backgroundColor: c.modalBg }]}>
+                            <View style={styles.dragHandle} />
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 24 }}>
                                 <Text style={styles.modalTitle}>Edit Grid Structure</Text>
-                                <TouchableOpacity onPress={() => setStructureModalVisible(false)}>
+                                <TouchableOpacity onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setStructureModalVisible(false);
+                                }}>
                                     <View style={{ padding: 8, backgroundColor: c.surface, borderRadius: 12 }}>
                                         <Text style={{ color: c.subtext, fontWeight: '700' }}>Close</Text>
                                     </View>
@@ -535,7 +590,17 @@ const TimetableSetupScreen = ({ navigation }) => {
                                                     <Text style={{ fontWeight: '800', color: c.text, fontSize: 12 }}>{index + 1}</Text>
                                                 </View>
                                                 <View style={styles.structInput}>
-                                                    <Text style={{ color: c.text, fontWeight: '700', fontSize: 14 }}>{p.name || (index + 1).toString()}</Text>
+                                                    <TextInput
+                                                        style={{ color: c.text, fontWeight: '700', fontSize: 14, padding: 0 }}
+                                                        value={p.name}
+                                                        placeholder={`Period ${index + 1}`}
+                                                        placeholderTextColor={c.subtext}
+                                                        onChangeText={(text) => {
+                                                            const updated = [...tempPeriods];
+                                                            updated[index].name = text;
+                                                            setTempPeriods(updated);
+                                                        }}
+                                                    />
                                                 </View>
                                             </View>
                                             <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -561,7 +626,10 @@ const TimetableSetupScreen = ({ navigation }) => {
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 36 }}>
                                             <TouchableOpacity
                                                 style={styles.timePill}
-                                                onPress={() => openTimePicker('struct_start', index)}
+                                                onPress={() => {
+                                                    Haptics.selectionAsync();
+                                                    openTimePicker('struct_start', index);
+                                                }}
                                                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                             >
                                                 <Clock size={11} color={c.subtext} />
@@ -570,7 +638,10 @@ const TimetableSetupScreen = ({ navigation }) => {
                                             <Text style={{ color: c.subtext, fontWeight: '600', fontSize: 12 }}>—</Text>
                                             <TouchableOpacity
                                                 style={styles.timePill}
-                                                onPress={() => openTimePicker('struct_end', index)}
+                                                onPress={() => {
+                                                    Haptics.selectionAsync();
+                                                    openTimePicker('struct_end', index);
+                                                }}
                                                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                             >
                                                 <Clock size={11} color={c.subtext} />
@@ -581,14 +652,13 @@ const TimetableSetupScreen = ({ navigation }) => {
                                 ))}
                             </ScrollView>
 
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity
-                                    style={[styles.saveBtn, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.primary, paddingVertical: 14, paddingHorizontal: 18 }]}
-                                    onPress={handleAddPeriod}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                >
-                                    <Plus size={16} color={c.primary} />
-                                    <Text style={{ color: c.primary, fontWeight: '700', marginLeft: 4, fontSize: 13 }}>Add Period</Text>
+                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16, paddingHorizontal: 24, paddingBottom: 24 }}>
+                                <TouchableOpacity onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    handleAddPeriod();
+                                }} style={[styles.saveBtn, { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: c.primary, paddingVertical: 14, paddingHorizontal: 18, flex: 1 }]}>
+                                    <Plus size={18} color={c.primary} />
+                                    <Text style={{ color: c.primary, fontWeight: '700', marginLeft: 6, fontSize: 14 }}>Add Period</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.saveBtn, { paddingVertical: 14, paddingHorizontal: 18, flex: 1.5, borderRadius: 16, overflow: 'hidden' }]}
@@ -597,7 +667,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 >
                                     <LinearGradient
-                                        colors={theme.gradients.primary}
+                                        colors={c.gradients.primary}
                                         style={{ ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' }}
                                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                     >
@@ -621,9 +691,8 @@ const TimetableSetupScreen = ({ navigation }) => {
                         onPress={() => { setModalVisible(false); setEditingSlot(null); }}
                     >
                         <Pressable style={styles.centeredModal} onPress={(e) => e.stopPropagation()}>
-                            <View
-                                style={[styles.modalContentCentered, { backgroundColor: c.modalBg }]}
-                            >
+                            <View style={[styles.modalContentCentered, { backgroundColor: c.modalBg }]}>
+                                <View style={styles.dragHandle} />
 
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, paddingHorizontal: 24 }}>
                                     <Text style={{ fontSize: 24, fontWeight: '800', color: c.text, flex: 1, letterSpacing: -0.5 }}>
@@ -726,7 +795,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                                             <Text style={styles.label}>Assign Subject</Text>
                                             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                                                 <View style={styles.subGrid}>
-                                                    {subjects.map((sub, mapIdx) => {
+                                                    {Array.isArray(subjects) ? subjects.map((sub, mapIdx) => {
                                                         const subId = safeId(sub._id || sub.id);
                                                         const isSelected = safeId(newSlot.subject_id) === subId;
 
@@ -740,7 +809,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                                                                 <Text style={styles.subLabel}>{sub.professor || 'No Prof'}</Text>
                                                             </TouchableOpacity>
                                                         );
-                                                    })}
+                                                    }) : null}
                                                 </View>
                                             </ScrollView>
                                         </View>
@@ -751,9 +820,9 @@ const TimetableSetupScreen = ({ navigation }) => {
                                     <TouchableOpacity style={styles.cancelBtn} onPress={() => { setModalVisible(false); setEditingSlot(null); }}>
                                         <Text style={styles.cancelText}>Cancel</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={handleAddSlot} disabled={addingSlot} style={{ flex: 2, borderRadius: 16, overflow: 'hidden' }}>
+                                    <TouchableOpacity onPress={() => handleAddSlot()} disabled={addingSlot} style={{ flex: 2, borderRadius: 16, overflow: 'hidden' }}>
                                         <LinearGradient
-                                            colors={theme.gradients.primary}
+                                            colors={c.gradients.primary}
                                             style={[styles.saveBtn, { height: '100%' }]}
                                             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                         >
@@ -804,7 +873,7 @@ const TimetableSetupScreen = ({ navigation }) => {
                         <View style={{ borderRadius: 14, overflow: 'hidden', marginTop: 10 }}>
                             <Pressable onPress={handleTimeConfirm}>
                                 <LinearGradient
-                                    colors={theme.gradients.primary}
+                                    colors={c.gradients.primary}
                                     style={styles.confirmBtn}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
@@ -844,23 +913,17 @@ const getStyles = (c, isDark) => StyleSheet.create({
         height: 70, // Fixed height for alignment
     },
     timelineLeft: {
-        width: 50,
+        width: 60,
         alignItems: 'flex-end',
-        paddingRight: 12,
-        paddingTop: 8,
+        paddingRight: 10,
+        paddingTop: 4
     },
-    timeStart: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: c.text,
-        letterSpacing: -0.2,
-    },
-    timeEnd: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: c.subtext,
-        marginTop: 2,
-    },
+    // Optimized Time Typography
+    timeStartMain: { fontSize: 15, fontWeight: '700', color: c.text },
+    timeStartPeriod: { fontSize: 10, fontWeight: '600', color: c.subtext, marginLeft: 2, marginBottom: 2 },
+
+    timeEndMain: { fontSize: 12, fontWeight: '600', color: c.subtext },
+    timeEndPeriod: { fontSize: 9, fontWeight: '500', color: c.subtext, marginLeft: 2 },
     timelineLineContainer: {
         width: 20,
         alignItems: 'center',
@@ -934,8 +997,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
     actions: { flexDirection: 'row', alignItems: 'center' },
     iconBtn: { padding: 8, marginLeft: 4 },
 
-    // Removed unused: timeBox, typePill, slotDetailRow, deleteBtn
-
+    // Removed unused: timeBox,
     emptyState: { alignItems: 'center', paddingTop: 60, gap: 8 },
     emptyText: { fontSize: 18, fontWeight: '700', color: c.text },
     emptySubText: { color: c.subtext },
@@ -961,7 +1023,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
         overflow: 'hidden',
         borderWidth: 1,
         borderColor: c.glassBorder,
-        paddingTop: 24
+        paddingTop: 12
     },
     modalContent: {
         backgroundColor: c.glassBgEnd, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingTop: 24,
@@ -969,9 +1031,7 @@ const getStyles = (c, isDark) => StyleSheet.create({
         borderBottomWidth: 0,
         position: 'absolute', bottom: 0 // Force absolute bottom
     },
-    dragHandle: {
-        width: 50, height: 6, backgroundColor: c.subtext + '40', borderRadius: 4, alignSelf: 'center', marginBottom: 24, marginTop: -8
-    },
+    dragHandle: { width: 40, height: 4, backgroundColor: c.glassBorder, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
     modalTitle: { fontSize: 24, fontWeight: '800', color: c.text, marginBottom: 20 },
     label: { fontSize: 13, fontWeight: '800', color: c.subtext, marginBottom: 16, marginTop: 20, textTransform: 'uppercase', letterSpacing: 0.5 },
 

@@ -3,6 +3,7 @@ import {
     View, Text, StyleSheet, SafeAreaView, Platform, StatusBar,
     TouchableOpacity, FlatList, Alert, Modal, TextInput, ScrollView, ActivityIndicator, Animated, Dimensions
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme, Layout } from '../theme';
@@ -13,19 +14,19 @@ import AnimatedHeader from '../components/AnimatedHeader';
 import { useSemester } from '../contexts/SemesterContext';
 import PressableScale from '../components/PressableScale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../services/api';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const { height } = Dimensions.get('window');
 
 const TimetableScreen = ({ navigation }) => {
-    const { isDark } = useTheme();
+    const { isDark, colors: themeColors } = useTheme();
     const { selectedSemester } = useSemester();
     const insets = useSafeAreaInsets();
 
-    // AMOLED Theme
+    // Merge dynamic theme colors with local overrides
     const c = {
+        ...themeColors,
         bgGradStart: isDark ? '#000000' : '#FFFFFF',
         bgGradMid: isDark ? '#000000' : '#F8F9FA',
         bgGradEnd: isDark ? '#000000' : '#FFFFFF',
@@ -34,7 +35,7 @@ const TimetableScreen = ({ navigation }) => {
         glassBorder: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
         text: isDark ? '#FFF' : '#1E1F22',
         subtext: isDark ? '#BABBBD' : '#6B7280',
-        primary: theme.palette.purple,
+        primary: themeColors.primary, // Use dynamic accent
         danger: theme.palette.red,
         surface: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
         modalBg: isDark ? ['#000000', '#000000'] : ['rgba(255, 255, 255, 0.98)', 'rgba(248, 249, 250, 0.98)']
@@ -190,6 +191,7 @@ const TimetableScreen = ({ navigation }) => {
     // ... existing Time Picker logic ...
 
     const handleMarkAttendance = async (subjectId, status) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         try {
             await attendanceService.markAttendance(subjectId, status, todayStr);
             queryClient.invalidateQueries({ queryKey: ['attendance_logs', todayStr, selectedSemester] });
@@ -199,8 +201,9 @@ const TimetableScreen = ({ navigation }) => {
     };
 
     const deleteMutation = useMutation({
-        mutationFn: (slotId) => api.delete(`/api/timetable/slot/${slotId}?semester=${selectedSemester}`),
+        mutationFn: (slotId) => attendanceService.deleteTimetableSlot(slotId, selectedSemester),
         onMutate: async (slotId) => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             await queryClient.cancelQueries({ queryKey: ['timetable', selectedSemester] });
             const previousData = queryClient.getQueryData(['timetable', selectedSemester]);
 
@@ -332,10 +335,21 @@ const TimetableScreen = ({ navigation }) => {
         } else {
             let subjectName = item.name || item.subject_name;
             if (item.subject_id) {
-                const normalizedItemId = safeId(item.subject_id);
-                const foundSub = subjects.find(s => safeId(s._id || s.id) === normalizedItemId);
+                const normalizedItemId = safeId(item.subject_id || item.subjectId);
+                // Try finding by _id or id
+                const foundSub = subjects.find(s => {
+                    const sId = safeId(s._id || s.id);
+                    return sId === normalizedItemId;
+                });
+
                 if (foundSub) {
                     subjectName = foundSub.name;
+                } else {
+                    // Debug info for unknown subjects
+                    console.log(`[Timetable] Unknown Subject: ItemID=${normalizedItemId} (${item.subject_id}), AvailSubjects=${subjects.length}`);
+                    if (subjects.length > 0 && index === 0) {
+                        console.log(`[Timetable] Sample Subject ID: ${safeId(subjects[0]._id)}`);
+                    }
                 }
             }
             if (subjectName) displaySubject = subjectName;
@@ -510,7 +524,7 @@ const TimetableScreen = ({ navigation }) => {
                     }
                     onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
                     onRefresh={fetchData} refreshing={refreshing}
-                    progressViewOffset={Layout.header.minHeight + insets.top + 20}
+                    progressViewOffset={Layout.header.maxHeight + insets.top}
                     tintColor={c.primary}
                 />
             )}
@@ -549,7 +563,10 @@ const TimetableScreen = ({ navigation }) => {
                             <PressableScale
                                 key={day}
                                 style={[styles.dayTab, selectedDay === day && styles.activeDayTab]}
-                                onPress={() => setSelectedDay(day)}
+                                onPress={() => {
+                                    Haptics.selectionAsync();
+                                    setSelectedDay(day);
+                                }}
                             >
                                 <Text style={[styles.dayText, selectedDay === day && styles.activeDayText]}>
                                     {day.substring(0, 3)}
@@ -624,7 +641,7 @@ const TimetableScreen = ({ navigation }) => {
                                 </PressableScale>
                                 <PressableScale onPress={handleSaveSlot} disabled={addingSlot} style={{ flex: 1, borderRadius: 18, overflow: 'hidden' }}>
                                     <LinearGradient
-                                        colors={theme.gradients.primary}
+                                        colors={c.gradients.primary}
                                         style={styles.primaryBtn}
                                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                     >
@@ -669,7 +686,7 @@ const TimetableScreen = ({ navigation }) => {
                             </View>
                             <PressableScale style={{ borderRadius: 14, overflow: 'hidden', marginTop: 12 }} onPress={handleTimeConfirm}>
                                 <LinearGradient
-                                    colors={theme.gradients.primary}
+                                    colors={c.gradients.primary}
                                     style={styles.confirmBtn}
                                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                 >
@@ -752,7 +769,7 @@ const TimetableScreen = ({ navigation }) => {
                             </PressableScale>
                             <PressableScale style={{ flex: 1, borderRadius: 18, overflow: 'hidden' }} onPress={handleSaveStructure}>
                                 <LinearGradient
-                                    colors={theme.gradients.primary}
+                                    colors={c.gradients.primary}
                                     style={styles.saveActionBtn}
                                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                 >

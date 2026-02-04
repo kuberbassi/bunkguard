@@ -130,17 +130,20 @@ def update_preferences():
     # Merge new with existing
     current_prefs.update(new_prefs)
     
-    # CRITICAL FIX: Sync min_attendance and warning_threshold
-    # If one is updated, update the other to match
-    val_warning = None
-    if 'warning_threshold' in new_prefs:
-        val_warning = int(new_prefs['warning_threshold'])
+    # CRITICAL FIX: Mobile uses 'attendance_threshold', Web uses 'min_attendance'/'warning_threshold'
+    # We must keep all three in sync.
+    val_threshold = None
+    if 'attendance_threshold' in new_prefs:
+        val_threshold = int(new_prefs['attendance_threshold'])
+    elif 'warning_threshold' in new_prefs:
+        val_threshold = int(new_prefs['warning_threshold'])
     elif 'min_attendance' in new_prefs:
-        val_warning = int(new_prefs['min_attendance'])
+        val_threshold = int(new_prefs['min_attendance'])
         
-    if val_warning is not None:
-        current_prefs['warning_threshold'] = val_warning
-        current_prefs['min_attendance'] = val_warning
+    if val_threshold is not None:
+        current_prefs['attendance_threshold'] = val_threshold
+        current_prefs['warning_threshold'] = val_threshold
+        current_prefs['min_attendance'] = val_threshold
     
     preferences_collection.update_one(
         {'owner_email': user_email},
@@ -175,9 +178,10 @@ def get_profile():
     user_prefs = preferences_collection.find_one({'owner_email': user_email})
     prefs = user_prefs.get('preferences', {}) if user_prefs else {}
     
-    # Logic to get the effective value
-    warn_val = prefs.get('warning_threshold') or prefs.get('min_attendance') or 76
-    min_att_val = prefs.get('min_attendance') or prefs.get('warning_threshold') or 76
+    # Logic to get the effective value - Sync between Web/Mobile keys
+    # Use attendance_threshold as primary, fallback to others
+    base_val = prefs.get('attendance_threshold') or prefs.get('warning_threshold') or prefs.get('min_attendance') or 75
+    warn_val = int(base_val)
     
     response_data = {
         "email": user_email,
@@ -189,9 +193,9 @@ def get_profile():
         
         # Preferences
         "semester": prefs.get('semester', 1),
-        "attendance_threshold": prefs.get('attendance_threshold', 75), # Minimum Attendance
+        "attendance_threshold": warn_val, 
         "warning_threshold": warn_val,       # Mobile uses this
-        "min_attendance": warn_val,          # Web uses this (mapped to same value)
+        "min_attendance": warn_val,          # Web uses this
         "notifications_enabled": prefs.get('notifications_enabled', False),
     }
     
@@ -568,7 +572,6 @@ def get_dashboard_data():
             "current_semester": current_semester,
             "total_subjects": len(subjects)
         }
-        print(f"🔍 DEBUG: Sending response with {len(subjects_overview)} subjects")
         return Response(json_util.dumps(response_data), mimetype='application/json')
     except Exception as e:
         print(f"---! ERROR IN /api/dashboard_data: {e} !---")
@@ -656,8 +659,6 @@ def get_reports_data():
                 stats_map[date_str] = {'attended': 0, 'total': 0}
         
         streak = calculate_streak(user_email)
-        
-        print(f"📊 DEBUG: Weekly breakdown stats_map = {stats_map}")
 
         response_data = {
             "kpis": {
@@ -692,7 +693,10 @@ def get_attendance_logs():
         
         semester = request.args.get('semester')
         if semester:
-            query['semester'] = int(semester)
+            try:
+                query['semester'] = int(semester)
+            except ValueError:
+                pass # Ignore invalid semester param
 
         total_logs = attendance_log_collection.count_documents(query)
         pipeline = [
@@ -701,9 +705,15 @@ def get_attendance_logs():
             {'$skip': skip},
             {'$limit': limit},
             {'$lookup': {'from': 'subjects', 'localField': 'subject_id', 'foreignField': '_id', 'as': 'subject_info'}},
-            {'$unwind': '$subject_info'}
+            {'$unwind': {'path': '$subject_info', 'preserveNullAndEmptyArrays': True}}
         ]
         logs = list(attendance_log_collection.aggregate(pipeline))
+        
+        # Post-process to ensure subject name exists if subject was deleted
+        for log in logs:
+            if 'subject_info' not in log:
+                 log['subject_info'] = {'name': 'Deleted Subject', 'code': '---'}
+
         has_next_page = total_logs > (skip + len(logs))
         
         response_data = {"logs": logs, "has_next_page": has_next_page}
@@ -741,18 +751,14 @@ def mark_attendance():
     notes = data.get('notes', None)
     date_str = data.get('date', datetime.now().strftime("%Y-%m-%d"))
     substituted_by_id = data.get('substituted_by_id', None)
-
-    print(f"🎯 DEBUG: Marking attendance for subject_id: {subject_id_str} | Status: {status} | Date: {date_str}")
     
     try:
         subject_id = ObjectId(subject_id_str)
     except:
-        print(f"❌ ERROR: Invalid ObjectId format: {subject_id_str}")
         return jsonify({"error": "Invalid Subject ID format"}), 400
 
     subject = subjects_collection.find_one({'_id': subject_id})
     if not subject: 
-        print(f"❌ ERROR: Subject not found in DB: {subject_id}")
         return jsonify({"error": "Subject not found"}), 404
     
     # allow multiple marks per day (for multi-period subjects)
@@ -1374,33 +1380,12 @@ def update_profile_post():
 
 @api_bp.route('/delete_all_data', methods=['DELETE'])
 def delete_all_data():
+    """DEPRECATED: Use /api/v1/data/delete_all_data instead - this legacy route redirects"""
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
     
-    user_email = session['user']['email']
-    
-    try:
-        # Delete from all user-specific collections
-        attendance_log_collection.delete_many({'owner_email': user_email})
-        subjects_collection.delete_many({'owner_email': user_email})
-        timetable_collection.delete_many({'owner_email': user_email})
-        system_logs_collection.delete_many({'owner_email': user_email})
-        academic_records_collection.delete_many({'owner_email': user_email}) # users_collection
-        deadlines_collection.delete_many({'owner_email': user_email})
-        holidays_collection.delete_many({'owner_email': user_email})
-        
-        # New Feature Collections
-        semester_results_collection.delete_many({'owner_email': user_email})
-        manual_courses_collection.delete_many({'owner_email': user_email})
-        skills_collection.delete_many({'owner_email': user_email})
-        
-        # Reset Preferences (Delete doc)
-        db.get_collection('user_preferences').delete_one({'owner_email': user_email})
-        
-        create_system_log(user_email, "Account Reset", "User deleted all application data.")
-        return jsonify({"success": True})
-    except Exception as e:
-        print(f"Delete All Data Error: {e}")
-        return jsonify({"error": "Failed to delete data"}), 500
+    # Redirect to the new secure endpoint
+    from api.routes.data_management import delete_all_data as secure_delete
+    return secure_delete()
 
 
 @api_bp.route('/notices')
@@ -2617,9 +2602,13 @@ def get_calendar_events():
 @api_bp.route('/system_logs')
 def get_system_logs():
     if 'user' not in session: return jsonify({"error": "Unauthorized"}), 401
-    # Get last 50 logs
-    logs = list(system_logs_collection.find({'owner_email': session['user']['email']}).sort('timestamp', -1).limit(50))
-    return Response(json_util.dumps(logs), mimetype='application/json')
+    try:
+        # Get last 50 logs
+        logs = list(system_logs_collection.find({'owner_email': session['user']['email']}).sort('timestamp', -1).limit(50))
+        return Response(json_util.dumps(logs), mimetype='application/json')
+    except Exception as e:
+        print(f"Error serving system logs: {e}")
+        return jsonify([]), 200 # Return empty list on error to prevent app crash
 
 @api_bp.route('/logs_for_date')
 def get_logs_for_date():
