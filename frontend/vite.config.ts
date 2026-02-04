@@ -10,20 +10,37 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['acadhub-brand-v3.png'],
+      includeAssets: ['icon-trans.png', 'acadhub-brand-v3.png'],
       manifest: {
-        name: 'AcadHub',
+        name: 'AcadHub v3.0.0',
         short_name: 'AcadHub',
-        description: 'Smart Attendance Tracker',
-        version: '3.0.0',
+        description: 'Smart Attendance Tracker v3.0.0',
         theme_color: '#000000',
         background_color: '#000000',
         icons: [
           {
-            src: 'acadhub-brand-v3.png',
-            sizes: '1024x1024',
+            src: 'icon-trans.png',
+            sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            src: 'icon-trans.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'icon-trans.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: 'icon-trans.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
