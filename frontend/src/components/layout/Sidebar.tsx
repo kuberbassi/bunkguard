@@ -261,7 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, setIsMobileOpen, isColl
                     {/* App Version Label */}
                     <div className={`mt-2 flex justify-center ${isCollapsed ? 'px-0' : 'px-2'}`}>
                         <p className="text-[10px] font-bold tracking-tighter text-on-surface-variant/40 uppercase">
-                            {isCollapsed ? 'v4.2' : 'Web App Version 4.2.0'}
+                            {isCollapsed ? 'v3.0' : 'Web App Version 3.0.0'}
                         </p>
                     </div>
                 </div >
