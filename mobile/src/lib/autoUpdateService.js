@@ -10,7 +10,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import axios from 'axios';
 import { saveData, getData } from './offlineStorage';
 
-const GITHUB_REPO = 'your-github-username/acadhub'; // Update this
+const GITHUB_REPO = 'kuberbassi/acadhub';
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 
 class AutoUpdateService {
