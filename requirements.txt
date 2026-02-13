@@ -1,6 +1,3 @@
-# AcadHub Backend Dependencies
-# Production-ready with pinned versions
-
 Flask>=3.0.0
 flask-cors>=4.0.0
 pymongo>=4.6.0
