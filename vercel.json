@@ -20,6 +20,14 @@
       "destination": "/assets/$1"
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap.xml"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/robots.txt"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -91,5 +99,7 @@
       ]
     }
   ],
-  "regions": ["bom1"]
+  "regions": [
+    "bom1"
+  ]
 }

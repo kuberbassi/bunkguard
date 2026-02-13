@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://acadhubkb.vercel.app/sitemap.xml
+Sitemap: https://acadhub.kuberbassi.com/sitemap.xml
